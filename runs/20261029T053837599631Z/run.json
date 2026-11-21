@@ -1,0 +1,20 @@
+{
+  "mode": "smoke (dfthcsos uses full defaults)",
+  "tasks": {
+    "dqi": {
+      "command": [
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/.venv/bin/python",
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/data/official/verifiers/dqi/verify_submission_dqi.py",
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/candidates/busyaprime_v9_dqi_full_replay/dqi.kmb",
+        "--max-workers",
+        "1",
+        "--num-shots",
+        "4096",
+        "--salt",
+        "dqi-full-replay-24-smoke-2026-10-29"
+      ],
+      "returncode": 1,
+      "seconds": 6.388403916003881
+    }
+  }
+}

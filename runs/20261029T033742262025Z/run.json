@@ -1,0 +1,16 @@
+{
+  "mode": "full",
+  "tasks": {
+    "dqi": {
+      "command": [
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/.venv/bin/python",
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/data/official/verifiers/dqi/verify_submission_dqi.py",
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/candidates/busyaprime_v9_somejoint_897q/dqi.kmb",
+        "--max-workers",
+        "1"
+      ],
+      "returncode": 0,
+      "seconds": 145.28935354200075
+    }
+  }
+}

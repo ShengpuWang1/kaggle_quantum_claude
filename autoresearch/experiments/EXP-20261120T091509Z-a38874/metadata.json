@@ -1,0 +1,306 @@
+{
+  "schema_version": 1,
+  "experiment_id": "EXP-20261120T091509Z-a38874",
+  "created_at": "2026-11-20T09:15:09.466324+00:00",
+  "status": "failed",
+  "task": "dfthcsos",
+  "parent_id": "IMPORT-kirilltym-v9-365594383",
+  "config": {
+    "version": 1,
+    "agents": {
+      "director": {
+        "provider": "anthropic",
+        "model": "kimi-k3.1-pro",
+        "api_key": "<redacted>",
+        "api_key_env": null,
+        "auth_token": "<redacted>",
+        "auth_token_env": "AUTORESEARCH_DIRECTOR_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/plan",
+        "effort": "high",
+        "max_tokens": 16000,
+        "max_turns": 24,
+        "timeout_seconds": 600,
+        "max_retries": 2,
+        "max_tool_output_chars": 30000,
+        "stream": true,
+        "prompt": null,
+        "options": {}
+      },
+      "implementer": {
+        "provider": "anthropic",
+        "model": "kimi-k3.1-pro",
+        "api_key": "<redacted>",
+        "api_key_env": null,
+        "auth_token": "<redacted>",
+        "auth_token_env": "AUTORESEARCH_IMPLEMENTER_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/plan",
+        "effort": "high",
+        "max_tokens": 16000,
+        "max_turns": 40,
+        "timeout_seconds": 900,
+        "max_retries": 2,
+        "max_tool_output_chars": 30000,
+        "stream": true,
+        "prompt": null,
+        "options": {}
+      },
+      "reviewer": {
+        "provider": "anthropic",
+        "model": "kimi-k3.1-pro",
+        "api_key": "<redacted>",
+        "api_key_env": null,
+        "auth_token": "<redacted>",
+        "auth_token_env": "AUTORESEARCH_REVIEWER_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/plan",
+        "effort": "high",
+        "max_tokens": 12000,
+        "max_turns": 16,
+        "timeout_seconds": 600,
+        "max_retries": 2,
+        "max_tool_output_chars": 30000,
+        "stream": true,
+        "prompt": null,
+        "options": {}
+      }
+    },
+    "settings": {
+      "workers": 1,
+      "smoke_timeout_seconds": 1800,
+      "full_timeout_seconds": 7200,
+      "max_repair_cycles": 2,
+      "command_timeout_seconds": 300,
+      "command_output_chars": 30000
+    },
+    "tasks": {
+      "invsqrt": {
+        "build": [
+          "{python}",
+          "source/build.py"
+        ],
+        "tests": []
+      },
+      "dqi": {
+        "build": [
+          "{python}",
+          "source/build.py"
+        ],
+        "tests": []
+      },
+      "dfthcsos": {
+        "build": [
+          "{python}",
+          "source/build.py"
+        ],
+        "tests": []
+      }
+    }
+  },
+  "cycles": [
+    {
+      "number": 1,
+      "started_at": "2026-11-20T09:21:10.090113+00:00"
+    }
+  ],
+  "updated_at": "2026-11-20T09:29:32.231344+00:00",
+  "parent": {
+    "schema_version": 1,
+    "champion_id": "IMPORT-kirilltym-v9-365594383",
+    "task": "dfthcsos",
+    "parent_id": "baseline",
+    "created_at": "2026-11-04T13:59:21.555018+00:00",
+    "cost": 312443243.84047496,
+    "reference_cost": 3355599588.3155365,
+    "artifacts": {
+      "task": "dfthcsos",
+      "files": [
+        {
+          "path": "dfthcsos/angle_k_0.kmb",
+          "bytes": 422345,
+          "sha256": "956dc0b494a85b72aacc830b45e10e52a65a11454207fb76072b43c050016f8e"
+        },
+        {
+          "path": "dfthcsos/angle_k_1.kmb",
+          "bytes": 422317,
+          "sha256": "cf0291d59ba246eb2bbf61f56b7128a69bdca36d740f2bf8487fe4b0fa77c88c"
+        },
+        {
+          "path": "dfthcsos/angle_k_10.kmb",
+          "bytes": 390112,
+          "sha256": "8c31a64784c3d0ecb6bf71c5e67a4f27bdf63ce0f4dd4e213ff4ee20029d9ba9"
+        },
+        {
+          "path": "dfthcsos/angle_k_11.kmb",
+          "bytes": 387411,
+          "sha256": "402ebdf216abae95c91ae2aee37078a2bbb13ef59bf0db66f4af9f057161e310"
+        },
+        {
+          "path": "dfthcsos/angle_k_12.kmb",
+          "bytes": 387890,
+          "sha256": "7707330d587dfc5609e3f2b7ebca3dfacf64afb77d462050457671e80bcc168c"
+        },
+        {
+          "path": "dfthcsos/angle_k_13.kmb",
+          "bytes": 387032,
+          "sha256": "451cc5acbe1bbefd0affef3622a7e611eb7d3cd784c6d26a59d7312354f91c39"
+        },
+        {
+          "path": "dfthcsos/angle_k_14.kmb",
+          "bytes": 391415,
+          "sha256": "c36fef91c85080a9b686c8c81d995c0569fead3f79960673d7d26ccce9dd3217"
+        },
+        {
+          "path": "dfthcsos/angle_k_2.kmb",
+          "bytes": 423379,
+          "sha256": "7d2038cea60c2a9484d51e4ea60521e254dd4c3e2f29133ed62a101a3d088557"
+        },
+        {
+          "path": "dfthcsos/angle_k_3.kmb",
+          "bytes": 422311,
+          "sha256": "9937a233c65981c29aa923f2821819dac54faac17a55d1dfc06353bff09ba681"
+        },
+        {
+          "path": "dfthcsos/angle_k_4.kmb",
+          "bytes": 389637,
+          "sha256": "063aa910bb8e3f3cd4864762ea4accecc4f043ddf6ab8d55dc3461a858af88fb"
+        },
+        {
+          "path": "dfthcsos/angle_k_5.kmb",
+          "bytes": 391227,
+          "sha256": "b381c166926b4196ab26e1a428bf8d530ce18af86453a5c9cb8824a8f0980c99"
+        },
+        {
+          "path": "dfthcsos/angle_k_6.kmb",
+          "bytes": 390141,
+          "sha256": "6dd19bf59ca80deacf851f42eeee3d785d8334346642bb94e22c99904060010c"
+        },
+        {
+          "path": "dfthcsos/angle_k_7.kmb",
+          "bytes": 386959,
+          "sha256": "2375754fa132843532bf075b56bf9a4d3ab877cedbb8cc22777a59867cd850f8"
+        },
+        {
+          "path": "dfthcsos/angle_k_8.kmb",
+          "bytes": 390085,
+          "sha256": "5708aea25df768f3c58daa759af70c5e4cadeb38b7e3680d67e93312cba5607e"
+        },
+        {
+          "path": "dfthcsos/angle_k_9.kmb",
+          "bytes": 386641,
+          "sha256": "f1f1cc1cbe2ad7d74a425888bdee3780956c2ba555b12e5f00b2aaf71b6c7cc1"
+        },
+        {
+          "path": "dfthcsos/submission.npz",
+          "bytes": 2022588,
+          "sha256": "85c420b68e0aaf58354954a93aea4d231db33f7aa5be9f82b883a3277bbe760a"
+        }
+      ],
+      "digest": "a100fb3d657f2395de6918d33a72d5f469095c0e31cec315b275e5a9c179b4fb"
+    },
+    "source": {
+      "files": [
+        {
+          "path": "CREDITS.md",
+          "bytes": 7597,
+          "sha256": "f96bc07cc7bead77e38c4e653829b01e324816d7953e6c47374f2a36646c8f7e"
+        },
+        {
+          "path": "LICENSE_SCOPES.txt",
+          "bytes": 137,
+          "sha256": "b6d8d1ac81f03d14230fe151e9901ea69f11b2e4848307e2caed0ca91b296e47"
+        },
+        {
+          "path": "STARTING_POINT.md",
+          "bytes": 1581,
+          "sha256": "266cb81544caeeeac0d9a60df265ac6c40a58f8a3ca93646cd6ba71f43215aad"
+        },
+        {
+          "path": "full_dfthcsos_report.json",
+          "bytes": 1547,
+          "sha256": "8ead54f788d271bcf00fd7f160997d7795d405905209192ce48541083b19a53e"
+        },
+        {
+          "path": "full_dqi_report.json",
+          "bytes": 1094,
+          "sha256": "6692951137805169820d309ab9b644611e6d4dc5af13886df4cc65ef78d51014"
+        },
+        {
+          "path": "full_invsqrt_report.json",
+          "bytes": 556,
+          "sha256": "59bd1d49a7bc324c602af5239c6c6f2d801ccc95ea937e26222d0689bfd8df32"
+        },
+        {
+          "path": "notebook.ipynb",
+          "bytes": 316084,
+          "sha256": "beaedcca0dca57909a9382e607cfb17f1ebf3e6d440554bb07c0b617c44abc69"
+        },
+        {
+          "path": "output_manifest.json",
+          "bytes": 1920,
+          "sha256": "55e187d9589f9ba4c9ffa6908fd51524b9b8d657c336500d31d734205ae1d472"
+        },
+        {
+          "path": "source_pins.json",
+          "bytes": 6445,
+          "sha256": "41f7d655c1ba96b9e94332d73abafea5a58723d4e2ba205a9711c5e06b0211d1"
+        },
+        {
+          "path": "verification_conditions.json",
+          "bytes": 56288,
+          "sha256": "712bd6bb9545009ccfa1d474a7ae5feddecd143fce45bc50a4d4170bc57f1f64"
+        },
+        {
+          "path": "verification_receipt.json",
+          "bytes": 122925,
+          "sha256": "483f5e636190be2924cc9591da14aefc773e0c20e7e6d2fb41e3ce9e8fcdc291"
+        }
+      ],
+      "digest": "c660e8785f1c9531c80defe1eec615a1bb818df1c2ff823846260cd106d9eaf8"
+    },
+    "verification": {
+      "mode": "full",
+      "result": "runs/kirilltym-v9-365594383-full/dfthcsos.json",
+      "result_sha256": "e2a4ef128d267ae77cf4be304d7515834189d8e5b5ab22c2f4cf36b29e4db1f9"
+    },
+    "provenance": "Published Kaggle notebook kirilltym/quantum-circuits-four-loaders-eight-toffolis v9 (script 365594383); independently verified locally at full settings",
+    "external_source": {
+      "notebook": "https://www.kaggle.com/code/kirilltym/quantum-circuits-four-loaders-eight-toffolis?scriptVersionId=365594383",
+      "version": 9,
+      "script_version_id": 365594383,
+      "archive_sha256": "e02ac3c0401c68618c154b84dab25a9cf3dce337985f8a9e680d301603b1ce15"
+    }
+  },
+  "plan": {
+    "title": "Trade three ANGLE cache slots for fewer low-monomial recomputations",
+    "task": "dfthcsos",
+    "evidence": [
+      {
+        "source_type": "paper",
+        "title": "Trading T gates for dirty qubits in state preparation and unitary synthesis",
+        "url": "https://arxiv.org/abs/1812.00954",
+        "local_path": "docs/papers/1812.00954_dirty_qubit_state_preparation.pdf",
+        "insight": "Low, Kliuchnikov, and Schaeffer explicitly expose a tunable space/non-Clifford-gate tradeoff for classical-data oracles: additional workspace can reduce expensive gate work. The experiment adapts only this resource-allocation principle, not the paper's asymptotic state-preparation construction. The local low4 ANGLE emitter already makes the analogous tradeoff explicit: schedule capacity controls live low-monomial cache slots, and every avoided low computation removes one CCX; its build path currently fixes that capacity at 8."
+      }
+    ],
+    "hypothesis": "For at least one of the 15 existing five-word ANGLE loaders, raising the low4 low-monomial cache capacity from 8 to 9, 10, or 11—while recomputing the partition threshold to respect the 128-qubit cap—will retain more low monomials and reduce total static Toffoli-like gates despite any additional high-cache partitioning. Because selection and word registers are unchanged and ANGLE temporary workspace remains below the 303-qubit inner-state-preparation workspace, any such reduction should lower T_total without changing Q_total or lambda_eff. This is falsified if no alternative capacity beats both its same-plan capacity-8 emission and the corresponding champion circuit.",
+    "implementation_steps": [
+      "Create a deterministic dfthcsos candidate from champion IMPORT-kirilltym-v9-365594383, initially copying submission.npz and all 15 angle_k_*.kmb files byte-for-byte. Add a source/build.py entrypoint and preserve or vendor the exact loader_port/staged_b154 source dependencies with hashes so the build does not depend on mutable run outputs.",
+      "Make a minimal experimental change to the local low4 compiler: expose low-cache capacity as an argument to build_delta/choose_delta, retaining 8 as the compatibility default. Pass that argument to schedule() in both unpartitioned and partitioned paths. In the partitioned path, derive the high-cache threshold jointly with the requested low capacity so the emitted circuit still satisfies num_qubits <= 128; do not change the promised-sign XOR-oracle semantics or public registers.",
+      "For each batch k=0..14, derive deltas from the champion submission.npz exactly as batch_deltas specifies. Use one fixed seed and one fixed bounded plan-search budget per batch, then reuse the resulting plan across capacities {8,9,10,11}; only scheduling/cache partitioning may vary. This separates the capacity effect from plan-search randomness.",
+      "For every capacity, run the existing independent-plan/truth checks and emitted resource assertions. Record Toffoli-like count, qubit count, selected capacity, low computations, high-cache count, partition threshold, and hashes. Require the best alternative capacity to use fewer static Toffoli-like gates than the same-plan capacity-8 emission and fewer than the actual champion circuit for that batch; otherwise retain the champion circuit bytes.",
+      "Serialize only winning replacement circuits, leaving submission.npz and every non-winning angle file untouched. Confirm identical selection/word registers, brot=8 and J=5, no Z_POW instructions, contiguous 15-file artifact layout, and unchanged angle words before handing the candidate to the orchestrator for smoke checks and its single terminal full verification."
+    ],
+    "expected_resource_effect": "Each eliminated unconditional low-cache recomputation saves one static CCX in one ANGLE circuit and therefore two executed Toffoli-like gates per verifier shot across the forward and reverse passes. The expected gain is modest and batch-dependent, possibly offset by a less favorable high-cache partition. Valid replacements keep the same factorization and words, so lambda_eff should remain 47.02142216209536; with unchanged public registers and the 128-qubit ANGLE cap, Q_total should remain 428 because inner_state_prep's 303 temporary qubits still dominate. No improvement is assumed: only measured full-verifier T_total below 15525 and score below the champion qualify.",
+    "risks": [
+      "A larger low cache can force a lower high-cache partition threshold and increase rather than decrease total Toffolis; same-plan capacity-8 comparison and per-batch rejection limit this risk.",
+      "Template search is time-bounded and may introduce plan variation; reuse one fixed plan across all capacities and record the seed and plan hash.",
+      "Measurement-based del_and cleanup or sign-gauge borrowing could be disturbed by emitter edits; retain the existing assertions and require the unmodified official full verifier to pass.",
+      "The imported champion is not offline-rebuildable from its notebook alone; the candidate must include deterministic generator/build source and exact dependency pins rather than treating the preserved notebook as a rebuild recipe."
+    ],
+    "acceptance_criteria": [
+      "At least one replacement circuit has strictly lower static num_toffoli_like than both its same-plan capacity-8 emission and the corresponding champion circuit; every non-winning artifact remains byte-identical to the champion.",
+      "All replacement plans pass the existing exact independent/truth checks, all circuits retain the champion register contract with num_qubits <= 128, and submission.npz has SHA-256 85c420b68e0aaf58354954a93aea4d231db33f7aa5be9f82b883a3277bbe760a.",
+      "The unmodified official full dfthcsos verifier returns PASS with num_qubits == 428, lambda_eff equal to the champion within 1e-9, and toffoli_count strictly below 15525.0.",
+      "The byte-identical candidate's official full-verifier score is finite and strictly below 312443243.84047496; otherwise the hypothesis is rejected and no promotion is requested."
+    ]
+  }
+}

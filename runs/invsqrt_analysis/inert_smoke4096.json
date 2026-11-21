@@ -1,0 +1,232 @@
+{
+  "domain": "all x in 1..4096",
+  "seeds": 4,
+  "shots_per_seed": 4096,
+  "nonlinear_gates": 1397,
+  "inert": [
+    {
+      "index": 177,
+      "line": "CSWAP q46 q11 q16"
+    },
+    {
+      "index": 179,
+      "line": "CSWAP q46 q13 q14"
+    },
+    {
+      "index": 191,
+      "line": "CSWAP q42 q12 q16"
+    },
+    {
+      "index": 206,
+      "line": "CSWAP q43 q14 q16"
+    },
+    {
+      "index": 220,
+      "line": "CSWAP q44 q14 q20"
+    },
+    {
+      "index": 221,
+      "line": "CSWAP q44 q15 q19"
+    },
+    {
+      "index": 222,
+      "line": "CSWAP q44 q16 q18"
+    },
+    {
+      "index": 16719,
+      "line": "CSWAP q20 q59 q2"
+    },
+    {
+      "index": 16720,
+      "line": "CSWAP q56 q59 q0"
+    },
+    {
+      "index": 16727,
+      "line": "CSWAP q20 q59 q3"
+    },
+    {
+      "index": 16728,
+      "line": "CSWAP q56 q59 q0"
+    },
+    {
+      "index": 16735,
+      "line": "CSWAP q20 q59 q2"
+    },
+    {
+      "index": 16736,
+      "line": "CSWAP q56 q59 q0"
+    },
+    {
+      "index": 16743,
+      "line": "CSWAP q20 q59 q3"
+    },
+    {
+      "index": 16744,
+      "line": "CSWAP q56 q59 q0"
+    },
+    {
+      "index": 25657,
+      "line": "CCX q9 q29 q14"
+    },
+    {
+      "index": 25821,
+      "line": "CCX q8 q50 q14"
+    },
+    {
+      "index": 25987,
+      "line": "CCX q7 q30 q14"
+    },
+    {
+      "index": 26128,
+      "line": "CCX q6 q31 q14"
+    },
+    {
+      "index": 26259,
+      "line": "CCX q5 q32 q14"
+    },
+    {
+      "index": 26391,
+      "line": "CCX q4 q33 q14"
+    },
+    {
+      "index": 26493,
+      "line": "CCX q3 q34 q14"
+    },
+    {
+      "index": 26599,
+      "line": "CCX q2 q37 q23"
+    },
+    {
+      "index": 26690,
+      "line": "CCX q1 q62 q23"
+    },
+    {
+      "index": 26781,
+      "line": "CSWAP q0 q62 q58"
+    },
+    {
+      "index": 26854,
+      "line": "CSWAP q0 q62 q58"
+    },
+    {
+      "index": 26910,
+      "line": "CCX q0 q18 q35"
+    },
+    {
+      "index": 26924,
+      "line": "CCX q4 q55 q40"
+    },
+    {
+      "index": 26973,
+      "line": "CSWAP q14 q40 q2"
+    },
+    {
+      "index": 26974,
+      "line": "CSWAP q56 q40 q0"
+    },
+    {
+      "index": 26986,
+      "line": "CSWAP q14 q40 q3"
+    },
+    {
+      "index": 26987,
+      "line": "CSWAP q56 q40 q0"
+    },
+    {
+      "index": 26994,
+      "line": "CSWAP q14 q40 q2"
+    },
+    {
+      "index": 26995,
+      "line": "CSWAP q56 q40 q0"
+    },
+    {
+      "index": 27004,
+      "line": "CSWAP q14 q40 q3"
+    },
+    {
+      "index": 27005,
+      "line": "CSWAP q56 q40 q0"
+    },
+    {
+      "index": 28186,
+      "line": "CCX q0 q18 q35"
+    },
+    {
+      "index": 28200,
+      "line": "CCX q4 q55 q40"
+    },
+    {
+      "index": 28266,
+      "line": "CCX q0 q58 q40"
+    },
+    {
+      "index": 28419,
+      "line": "CCX q1 q62 q23"
+    },
+    {
+      "index": 28557,
+      "line": "CCX q2 q37 q23"
+    },
+    {
+      "index": 28701,
+      "line": "CCX q14 q21 q23"
+    },
+    {
+      "index": 28716,
+      "line": "CCX q3 q34 q14"
+    },
+    {
+      "index": 28853,
+      "line": "CCX q4 q33 q14"
+    },
+    {
+      "index": 28998,
+      "line": "CCX q5 q32 q14"
+    },
+    {
+      "index": 29235,
+      "line": "CCX q6 q31 q14"
+    },
+    {
+      "index": 29471,
+      "line": "CCX q7 q30 q14"
+    },
+    {
+      "index": 29694,
+      "line": "CCX q8 q50 q14"
+    },
+    {
+      "index": 29995,
+      "line": "CCX q9 q29 q14"
+    },
+    {
+      "index": 45161,
+      "line": "CSWAP q16 q40 q55"
+    },
+    {
+      "index": 45162,
+      "line": "CSWAP q16 q51 q46"
+    },
+    {
+      "index": 45163,
+      "line": "CSWAP q16 q59 q47"
+    },
+    {
+      "index": 45173,
+      "line": "CSWAP q14 q59 q40"
+    },
+    {
+      "index": 45186,
+      "line": "CSWAP q56 q12 q40"
+    },
+    {
+      "index": 45196,
+      "line": "CSWAP q17 q13 q59"
+    },
+    {
+      "index": 45198,
+      "line": "CSWAP q17 q11 q40"
+    }
+  ]
+}

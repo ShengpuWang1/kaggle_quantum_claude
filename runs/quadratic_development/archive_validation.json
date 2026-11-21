@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "archive": "submissions/quadratic_direct.zip",
+  "archive_sha256": "2f7a9acc093c0e454196b91a17511a4da4ee0b44e6dbaf8655f11200ebedb8af",
+  "payload_files": 13,
+  "official_invsqrt_run": "runs/20261028T034655133415Z/invsqrt.json",
+  "official_invsqrt_score": 556400.4091072511,
+  "tuned_invsqrt_score": 1401695.9536623457,
+  "score_reduction_fraction": 0.6030519973654127,
+  "verified_shots": 200540928,
+  "invsqrt_sha256": "0b6d303d29cbc5af95a546a4c268c0d95c8c730b970a1b2838316b90b1da8635",
+  "unchanged_payloads_match_tuned_manifest": true
+}

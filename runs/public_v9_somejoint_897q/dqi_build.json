@@ -1,0 +1,22 @@
+{
+  "command": [
+    "/Users/spwang/Documents/Quant/kaggle_quantum_claude/.venv/bin/python",
+    "-I",
+    "/Users/spwang/Documents/Quant/kaggle_quantum_claude/candidates/busyaprime_v9_somejoint_897q/source/dqi/build.py",
+    "/Users/spwang/Documents/Quant/kaggle_quantum_claude/candidates/busyaprime_v9_somejoint_897q/dqi.kmb"
+  ],
+  "cwd": "/Users/spwang/Documents/Quant/kaggle_quantum_claude",
+  "returncode": 0,
+  "seconds": 34.23432625000714,
+  "stdout": "{\"sha256\": \"53d8b2edf251e2a0c54c401a97d1396c7ed309e1cbfaab8d54a2c99a11ed6552\", \"Q\": 897, \"T_static\": 444667, \"num_ops\": 59852041, \"num_bits\": 103536, \"seconds\": 34.0}\n",
+  "stderr": "",
+  "source": "/Users/spwang/Documents/Quant/kaggle_quantum_claude/candidates/busyaprime_v9_somejoint_897q/source/dqi",
+  "source_manifest": "/Users/spwang/Documents/Quant/kaggle_quantum_claude/candidates/busyaprime_v9_somejoint_897q/source/dqi.manifest.json",
+  "source_manifest_sha256": "f74eee809d4c02febef56f3a266c715936b01de40837189342e292f0ea7172b2",
+  "output": "/Users/spwang/Documents/Quant/kaggle_quantum_claude/candidates/busyaprime_v9_somejoint_897q/dqi.kmb",
+  "output_sha256": "53d8b2edf251e2a0c54c401a97d1396c7ed309e1cbfaab8d54a2c99a11ed6552",
+  "expected_sha256": "53d8b2edf251e2a0c54c401a97d1396c7ed309e1cbfaab8d54a2c99a11ed6552",
+  "python": "3.12.15 (main, Oct  1 2026, 20:49:34) [Clang 22.1.3 ]",
+  "platform": "macOS-26.6-arm64-arm-64bit",
+  "kickmix_version": "0.1"
+}

@@ -1,0 +1,10 @@
+{
+  "summary": "Repaired the no-candidate scan by removing the premature stop at intervening uses of the CCX pair’s target. The bounded scanner now examines every same-target CCX pair within each phase-free 120-operation/26-wire window, propagates all intervening operations, and relies on complete original/replacement ANF equality to certify dependency safety. Added scan statistics for target-dependency-crossing pairs and a regression self-test where two cancelling target-controlled CCXs previously hid a valid shared-quadratic merge. Updated the negative-report scope and source documentation. The pinned-parent, single-window, negative-control, register, qubit, non-window, and static-count checks remain unchanged.",
+  "changed_files": [
+    "source/anf_merge.py",
+    "source/build.py",
+    "source/README_ANF_MERGE.md"
+  ],
+  "build_notes": "Run `python source/build.py` from the workspace root. It reads the pinned workspace-local `source/parent_invsqrt.kmb`, asserts SHA-256 `0104d1b44d7394906c9ef1d445efbd8ca0bed8d2df833ce164e1802335f6c137`, runs the deterministic self-tests and widened focused scan, and writes `invsqrt.kmb` plus `source/anf_merge_report.json` only if a certified one-CCX reduction is found. If none is found, it still writes a negative report and stops without copying the champion. I did not execute the build, smoke check, or full verifier.",
+  "known_limitations": "Whether the champion contains a certifiable pair across an intervening target dependency remains unconfirmed until the orchestrator runs the build. The search remains restricted to unconditional X/CX/CCX runs, at most 120 operations and 26 active wires, and the focused equal-shared-control/nonzero-affine-difference template. Smoke correctness, full-domain correctness, measured cost, and promotion are left entirely to orchestrator verification."
+}

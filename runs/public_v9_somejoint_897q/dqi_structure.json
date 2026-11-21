@@ -1,0 +1,31 @@
+{
+  "path": "/Users/spwang/Documents/Quant/kaggle_quantum_claude/candidates/busyaprime_v9_somejoint_897q/dqi.kmb",
+  "sha256": "53d8b2edf251e2a0c54c401a97d1396c7ed309e1cbfaab8d54a2c99a11ed6552",
+  "canonical_sha256": "53d8b2edf251e2a0c54c401a97d1396c7ed309e1cbfaab8d54a2c99a11ed6552",
+  "qubits": 897,
+  "bits": 103536,
+  "registers": 4165,
+  "operations": 59852041,
+  "static_toffoli_like": 444667,
+  "static_t_like": 0,
+  "reaction_depth": 8349,
+  "operation_counts": {
+    "NEG": 2241,
+    "BIT_INVERT": 2900899,
+    "BIT_STORE0": 122624,
+    "BIT_STORE1": 15264,
+    "X": 250050,
+    "Z": 80873,
+    "R": 74619,
+    "HMR": 104158,
+    "CX": 53202923,
+    "CZ": 965815,
+    "SWAP": 1630824,
+    "CSWAP": 13944,
+    "CCX": 428809,
+    "CCZ": 1914,
+    "INFO_TAG": 17992,
+    "POP_CONDITION": 19546,
+    "PUSH_CONDITION": 19546
+  }
+}

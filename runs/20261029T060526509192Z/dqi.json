@@ -1,0 +1,4 @@
+{
+  "status": "FAIL",
+  "error": "Effective error rate 1.0000 >= 1/16 at log2_delta=-128.0 (empirical=1.0000, value_errors=4096/4096, phase_errors=0/4096)"
+}

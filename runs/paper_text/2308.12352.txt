@@ -1,0 +1,2124 @@
+=== PDF PAGE 1 ===
+Quantum computation of stopping power for inertial fusion target design
+Nicholas C. Rubin, 1, ∗ Dominic W. Berry, 2, † Alina Kononov, 3 Fionn D. Malone, 1 Tanuj Khattar,1
+Alec White, 4 Joonho Lee, 1, 5 Hartmut Neven,1 Ryan Babbush, 1, ‡ and Andrew D. Baczewski 3, §
+1Google Quantum AI, Venice, CA, USA
+2School of Mathematical and Physical Sciences, Macquarie University, Sydney, NSW, AUS
+3Quantum Algorithms and Applications Collaboratory, Sandia National Laboratories, Albuquerque, NM, USA
+4Quantum Simulation Technologies Inc., Boston, MA, USA
+5Department of Chemistry and Chemical Biology, Harvard University, Cambridge, MA, USA
+Stopping power is the rate at which a material absorbs the kinetic energy of a charged particle
+passing through it – one of many properties needed over a wide range of thermodynamic conditions in
+modeling inertial fusion implosions. First-principles stopping calculations are classically challenging
+because they involve the dynamics of large electronic systems far from equilibrium, with accuracies
+that are particularly difficult to constrain and assess in the warm-dense conditions preceding ignition.
+Here, we describe a protocol for using a fault-tolerant quantum computer to calculate stopping power
+from a first-quantized representation of the electrons and projectile. Our approach builds upon the
+electronic structure block encodings of Su et al. [1], adapting and optimizing those algorithms
+to estimate observables of interest from the non-Born-Oppenheimer dynamics of multiple particle
+species at finite temperature. Ultimately, we report logical qubit requirements and leading-order
+Toffoli costs for computing the stopping power of various projectile/target combinations relevant to
+interpreting and designing inertial fusion experiments. We estimate that scientifically interesting
+and classically intractable stopping power calculations can be quantum simulated with roughly the
+same number of logical qubits and about one hundred times more Toffoli gates than is required for
+state-of-the-art quantum simulations of industrially relevant molecules such as FeMoCo or P450.
+I. INTRODUCTION
+As investment in quantum computing grows, so too does the need to assess potential computational advantages
+for specific scientific challenge problems. As such, going beyond asymptotic analysis to understand constant factor
+resource requirements clarifies the degree of such advantages, whether these advantages would be useful for problems
+of commercial or scientific value, the broader quantum/classical simulation frontier, and opportunities for further
+optimizations. Over the last decade, the problem of sampling from the eigenspectrum of the electronic structure
+Hamiltonian in the Born-Oppenheimer approximation has been a proving ground for constant factor analyses that
+quantify the magnitude of quantum speedups [2–5]. But ground states can benefit from properties like area-law
+entanglement that might make many instances relevant to chemical and materials science efficient to accurately
+simulate in some contexts – even with classical algorithms [6]. This leads us to search for scientific challenge problems
+beyond ground states, for which classical algorithms might have less structure to exploit and quantum algorithms
+are naturally poised to excel. Simulating quantum dynamics is arguably the most natural application for quantum
+computers. Just as in the case of sampling from the eigenbasis of the electronic structure Hamiltonian, here we
+quantify the constant factor resource estimates of dynamics calculations in order to frame the performance of current
+quantum algorithms with respect to classical strategies. We focus on the problem of computing the stopping power
+of materials in the warm dense matter (WDM) regime, for which both experimental measurements and benchmark-
+quality theoretical calculations are expensive and sparse. Even for mean-field levels of accuracy, high-performance-
+computing campaigns requiring at least hundreds of millions of CPU hours are invested annually in first-principles
+stopping power calculations in WDM [7].
+Stopping power is the average force exerted by a medium (target) on an incident charged particle (projectile) [8, 9].
+This force depends on the material composition and conditions of the target and the charge and velocity of the
+projectile. Stopping powers are crucial in contexts including radiation damage in space environments [10], materials
+degradation in nuclear reactors [11], certain cancer therapies [12–14], electron- [15] and ion-beam [16, 17] microscopies,
+and the fabrication and characterization of qubits based on color centers [18] or nuclear spins [19, 20]. Understanding
+the impact of stopping power on these applications is facilitated by the relative ease of conducting experiments, and
+∗ Corresponding author: nickrubin@google.com
+† Corresponding author: dominic.berry@mq.edu.au
+‡ Corresponding author: babbush@google.com
+§ Corresponding author: adbacze@sandia.gov
+arXiv:2308.12352v1  [quant-ph]  23 Aug 2023
+
+=== PDF PAGE 2 ===
+2
+decades of effort have produced tables of experimentally measured stopping powers for targets in ambient condi-
+tions [21–23]. Such measurements require co-locating uniform samples of the target with a well-characterized, narrow
+bandwidth source of high-energy projectiles and a spectrometer with sufficient resolution to discern small relative
+energy losses. This experimental setup is comparatively straightforward for a stable target, but it becomes incredibly
+challenging for a target at extreme pressure or temperature.
+Warm dense matter (WDM) [24, 25] is one such extreme regime, typified by strong Coulomb coupling and the simul-
+taneous influence of thermal and degeneracy effects. It arises in contexts ranging from astrophysical objects [26–28]
+and planetary interiors [29–31] to inertial confinement fusion (ICF) targets on the way to ignition [32–35]. Creating
+WDM conditions requires access to specialized experimental facilities [36–40] that produce short-lived and non-uniform
+samples with low repetition rates relative to experiments at ambient conditions. These challenges are compounded
+by the difficulty of simultaneously characterizing the target’s thermodynamic conditions and the projectile’s energy
+loss, as well as systematic errors attendant to measuring aggregate energy losses in lieu of energy loss rates. Despite
+outstanding recent advances in measurements of stopping power in WDM [41–43], theoretical calculations will likely
+remain disproportionately impactful due to the great cost of obtaining comprehensive data sets purely through ex-
+periment. Each campaign typically probes stopping powers over a narrow range of velocities for a narrow range of
+thermodynamic conditions that might themselves be difficult to constrain or subject to large systematic uncertainties
+and inhomogeneities.
+The importance of stopping power in WDM, in particular, is highlighted by its significance to ICF [44]. The
+transport of the high-energy alpha particles that are created in fusion reactions forms an important contribution to
+the self-heating processes that govern ignition [45–47]. WDM conditions are necessarily traversed in ICF implosions
+– in fact, depending on the target and driver, large fractions of the target can spend most of their time in this regime.
+This intermediate state also plays a central role in the fuel/ablator mixing that leads to hydrodynamic instabilities
+limiting performance [48–50]. Fast-ignition fusion concepts also rely on charged particle stopping within their separate
+ion or electron beam heating mechanism [51–53]. Thus accurate stopping powers are one among many important
+elements of the microphysics modeling that informs ICF target design and experimental interpretation. However, due
+to the great cost of experimentally constraining stopping models in the warm dense regime, the stopping models that
+are used in the ICF community are often instead validated against other models with varying degrees of accuracy and
+efficiency.
+Broadly, the stopping power models that are applied in the WDM regime fall into four categories: (1) highly detailed
+multi-atom first-principles models [54–58], (2) highly efficient average-atom models [42, 58, 59], (3) models based on
+variants of the uniform electron gas [60–65], and (4) classical or semiclassical models [66–70]. Type-(2), (3), and (4)
+models can be efficient enough to tabulate results across the wide range of thermodynamic conditions required by
+radiation-hydrodynamic codes that support ICF development, or even evaluated inline [71]. Certain type-(3) models
+are used to generate high-quality reference data and as a proving ground for method development, but their lack of
+explicit electron-ion interaction limits their ability to capture some important phenomenology in WDM. Therefore,
+type-(1) models are most often used to benchmark and calibrate more approximate type-(2) and (4) models [58, 72].
+Given that there are precious few experiments to validate models in the WDM regime, type-(1) models are particularly
+valuable for quantifying the influence of details that more approximate models lack. However, type-(1) models incur
+large computational costs that are aggravated by the large basis sets and supercells that are required to achieve highly
+converged results [73].
+Thus, the state-of-the-art in algorithms for type-(1) models are mean-field methods based on time-dependent
+density functional theory (TDDFT) [74], including Kohn-Sham [54] and orbital-free formulations [56]. These methods
+directly evolve the electronic and nuclear dynamics on the same timescale, going beyond the Born-Oppenheimer
+(BO) approximation but still typically relying on a classical description of the nuclei. Even treating the electronic
+dynamics at a mean-field level, the computing campaigns that use type-(1) models to generate benchmark data for
+other stopping power models in the WDM regime can require hundreds of millions of CPU hours on some of the world’s
+largest supercomputers. Opportunities to constrain the accuracy of these models are limited by not only the scarcity
+of experimental data, but also by the notorious difficulty of developing systematically improvable approximations,
+particularly for the real-time electron dynamics far from equilibrium that are the central focus of type-(1) stopping
+power calculations.
+However, quantum simulation algorithms executed on fault-tolerant quantum computers provide one potential
+pathway to realizing systematically improvable stopping power calculations, both in the WDM regime and in general.
+In this work, we propose a protocol for implementing such a calculation and analyze its resource requirements to
+establish a baseline estimate for the cost of outperforming classical computers in accuracy. Recently, a number
+of other works have examined the quantum resource requirements for simulating materials represented in first or
+second quantization [1, 4, 75–78]. While it is now possible to efficiently block encode periodic systems in second
+quantization [4, 78] and discretizations based on localized orbitals are sometimes used in modeling stopping power [79–
+81], they are especially poorly suited to WDM because of the unusual atomic configurations typical to extremes of
+
+=== PDF PAGE 3 ===
+3
+pressure and temperature. Plane-wave representations that are used in first-quantized simulations of materials [1, 77]
+provide an efficient representation in which the number of qubits scales logarithmically with the total number of
+plane waves, and nuclei can be treated on the same footing as electronic degrees of freedom. Furthermore, plane-wave
+calculations can be more directly compared to state-of-the-art classical stopping power calculations based on plane-
+wave TDDFT. Thus, to assess and quantify the prospect of realizing quantum advantages in these simulations we
+provide constant factor resource estimates of stopping power calculations in first quantization where the projectile is
+treated quantum mechanically.
+There are a variety of ways to compute stopping power in the first-quantized plane-wave representation. We focus
+on sampling the projectile kinetic energy as a function of distance traveled and argue that within the desired accuracy
+range that naive Monte Carlo sampling at a number of points along the projectile trajectory is more efficient than
+alternative mean-estimation algorithms that enjoy Heisenberg scaling [82]. After fully accounting for sampling costs,
+two types of time-evolution protocols, and observable accuracy requirements, we report that full ab initio modeling of
+stopping power for an alpha-particle projectile in deuterium would require 10 15 − 1017 Toffoli gates, depending on the
+time-evolution algorithm used, and 10 3 logical qubits at system sizes that are converged to the thermodynamic limit.
+Relaxing the convergence restriction would lower these costs quadratically in the particle number and potentially serve
+as a WDM benchmark system. While there have been a number of works that quantify quantum resource estimates
+for ground state preparation and sampling from the Hamiltonian eigenbasis [2–5], this work is among the first to
+consider a dynamics problem of this scale and real-world significance. While the reported resource estimates are high,
+there are a number of avenues for reducing these.
+A. Stopping power from first principles
+While there are many different methods for calculating stopping powers, the most direct method involves time
+evolving the target and projectile from an initial condition in which the target is stationary and the projectile has
+some imposed velocity vproj = kproj/Mproj, rest mass Mproj, and charge ζproj. The stopping power is related to the
+average rate of energy transfer between the target and projectile over the course of this evolution. Exemplary results
+for a classical algorithm that implements this method using Kohn-Sham TDDFT are illustrated in Fig. 1.
+The information required to compute a stopping power can be extracted from a number of different observables:
+the force that the projectile applies to the target, the force that the target applies to the projectile, the work done by
+the projectile on the target, and the work done by the target on the projectile. In classical first-principles calculations,
+the differences among the computational costs of evaluating any of these observables are negligible relative to the
+overall cost of time evolving the system. Thus there is no reason to prefer any particular observable, and it is even
+straightforward to verify the consistency among these quantities (i.e., Newton’s third law and the relationship between
+force and work). However, the costs of estimating these observables using a quantum algorithm differ significantly.
+For shot-noise limited estimation the overall cost will scale with the variance of the observable, whereas Heisenberg-
+scaling estimation can have costs that scale, in some cases, with the norm of the observable of interest. Thus we should
+prefer low-weight observables (i.e., those supported on the projectile quantum register rather than the target) with
+well-behaved spectra (i.e., energies rather than forces, which exhibit pathologies when estimated naively [83, 84]).
+Another distinction between classical and quantum algorithms for computing stopping powers is the relative cost of
+time-dependent Hamiltonian simulation. In classical stopping calculations that use Ehrenfest dynamics with TDDFT,
+it is common practice to explicitly break energy conservation by maintaining a fixed definite projectile velocity over
+the course of the evolution. While energy-conserving calculations in which the projectile is allowed to slow down
+under the influence of the target will produce equivalent stopping powers, minor technical advantages related to ease
+of implementation make the fixed velocity approach preferable in practice. The computational cost of either of these
+approaches is practically the same for classical simulations, but not for quantum algorithms. In fact, we will show that
+within the energy-conserving approach, promoting the projectile to a dynamical and quantum degree of freedom incurs
+relatively little overhead while facilitating the use of much simpler time-independent quantum simulation algorithms.
+II. QUANTUM ALGORITHMIC PROTOCOL FOR STOPPING POWER
+To circumvent the need for time-dependent Hamiltonian simulation, our protocol identifies the dynamical degrees
+of freedom as the electrons and the single projectile nucleus evolving in the fixed Coulomb field of the remaining
+nuclei comprising a representative supercell of the target material. For the projectile velocities at which electronic
+stopping is most relevant (on the order of 1 atomic unit) ignoring the motion of the target nuclei is justifiable unless
+their thermal velocities are comparable to the projectile velocity, at temperatures well beyond the WDM regime. The
+
+=== PDF PAGE 4 ===
+4
+0 20 40 60 80
+Displacement (at.u.)
+0
+20
+40
+60Work (at.u.)
+0.0
+0.5
+1.0
+1.5
+2.0
+Force (at.u.)
+vproj
+Figure 1. (Left) First-principles stopping power calculations involve time evolving a projectile (red) passing through a target
+medium (blue) while monitoring observables related to energy transfer between them. The initial velocity, vproj, is chosen to
+mitigate trajectory sampling and finite-size error using techniques from Ref. [73]. The coupled electron-projectile dynamics
+are time evolved subject to this initial condition and the work or average force on the projectile is calculated throughout the
+trajectory. (Right) The stopping power is related to the slope of the work that the target does on the projectile as a function
+of its displacement from its original position (solid). A moving average for this slope (dashed) illustrates the rate at which
+the stopping power estimate converges. Close collisions involve large impulses in the work that are essential to capture on
+average. However, if these relatively rare events are included in the sample, they can dominate the variance for sample-efficient
+estimates.
+relevant Hamiltonian, H, is
+H = H0 − ∇2proj2Mproj − ηXi=1 ζproj∥ri − Rproj∥ + LXℓ=1 ζprojζℓ∥Rℓ − Rproj∥ , (1)
+where H0 is the usual first-quantized BO Hamiltonian for η electrons and L classical nuclei [77, 85] and the final three
+terms account for the projectile nucleus. The first additional term is the projectile kinetic energy, the second term
+is the electron-projectile interaction, and the third is the interaction between the quantum projectile and classical
+nuclei.
+Our protocol consists of four steps: initial state preparation, time evolution, measurement, and postprocessing.
+The initial state of the electronic subsystem is drawn from a thermal distribution modeled as a fermionic Gaussian
+state, while the initial state of the projectile is a Gaussian wave packet in momentum space with a mean velocity
+corresponding to the projectile velocity and a variance chosen to balance accuracy and efficiency (see Section II B).
+From that initial state, the coupled electronic-projectile system is time evolved under H using qubitization (see Sec-
+tion II C) or Trotterization (see Section II D). Analysis and attendant constant-factor resource estimates are presented
+for both types of time-evolution algorithms. The measurement step consists of estimating the kinetic energy of the
+projectile via direct measurement of the kinetic energy operator on the projectile register. Since we are free to choose
+a relatively small variance in the nuclear wave packet, we show that shot-noise limited estimation is more efficient
+than Heisenberg-scaling approaches [82] unless high accuracy is required (see Section II E). From estimates of the
+instantaneous projectile kinetic energy at a series of distinct times, we can estimate the stopping power using classical
+postprocessing similar to Fig. 1. While it is possible to directly mirror the TDDFT strategy on a fault-tolerant
+quantum computer – estimating the projectile energy loss at each of the thousands of time steps along its trajec-
+tory – to ensure a resource optimal protocol we propose a postprocessing strategy that requires many fewer samples
+than are typically used in postprocessing TDDFT data (see Section II E). Finally, we estimate resource requirements
+for implementing this protocol to calculate electronic stopping powers for projectile/target pairings relevant to ICF
+applications in the WDM regime (see Section III).
+A. Preliminaries
+We consider a system comprised of η electrons, a quantum projectile with mass Mproj and charge ζproj, and
+L classical nuclei with charges ζℓ and positions Rℓ in a cubic supercell of volume Ω. In a plane-wave basis, the
+
+=== PDF PAGE 5 ===
+5
+associated first-quantized BO Hamiltonian is
+H = Telec + Tproj + Uelec + Uproj + Velec + Vproj (2)
+Telec =
+ηX
+i=1
+X
+p∈G
+∥kp∥2
+2 |p⟩⟨p|i (3)
+Tproj =
+X
+p∈ ˜G
+∥kp − kproj∥2
+2 Mproj
+|p⟩⟨p|proj (4)
+Uelec = − 4πΩ
+LX
+ℓ=1
+ηX
+i=1
+X
+p,q∈G
+p̸=q
+
+ζℓ
+eikq−p·Rℓ
+∥kq−p∥2
+
+|p⟩⟨q|i (5)
+Uproj = 4πΩ
+LX
+ℓ=1
+X
+p,q∈ ˜G
+p̸=q
+
+ζℓζproj
+eikq−p·Rℓ
+∥kp−q∥2
+
+|p⟩⟨q|proj (6)
+Velec = 2πΩ
+ηX
+i̸=j
+X
+p,q∈G
+X
+ν∈G0
+(p+ν)∈G
+(p−ν)∈G
+1
+∥kν∥2 |p + ν⟩⟨p|i|q − ν⟩⟨q|j (7)
+Vproj = − 4πΩ
+ηX
+i=1
+X
+p∈G
+q∈ ˜G
+X
+ν∈G0
+(p+ν)∈G
+(q−ν)∈ ˜G
+ζproj
+∥kν∥2 |p + ν⟩⟨p|i|q − ν⟩⟨q|proj (8)
+where kp = 2πp/Ω1/3 represents a plane-wave vector with p ∈ G and G = −(N 1/3 − 1)/2, (N 1/3 − 1)/2⊗3 ∈ Z3. N
+is the size of the plane-wave basis, and we assume a cubic simulation cell of volume Ω. Additionally, the set
+G0 =
+h
+−(N 1/3 − 1), (N 1/3 − 1)i⊗3 ∈ Z3/{0, 0, 0}
+is the set of possible differences in momentum (note the range is twice that of the p range in each direction). The
+sets ˜G and ˜G0 are defined analogously for the set of plane-wave momenta available to the projectile, taken relative
+to its initial mean momentum kproj with kproj Ω1/3/(2π) ∈ Z3 for compatibility with the supercell’s periodicity. The
+non-BO contributions due to the projectile are consistent with Eq. (1).
+In the quantum algorithm the state of the electrons are represented as three signed integers requiring np =
+⌈log(N 1/3)⌉ + 1 qubits each. The electronic degrees of freedom require a total of 3 ηnp qubits to represent. Rep-
+resenting a localized projectile with a sharply peaked momentum distribution in a plane-wave basis requires a large
+energy cutoff, depending on the variance of the wave packet. Given a number of plane waves for the projectile Nn,
+the number of qubits needed to represent each of the the xyz-coordinates is nn = ⌈log(N 1/3n )⌉ + 1 as a set of signed
+integers, similar to the electronic degrees of freedom. Thus the total number of qubits to represent the non-BO system
+is 3ηnp + 3nn. We discuss in Section II B 2 that nn ≈ 3 + np for the target/projectile combinations explored in this
+work.
+B. Initial state preparation
+The WDM regime is typified by an electronic temperature comparable to the electronic chemical potential [24, 25],
+thus it is particularly important to capture the impact of temperature on the initial state. Ideally we would initialize
+the system in a product state between the electrons and projectile, in which the electrons are in their exact thermal
+equilibrium state and the projectile is in a state with a sharply defined velocity, ρ = exp(−βH0)/Tr [exp(−βH0)] ⊗
+|ψproj(t = 0)⟩⟨ψproj(t = 0)|.
+Unfortunately preparing the thermal ensemble on the electronic subsystem is believed to be exponentially hard for
+generic local Hamiltonians, even on a quantum computer. Here we assume that the initial thermal distribution of
+the system is well described by a finite-temperature mean-field approach such as thermal Hartree–Fock or Mermin
+Kohn-Sham DFT [86, 87], which is easy to prepare on a quantum computer [88]. Previous path integral Monte Carlo
+calculations of the static properties of WDM [89–91] suggest that Mermin Kohn-Sham DFT is often an excellent
+
+=== PDF PAGE 6 ===
+6
+approximation where the domains of feasibility overlap, and it is by far the most popularab-initio approach used in the
+field. The initial state of the calculation is thus chosen to be a Slater determinant drawn from the solution of a Mermin
+Kohn-Sham DFT calculation, noting that we do not expect that quantum resource estimates will be sensitive to the
+choice of exchange-correlation functional. The use of a thermal Hartree–Fock reference state may also be appropriate,
+consistent with its use as the conventional starting point for building wave function methods. The liquid-like ordering
+common in WDM along with the long-range excitations occurring in stopping power simulations often necessitate
+supercells large enough that a single-point reciprocal-space quadrature is justifiable (e.g., the Baldereschi mean-value
+point [92] or Γ point). We assume our initial state to have been drawn from such a single-point calculation.
+To prepare a sample from this ensemble we use the improved Slater determinant state preparation protocol described
+in Ref. [88]. The initial orbitals
+|ψi⟩ =
+X
+p∈G
+ci,p|p⟩ (9)
+are used to generate the Slater determinant
+|ψSD ⟩ = |ψ1 ∧ . . .∧ ψη⟩, (10)
+where p indexes the wavenumbers in a plane-wave basis and ∧ is the antisymmetric tensor product. This state is
+prepared with ˜O(N η) cost using the Givens rotation protocol, which is applied sequentially to a second-quantized
+representation of the initial state. This cost is a negligible additive contribution to the time-evolution cost and not
+accounted for in the resource estimates in Section III.
+However, |ψSD ⟩ is only a single sample from the initial mean-field density matrix associated with the Mermin
+Kohn-Sham solution. Each Mermin Kohn-Sham orbital |ψi⟩ has a temperature-dependent occupation according to
+the Fermi-Dirac distribution, and thanks to the mean-field nature of the reference state, the probability associated
+with a particular Slater determinant is proportional to the product of probabilities that the corresponding set of
+single-particle orbitals is occupied (and its complement is unoccupied). We are careful to note that we are able to
+circumvent the prohibitive growth in the number of partially occupied Mermin Kohn-Sham orbitals with temperature,
+which limits the feasible system sizes and temperatures in many classical mean-field approaches to WDM. This is
+because any given Slater determinant has support on onlyη orbitals, though we will still need a classical representation
+of thermally occupied high-energy orbitals. The state preparation, time evolution, and measurement steps must be
+repeated Ns times to sample a thermal distribution over initial electronic conditions, and a (potentially) different
+Slater determinant will be prepared for each initial sample. This is accounted for in the total sampling requirements
+and it contributes multiplicatively to the total resource estimates. Numerical tests indicate that sampling from the
+attendant canonical and grand canonical ensembles have similar overheads, so we choose to develop our protocol for
+the canonical ensemble to avoid the need for preparing states with different particle number. Beyond numerical tests,
+we generally expect this to be a good choice for the WDM regime due to its low compressibility.
+The projectile state |ψproj(t = 0) ⟩ describes the quantum projectile nucleus starting at the same position as in
+the classical Mermin Kohn-Sham state used to intialize the electronic subsystem, but moving with a velocity vproj.
+Preparing the projectile register involves two steps: (1) replacing the corresponding point charge with a Gaussian
+charge distribution with real-space standard deviation σr = σ−1k and (2) translating the average momentum of that
+charge distribution to the initial momentum of the projectile, kproj. In momentum space the resulting initial condition
+on the projectile wave packet is
+ψproj(k, t= 0) =
+s
+1
+(2π)3/2σ3k eik·Rproj e−∥k−kproj ∥2/4σ2k . (11)
+There is no temperature dependence in the initial nuclear wave packet because it is far from equilibrium in a state with
+a relatively sharply peaked velocity ( σk ≪ kproj). Subsequent non-BO dynamics of the coupled electron-projectile
+system will cause this wave packet to slow down such that its mean velocity will decay linearly, on average, with the
+average deceleration proportional to the stopping power. This initial Gaussian wave packet can be prepared using a
+method in Ref. [93] that contributes an additive O(log Nn) cost that is negligible relative to the cost of time evolution.
+1. Choosing the projectile’s initial variance
+The projectile wave packet will have support on a range of momenta and will disperse (i.e., stop at different rates) if
+that range is too large. As long as the momentum gradient of the stopping power is relatively small over the dominant
+momentum components of the wave packet, this dispersion will be negligible over the relevant time evolution and we
+
+=== PDF PAGE 7 ===
+7
+can treat the standard deviation as approximately fixed to facilitate resource estimation. Thus the value of σk, a free
+parameter, should be set to facilitate efficient sampling in the nuclear momentum (computational) basis to realize the
+fewest circuit repetitions and shortest run time.
+While it might appear that we can make the sampling problem arbitrarily efficient by reducing σk, there is a trade-
+off in replacing the nuclear point charge in the BO problem with an explicit wave packet in the non-BO problem.
+Making the wave packet too narrow in momentum space will spread out the nuclear charge to an unphysical extent
+in real space, such that the resulting response will no longer represent a physical nuclear projectile traversing the
+medium. One way to understand this is in terms of the equivalent electrostatic potential of the projectile wave packet,
+ζproj erf
+ 
+∥r − Rproj∥/
+√
+2σr
+
+∥r − Rproj∥ , (12)
+where the error function approaches 1 for ∥r − Rproj∥ ≫σr, and the potential appears to be equivalent to that of a
+point charge. However, for relatively small values of ∥r − Rproj∥ the effective nuclear charge is reduced along with the
+strength of the interaction between the projectile and both the electronic and nuclear degrees of freedom. One might
+then be tempted to set σr to be consistent with the physical extent of the projectile nucleus (e.g., ∼ 10−5 a0 for a
+proton or alpha particle, where a0 is the Bohr radius), but the corresponding σk would then be ∼ 105 a.u. and the
+sampling efficiency would be vastly degraded.
+To quantify the error associated with replacing the point-like BO projectile nucleus with an explicit non-BO degree
+of freedom with a finite σk we can consider the difference between the BO electron-projectile force and the non-BO
+electron-projectile force projected onto a fixed form for the wave packet,
+∆Se = − 4πΩ
+ηX
+i=1
+X
+p,q∈G
+(p−q)∈G0
+ζproj(ikp−q · ˆvproj)
+∥kp−q∥2 |p⟩⟨q|i
+
+eikq−p·Rproj − X
+ν∈G
+ν−(p−q)∈G
+ψ∗proj(kν − kp−q)ψproj(kν)
+
+ . (13)
+It is straightforward to see that this difference vanishes for a projectile wave packet of the form in Eq. (11) in the
+σk → ∞limit. While we are using non-BO dynamics to simulate the stopping process, we aim to design an initial
+projectile state that remains a good approximation to a point nucleus throughout the subsequent dynamics. This
+is because we are primarily using non-BO dynamics to avoid the overheads of simulation with an explicitly time-
+dependent BO Hamiltonian and to allow the electrons to be excited by the nucleus, even while the projectile remains
+essentially classical in response.
+One can think about the difference in Eq. (13) as quantifying a particular bias in the simulation. Ideally, we would
+be able to bound this difference to relate σk to the error that this introduces in the estimate of the stopping power.
+However, numerical tests suggest that convenient analytical bounds are too loose to be useful and we instead turn to
+classical TDDFT calculations for guidance. In many plane-wave TDDFT calculations the electrostatic potential of
+the point-like projectile ( σr → 0) is included in the total Hartree potential, which is itself represented in terms of a
+plane-wave basis set and (not quite) dual real-space grid. Thus these calculations are themselves subject to a similar
+source of error in so far as the real-space grid only approximately captures the point-like nature of the projectile,
+even in the absence of pseudization. We expect that setting σr to be less than or equal to the real-space grid spacing
+ensuring a particular degree of convergence in TDDFT forces (typically an order of magnitude or more below the
+target precision in the stopping power estimate) will introduce a bias that is consistent with the degree of convergence.
+We estimate the size of this bias from TDDFT calculations implemented using an extension of the Vienna ab initio
+simulation package (V ASP) [94–96] described and applied in Refs. [54, 58, 73, 97]. Proton stopping power calculations
+for a deuterium plasma at a density of 10 g/cm3 and temperature of 1 eV were analyzed for plane-wave cutoffs ranging
+from 500 eV to 5000 eV and a velocity of 1 a.u. A cutoff of 1000 eV suffices to converge the estimated stopping power
+to within 7 × 10−3 a.u. of the 5000 eV calculation, and the former cutoff corresponds to a real-space grid spacing of
+1.75 × 10−1 a0. Thus we expect that σk ≈ 5.7 a.u. suffices to achieve a comparable bias in the force. A plane-wave
+cutoff of 4000 eV corresponds to σk ≈ 11.4 a.u. and reduces this estimated bias by almost two orders of magnitude,
+and thus we expect σk = 5 − 10 a.u. to be a good rule of thumb for low-Z projectiles/targets and densities between 1
+and 10 g/cm3, relevant to WDM conditions that occur in ICF targets on their way to ignition. We note that we expect
+these estimates to be somewhat pessimistic because the supporting TDDFT calculations with different cutoffs each
+start from a different initial electronic state and contain additional convergence errors from different discretizations
+of the electronic system.
+
+=== PDF PAGE 8 ===
+8
+2. Grid resolution for the projectile wave packet
+Given a value for σk, we next need to determine the number of plane waves required to resolve the kinetic energy
+of the projectile to within a specified accuracy. The larger the value of σk, the more plane waves will be required. We
+can numerically estimate the number of plane waves by computing the kinetic energy of the wave packet as a function
+of the kinetic energy cutoff. Taking our initial wave packet as
+|ψproj⟩ = 1√N Xp∈ ˜G e− ∥kp∥24σ2k |p⟩proj, (14)
+where the normalization factor is N = Pp∈ ˜G e−
+∥kp ∥2
+2σ2k , then the kinetic energy of the projectile is given by
+⟨Tproj⟩ = 1N X
+p∈ ˜G
+∥kp − kproj∥2
+2Mproj
+e
+− ∥kp∥22σ2k . (15)
+Another concern with representing a continuous Gaussian wave packet on a grid is the discretization error which
+should vanish as Ω → ∞. We can monitor both of these convergence issues by computing the error in the kinetic
+energy
+ϵT = 1N X
+p∈ ˜G
+∥kp∥2
+2Mproj
+e
+− ∥kp∥22σ2k − 1N∞ Z dk3 ∥k∥22Mproj e− ∥k∥22σ2k , (16)
+where the ∥kproj∥2 and kp·kproj terms contributing to the ∥k − kproj∥2 /(2Mproj) factors cancel and vanish, respectively,
+and N∞ = (2π)3/2σ3k. The integral expression comprising the second term is proportional to the second moment of
+the normal distribution and evaluates to 3 σ2k/(2Mproj).
+For the box sizes considered here (Ω 1/3 ≈ 15 a0) and σk > 1 a.u. as required by Section II B 1, we find that the
+number of plane waves required to achieve a low ϵT can substantially exceed the number that suffices for convergence
+in classical TDDFT simulations. Fig. 2 shows that obtaining a kinetic energy error below 10 −3 Ha with σk = 10
+a.u. for a proton projectile requires a plane-wave cutoff of approximately 10 5 eV, 100 times greater than the TDDFT
+cutoff described in Section II B 1. This cutoff corresponds to N ≈ 1.7 × 107 plane waves and would require nn = 9 bits
+to store each component of the projectile’s momenta. In Table I we list the resources required for different choices of
+σk.
+102 103 104 105 106
+Ecut [eV]
+10−10
+10−8
+10−6
+10−4
+10−2
+100
+Projectile Kinetic Energy Error [Ha]
+σk = 10
+σk = 6
+σk = 4
+σk = 1
+Figure 2. Kinetic energy convergence for a proton projectile with respect to the plane-wave cutoff for different values of the
+Gaussian wave packet standard deviation σk in a.u. Circles indicate errors evaluated according to Eq. (16). Triangles indicate
+errors calculated by replacing the sum in Eq. (16) with a truncated integral, demonstrating that the discretization error for the
+values of σk chosen in this work is very small.
+
+=== PDF PAGE 9 ===
+9
+σk [a.u.] Ecut [eV] Nn nn ϵT [Ha]
+1 3 .8 × 101 6.4 × 101 3 5 .6 × 10−4
+4 9 .8 × 103 2.6 × 105 7 1 .1 × 10−4
+6 3 .9 × 104 2.1 × 106 8 4 .2 × 10−6
+10 1 .6 × 105 1.7 × 107 9 1 .8 × 10−7
+Table I. Number of plane waves Nn and qubits nn needed to converge the kinetic energy of the projectile wave packet (in 3D)
+to ϵT < 10−3 Ha for different values of the standard deviation σk and cutoff energy Ecut. Here we assumed a simulation volume
+of Ω1/3 = 15 a0.
+C. Time evolution using qubitization
+The first protocol for time-evolution that we consider is using quantum signal processing (QSP) to synthesize the
+time-independent Hamiltonian propagator [98], which relies on qubitization [99]. The qubitization walk operator is
+defined as
+Q = (2|0⟩⟨0| −I) · PREP†H · SELH · PREPH , (17)
+where PREPH (PREPARE) and SEL H (SELECT) are defined as
+PREPH |0⟩ =
+X
+ℓ
+r αℓ
+λ |ℓ⟩, SELH |ℓ⟩ = |ℓ⟩ ⊗Hℓ, λ H =
+X
+l
+αl (18)
+and we express H as a linear combination of unitaries (LCU)
+H =
+X
+ℓ
+αℓHℓ, H †ℓ Hℓ = I. (19)
+While many works use Q directly as a phase estimation target it was originally shown by Low et al.[98] that one can
+realize the propagator for H with error ϵ for duration t with
+O
+
+λt + log(1/ϵ)log log(1/ϵ)  (20)
+queries to Q. Specifically, the query costs are approximately
+2
+
+λt + 32/3
+2 (λt)1/3 log2/3(1/ϵ)
+
+, (21)
+where the expression in the large parentheses is for the polynomial order of the function approximation fore−i(H/λ)(λt).
+This cost is determined by bounding the error in the Jacobi-Anger expansion of the propagator [100].
+An alternative strategy for constructing the propagator discussed in Ref. [1] and Ref [101] is simulation based on
+the interaction-picture algorithm. As a proxy for which strategy will be more efficient we can refer to the ‘parameter
+region of advantage’ plot in Fig. 2 of Ref. [1]. This plot quantifies for fixed grid spacing ∆ = Ω 1/3/N1/3 and particle
+number η which algorithm is more efficient for performing phase estimation. The interaction picture results in lower
+Toffoli counts for very high resolution simulations with ∆ < 0.01 a0. The qubitization approach outperforms the
+interaction-picture approach for moderate grid resolutions (∆ > 0.01 a0) with 10 or more electrons. In this work
+we consider moderate grid resolutions with a large number of electrons and thus consider the quantum resources
+necessary to implement QSP.
+1. Block encoding modifications
+Here we detail the block encoding modifications necessary to account for the non-BO projectile. In order to block
+encode the projectile Hamiltonian we must define prepTproj , prepUproj , prepVproj , selTproj , selUproj , selVproj such
+that
+⟨0|PREP†Tproj SELTproj PREPTproj |0⟩ = Tproj/λprojT (22)
+⟨0|PREP†Uproj SELUproj PREPUproj |0⟩ = Uproj/λprojU (23)
+⟨0|PREP†Vproj SELVproj PREPVproj |0⟩ = Vproj/λprojV . (24)
+
+=== PDF PAGE 10 ===
+10
+The similarity of the Hamiltonian operators for the projectile and the electrons means that much of the same
+infrastructure for block encoding the electronic Hamiltonian can be used for the electron-projectile Hamiltonian in
+Eq. (2). The computation of λ for each term is thus also identical to that in Ref. [1], except with η replaced with
+η + ζproj and λζ corresponds to the total charge of all nuclei treated classically. The λ values associated with each
+additional term are
+λprojν = X
+ν∈ eG0
+1
+∥ν∥2 , λ ν =
+X
+ν∈G0
+1
+∥ν∥2 (25)
+λprojU = ζprojλζπΩ1/3 λprojν (26)
+λprojV = ηζprojπΩ1/3 λν (27)
+λprojT = 6π2MprojΩ2/3 22(nn−1) (28)
+λmeanT = 2π Pw∈{x,y,z} |kwproj|MprojΩ1/3 22(np−1)2(np−1) − 1 (29)
+where the λmeanT corresponds to the cross term obtained from simulating the nuclear kinetic energy in the central
+momentum frame (Eq. (A8) in Appendix A) and λprojT corresponds to the LCU 1-norm for the projectile kinetic
+energy without a shift. A full justification for the projectile λ values (including the electronic λ values) can be found
+in Appendix A. While these λ terms are substantial we find them orders of magnitude lower than the electronic kinetic
+energy λ and electronic potential λ values.
+A considerable difference in the method for block encoding the Hamiltonian for the projectile is in how we account
+for the success probability of state preparation associated with the potential terms. In the case without the projectile,
+the state preparation is ideally split into preparation for the kinetic energy component of the Hamiltonian (PREPTelec )
+and the potential components of the Hamiltonian (PREP Uelec+Velec ) as
+ s
+λelecT
+λelecT + λelecU + λelecV |0⟩ +
+s
+λelecU + λelecV
+λelecT + λelecU + λelecV |1⟩
+!
+a
+⊗ (PREPTelec |0⟩)b ⊗ (PREPUelec+Velec |0⟩)c . (30)
+Here, the ancilla qubit a is used to select between the kinetic and potential terms. The expression for state preparation
+in Eq. (30) is not quite what is implemented, due to the fact that the most computationally efficient methods of imple-
+menting PREPUelec+Velec give a normalization factor of approximately 4
+ 
+λelecU + λelecV . The factor of approximately
+1/4 corresponds to the probability of success in the state preparation, so the actual state preparation is
+^PREPUelec+Velec |0⟩f ⊗ I = 12 |0⟩f ⊗ PREPUelec+Velec +
+√
+3
+2 |1⟩f ⊗ PREP⊥Uelec+Velec . (31)
+The ancilla qubit f flags successful state preparation (on the |0⟩ state) for potential terms. The actual amplitude
+(which needs to be squared for the probability) is not exactly 1 /2. The expression to determine the probability of
+success, pν, is given in Eq. (106) of Ref. [1]. To account for the imperfect probability of success, the choice of whether
+to apply the kinetic or potential term is based on both the ancilla a and the success flag f . A further subtlety is that
+we test i ̸= j in the block encoding of Velec, with a further failure in the case where i = j (representing self-interaction).
+The total electronic λ was thus defined
+λelecH = max λelecT + λelecU + λelecV , [λelecU + λelecV /(1 − 1/η)]/pν , (32)
+where the factor of 1 − 1/η accounts for testing i ̸= j.
+We also previously considered the case where amplitude amplification is performed for the state preparation over
+G0. Typically the value of pν is slightly smaller than 1 /4, so a single step of amplitude amplification can be used to
+give a new probability of success (see Eq. (117) of Ref. [1])
+pampν = sin2 [3 arcsin(√pν)] . (33)
+This probability will be slightly less than 1. A further step of amplitude amplification could be performed, but the
+extra cost would more than outweigh any advantage from the boosted success probability. With this boosted success
+probability one can otherwise take exactly the same approach, so Eq. (32) would be changed to
+λelecH = max λelecT + λelecU + λelecV , [λelecU + λelecV /(1 − 1/η)]/pampν  . (34)
+
+=== PDF PAGE 11 ===
+11
+The only amendment is in the probability.
+For the current application where we simulate the electrons and the projectile we now have three kinetic energy
+terms ( Telec, Tproj, and Tmean) along with four potential terms ( Uelec, Uproj, Velec, and Vproj). Of the additional
+two potential terms the Uproj term requires a new state preparation over eG0 while Vproj is incorporated into the
+original state preparation from ^PREPUelec+Velec with slightly different logic for SELelec (discussed more in more detail
+in Appendix A). Just as before we consider the tradeoffs in costs for state-preparation of the potential terms and
+adjusting the success probabilities for imperfect preparations. Because the number of qubits required to represent the
+projectile is expected to be larger than the electrons (see Section II B 2 for more details) the respectiveν superpositions
+can be prepared on the same register with additional controls accounting for the fact that np < nn. The new λ value
+accounting for preparing the total state over both electronic and projectile degrees of freedom is thus
+λH = max
+h
+λelecT + λprojT + λmeanT + λelecU + λprojU + λelecV + λprojV , [λelecU + λelecV /(1 − 1/η) + λprojV ]/pν + λprojU /pν,proj
+i
+.
+(35)
+When using amplitude amplification λH has an identical expression except pν,proj and pν are exchanged for pampν,proj
+and pampν where amp superscript corresponds to the probability of success when performing amplitude amplification
+for the respective state preparations.
+In the electronic-only case, additional registers for selecting between Uelec and Velec along with kinetic and potential
+terms were needed. With the additional terms we need additional registers to control the application of each operator.
+The adjustment of the probabilities is detailed in Appendix A 2 c. We now provide a summary accounting of the block
+encoding costs and relegate the detailed derivation to Appendix A. For consistency with Ref. [1], we consider the costs
+of each line in Table II of that work. In the following list, the numbers correspond to the lines of that table.
+C1. The cost of the preparation of the registers selecting between the components of the Hamiltonian is changed to
+6nT − 1, where nT is the number of qubits used in inequality tests. That is the cost for the six inequality tests in
+the preparation of the three registers used, and accounting for one of those inequality tests using one fewer qubit
+(see Appendix A 2 c). We are also assuming that the temporary ancillas are retained so these inequality tests
+may be inverted without Toffolis. There will be another Toffoli for the AND or OR in the preparation of the
+qubit flagging whether the kinetic or potential energy is applied. There are another two Toffolis for controlled
+swaps for selecting the qubit that selects between electron and projectile components. That gives a total of
+6nT + 2.
+C2. The cost of preparing the superposition over η values of i, jis unchanged from that in Ref. [1]. There it is given
+as 14nη + 8br − 36 (where nη = ⌈log(η)⌉) for preparing a superposition and flagging i ̸= j.
+C3. The state preparation of the w, r, sregisters for the kinetic energy operators will have cost 2(2 nn + 9) + 2(nn −
+np) + 20. The first amendment over the 2(2 np + 9) expression in Ref. [1] is to replace np with nn because we
+need to account for the larger basis for the projectile. The second amendment is to include a 2( nn − np) term to
+account for the extra control of the Hadamards between the electron and projectile parts. The third amendment
+is to include the cost of the inequality test for preparing a second w register (20 Toffolis) and the controlled
+swaps (4 Toffolis).
+C4. The cost of swaps into the working registers is 12 ηnp + 6nn + 4η − 6. Because we are now selecting between the
+η electron registers and the projectile register for i but not j, we need another two Toffolis, which changes −8
+to −6. The extra 6 nn term is for the controlled swaps in the case when we are selecting the projectile register
+for i. There is a factor of 6 rather than 12 because it is only for i, not i and j as for the electron registers.
+C5. The select cost of the kinetic energy terms is increased from 5( np − 1) + 2 to 5(nn − 1) + 2 due to the need to
+account for the larger number of qubits for the projectile. There is another Toffoli for the selection between the
+square and the product of the momentum with the momentum offset for the projectile, for a total of 5 nn − 2.
+C6. For the cost of preparing the 1 /∥ν∥ state, we first need to replace np with nn. The other amendment is that we
+need to introduce a cost of nn − np + 1 for the extra controls on the Hadamards. There are nn − np − 1 double
+controls, where the double control may be applied with a Toffoli that can be inverted with Clifford gates. There
+is also an extra singly-controlled Hadamard, which needs another Toffoli for inversion. That gives the extra cost
+(nn − np − 1) + 2 = nn − np + 1. That gives a total cost of 3 n2n + 16nn − np − 6 + 4nM(nn − 1) for preparing
+the 1/∥ν∥ state.
+C7. The QROM cost or Rℓ is unchanged at λζ + Er(λζ).
+
+=== PDF PAGE 12 ===
+12
+C8. For the addition and subtraction cost of ν into momentum registers, only half of it is np replaced with nn,
+because we are only allowing the projectile momentum in one temporary register. That gives a Toffoli cost
+12(nn + np).
+C9. For the phasing cost we simply replace np with nn to account for the projectile momentum, to give 6 nnnR.
+The complexity of the block encoding is still dominated by the controlled swaps (C4). In all cases we find that the
+block encoding cost multiplied by λH computed with boosting the success probability of the potential PREP using
+amplitude amplification is smaller than without.
+D. Time evolution costs using product formulas
+The second method we investigate for implementing time evolution uses product formulas to implement the electron-
+projectile propagator. In this section we consider a real-space grid Hamiltonian model of the electronic structure
+instead of the full electron-projectile system. We justify this consideration based on the fact that the electronic
+degrees of freedom are the dominant simulation costs. In order to simulate the time evolution using a product
+formula, there are three main parts.
+1. Computing the potential energy in the position basis and applying a phase according to that energy.
+2. Computing the kinetic energy in the momentum basis and applying the corresponding phase.
+3. Performing a QFT between the two bases.
+The product formula simulation is performed by alternating steps 1 and 2, using the QFT to switch the basis.
+The complexity is expected to be largest for step 1, because this requires computing the potential energy between
+η(η − 1)/2 pairs of electrons, whereas the kinetic energy just requires summing η momenta squared.
+The main difficulty in calculating the potential energy is in computing the approximation of the inverse square root.
+This was addressed in Ref. [102], where it was stated that the function could be approximated to within 32 bits within
+5 iterations, given a suitably chosen starting value for the iteration. We have numerically tested this approach, and
+found that it is only accurate if the starting value is not too far from the correct inverse square root of the argument.
+Accuracy of one part in 2 32 is only obtained over a range of less than a factor of 5 for the argument.
+To improve on that computation, we consider a hybrid approach combining the QROM function interpolation of
+Ref. [103] with the Newton-Raphson iteration of Ref. [102]. There are a number of variations that one could consider,
+depending on how the function interpolation is performed and how many steps of Newton-Raphson iteration are used.
+We find that excellent performance is obtained by using a single step of QROM interpolation with a cubic polynomial,
+followed by a single step of Newton-Raphson iteration. A further optimization targeting high-order product formulae
+is that the Newton-Raphson iteration is generalized to find b/√x instead of 1/√x which saves complexity by avoiding
+multiplying the potential by the product formulae coefficient. There is also a choice of how many points are used in
+the interpolation, and we find that using two points within each factor of 2 of the argument gives relative error within
+about one part in 4 × 108. This is almost as high precision as that claimed in Ref. [102], and works over the full range
+of input argument.
+To give the costing for this procedure more precisely, we first need to compute the sum of squares of the difference
+between each of electron’s xyz-components. This arithmetic has a cost of three squares. According to Lemma 8 of
+Ref. [1], the complexity is 3 n2 − n − 1 when each of the three numbers has n bits. The resulting number has no more
+than 2 n + 2 bits. The Toffoli complexity of the QROM to output interpolation parameters is then 4 n + 2, using a
+variable spacing QROM as in Ref. [103]. As an example, say we were performing the variable spacing QROM on 8
+qubits. The integer ranges that would be used would be
+0, 1, 2, 3, [4, 5], [6, 7], [8, 11], [12, 15], [16, 23], [24, 31], [32, 47], [48, 63], [64, 95], [96, 127], [128, 191], [192, 255], (36)
+where e.g. [16 , 23] is used to indicate the range of integers.
+Then for the interpolation, we can describe it by the interpolation for the regions [1 , 3/2] and [3/2, 2]. For example,
+[16, 23] is 16 times a range within [1 , 3/2], so we can use the parameters chosen for [1 , 3/2] appropriately scaled for
+this multiplying factor. For the region [1 , 3/2] we can use the interpolation
+1√x ≈ a0 − a1(x − 1) + a2(x − 1)2 − a3(x − 1)3 , (37)
+
+=== PDF PAGE 13 ===
+13
+with
+a0 = 0.99994132489119882162, (38)
+a1 = 0.49609891915903542303, (39)
+a2 = 0.33261112772430493331, (40)
+a3 = 0.14876762006038398086. (41)
+This is followed by a step of Newton-Raphson as
+y 7→ 12 y(3 + δ − y2x), (42)
+where δ = 5.1642030908180720584 × 10−9. These parameters were found by numerically minimising the maximum
+relative error over the region. It was then found that the relative error is no more than about 2.5821×10−9 within this
+interval. The constants aj are appropriately scaled for x in the range [2 m, (3/2)2m] as a0 7→ a0/2m/2, a1 7→ a1/23m/2,
+a2 7→ a2/25m/2, a3 7→ a3/27m/2, with x − 1 replaced with x − 2m. (The constant δ is unchanged.)
+For x in the range [3 /2, 2], one can use
+1√x ≈ a0 − a1(x − 3/2) + a2(x − 3/2)2 − a3(x − 3/2)3 , (43)
+with
+a0 = 0.81648515205385221995, (44)
+a1 = 0.27136515484240234115, (45)
+a2 = 0.12756148214815175348, (46)
+a3 = 0.044753028579153842218, (47)
+δ = 3.6279794522852781448 × 10−10. (48)
+These parameters were similarly found by a numerical optimisation to reduce the error, and give relative error no
+more than about 1 .8140 × 10−10 in this region.
+Writing the polynomial in this way makes it appear as if many powers and multiplications are needed. The
+computation can be significantly simplified by rewriting it as (for the case of the range [1 , 3/2])
+a0 − (x − 1){a1 − (x − 1)[a2 − a3(x − 1)]} = a0 − a1(x − 1) + a2(x − 1)2 − a3(x − 1)3. (49)
+Thus, only three multiplications are needed to compute the polynomial, and the multiplications are the most costly
+part. We have also written it with a polynomial of x − 1 rather than x. This requires one subtraction, but reduces
+the number of bits needed to represent x − 1 (versus x) by 1, and reduces the number of bits for each of a0, a1, a2 by
+1. This subtraction can be performed with Clifford gates because removing a leading 1 from x can be performed with
+a CNOT gate. We have a similar form for the polynomial in the range [3 /2, 2].
+It is also found that the initial polynomial interpolation may be given to only 15 bits of precision, and the resulting
+accuracy of the approximation after the step of Newton-Raphson is still about one part in 108. For a rough estimate of
+the complexity of the arithmetic, we can assume it is performed with no more than 15 bits at this step. As discussed
+in [103], the complexity of multiplying two real numbers is approximately the square of the number of bits. This is
+because less significant bits can be omitted in the calculation. If we are using 15 bits for each multiplication in the
+interpolation here, the complexity of the three multiplications is about 3 × 152 = 675. This is the dominant cost
+in the arithmetic, and the subtractions have significantly lower cost. Three subtractions on 15 bits have Toffoli cost
+about 45 (computing x − 1 or x − 3/2 is not included here because it can be performed with Clifford gates).
+For the step of Newton-Raphson, we can estimate the complexity of the square of a 15-bit number as 15 2 Toffolis.
+Then for the other two multiplications, if we aim for, for example, 24 bits of accuracy, then the complexity is 2 × 242.
+With another 24 Toffolis for the subtraction, the overall complexity is about 2136 (excluding the complexity of the
+sum of squares and QROM). With the number of bits in each direction beingn = 6, the sum of squares has complexity
+101, and the QROM has complexity 26 Toffolis. Those are trivial complexities compared to the other arithmetic for
+the inverse square root, and would bring the total to about 2263.
+There are a couple of additional considerations for the complexity not discussed in the simplified discussion above.
+First, for small x the inverse square root is large, so in the multiplication of x by the approximation of 1 /√x the
+assumptions in the estimate of the complexity do not hold. In order to avoid needing to use additional bits of precision
+
+=== PDF PAGE 14 ===
+14
+in the multiplications to account for that, we can instead use bit shifts. First, we strip pairs of leading zeros from x.
+Since x has 2n + 2 bits, the complexity is n(n + 1), which is 42 for n = 6.
+In this example, one may remove 2, 4, 6, 8, 10, or 12 leading zeros. (There cannot be all zeros which would
+correspond to two electrons at the same location.) These alternatives would require moving a number of bits which
+is 14 minus the number of leading zeros. The Toffoli cost corresponds to the number of bits moved, which gives a
+total of 12 + 10 + 8 + 6 + 4 + 2 = 42 Toffolis. At the end one would need to shift the approximation of the inverse
+square root back again. This can be performed on the result of the QROM interpolation before multiplying in the
+Newton-Raphson iteration. That would have a Toffoli complexity no more than 15 n bits giving we are computing
+the QROM interpolation to 15 bits. In the example with n = 6 it is 90 Toffolis. These two costs are relatively trivial
+compared to the overall cost of the step, and would bring it to about 2395 Toffolis. In this cost we have taken the
+specific example of n = 6. The n-dependent cost can be given as
+2136 + (3n2 − n − 1) + (4n + 2) + n(n + 1) + 15n = 2137 + 4n2 + 19n . (50)
+A further consideration is the need to uncompute the arithmetic. If we were to compute all the pairwise Coulomb
+potentials, sum then phase by the sum, we would then need to uncompute the sum. The number of Toffolis makes it
+infeasible to uncompute by retaining qubits. However, we can phase by each individual pairwise Coulomb potential and
+uncompute the arithmetic with Clifford gates by retaining about 2000 qubits used in the calculation. This approach
+would be reasonable given the algorithm is likely to need a large number of logical qubits already. A difficulty then
+is that a the potential may need to be multiplied by a constant before phasing. If we were to compute the complete
+Coulomb potential before phasing then that complexity would be trivial, but it will be significant if we need to do it
+for each pairwise potential.
+If we were to use just the standard Lie-Trotter product formula then the length of the time step could be chosen
+such that no multiplication were needed. Higher-order product formulae would need time steps with irrational ratios,
+so multiplications would be needed. However, that can be avoided if we instead compute the factor as part of the
+QROM interpolation and Newton-Raphson. If we are aiming to compute b/√x, then we can simply multiply the
+constants in the QROM interpolation by b, and replace 3 with 2 + b2 in the Newton-Raphson step. That will give the
+desired factor with the same Toffoli complexity as before.
+1. Estimating number of Trotter steps
+According to Theorem 4 of Ref. [104], for a real-space grid Hamiltonian defined for orbital indices {j, k, l, m} and
+spin indices {σ, τ} of the form
+H =
+X
+j,k,σ
+τj,ka†j,σak,σ + X
+l,m,σ,τ
+νl,ma†l,σal,σa†m,τ am,τ (51)
+the spectral norm error in a fixed particle manifold for an order- k product formula Sk(t) can be estimated as
+Sk(t) − e−itH Wη = O (∥τ ∥1 + ∥ν∥1,[η])k−1 ∥τ ∥1 ∥ν∥1,[η] η tk+1 . (52)
+Here, a†j,σ and aj,σ are creation and annihilation operators, and the norms are defined as
+∥τ ∥1 = maxj
+X
+k
+|τj,k| (53)
+∥ν∥1,[η] = maxj maxk1<...<kη
+ 
+|vj,k1 | + ... + |vj,kη |
+
+. (54)
+If the constant of proportionality is ξ, then breaking longer evolution time t into r intervals gives error
+≈ ξ(∥τ ∥1 + ∥ν∥1,[η])k−1 ∥τ ∥1 ∥ν∥1,[η] η tk+1/rk . (55)
+In order to provide a simulation to within error ϵ, the number of time steps is then
+r ≈ t1+1/k(∥τ ∥1 + ∥ν∥1,[η])1−1/k(ξ ∥τ ∥1 ∥ν∥1,[η] η/ϵ)1/k. (56)
+Our goal is to numerically determine the constant factor ξ for a high-order product formula. We first provide the
+constant factors of the norms used in the error scaling Eq. (52) and describe their convergence to asymptotic values.
+
+=== PDF PAGE 15 ===
+15
+The scaling of the norms is
+∥τ ∥1 = O
+ N 2/3
+Ω2/3
+
+(57)
+∥ν∥1,[η] = O
+ η2/3N 1/3
+Ω1/3
+
+. (58)
+To find the constant factor for ∥τ ∥1, note that it corresponds to the kinetic energy of a single electron, and is
+∥τ ∥1 = maxp
+∥kp∥2
+2 = maxp
+4π2∥p∥2
+2Ω2/3 = 4π22Ω2/3 3[(N 1/3 − 1)/2]2 ≈ 3π2N 2/32Ω2/3 . (59)
+The norm ∥ν∥1,[η] comes from Eq. (K4) of [1] which uses the the potential operator
+V = N 1/3
+2Ω1/3
+X
+i̸=j
+X
+p,q
+1
+∥p − q∥ |p⟩ ⟨p|i |q⟩ ⟨q|j . (60)
+and corresponds to the potential energy for a single electron with the other electrons packed around it as closely as
+possible. For p, qwhere there is a unit grid spacing, the volume is η ≈ (4/3)πR3, giving a radius of R ≈ [(3/4)η/π]1/3.
+The potential energy is the integral of 1 /r over a sphere from 0 to R. That gives
+Z R
+0
+4πr2/r dr= 4π
+Z R
+0
+r dr= 2πR2 = 2π[(3/4)η/π]2/3. (61)
+Thus, ∥ν∥1,[η] including constant factors is approximately
+∥ν∥1,[η] ≈ π1/3(3/4)2/3 η2/3N 1/3Ω1/3 . (62)
+To explore how quickly the norms converge to their asymptotic values (Eq. (62) and Eq. (59)) we plot each norm as a
+function of basis size and number of particles in Figure 3. We find that ∥τ ∥1 converges relatively quickly with respect
+to the grid spacing ( N 1/3/Ω1/3) but ∥ν∥1,[η] does not converge until approximately 50 particles.
+101
+N1/3/ 1/3
+102
+103
+104
+|| ||1
+Eq. 59 ((N1/3/ 1/3)2.1018)
+Numerical-rspace ((N1/3/ 1/3)2.0498)
+Numerical-kspace ((N1/3/ 1/3)2.0498)
+101 102
+101
+102
+|| ||1, [ ]
+1/3 = 1 , N1/3 = 6
+Analytical ( 0.6667)
+Numerical ( 0.6751)
+( 1.0000)
+Figure 3. Comparison between the analytical asymptotic value of the the norms ∥τ ∥1 and ∥ν∥1,[η]. For a given reciprocal lattice
+sampling defined as kν = 2πνΩ1/3 , ν ∈ G, G = { −N 1/3−12 , N 1/3−12 }, the real space grid is defined as rp = pΩ1/3N 1/3 , p ∈ G satisfying
+shifted (centered) discrete Fourier transform |rp⟩ = 1√N Pν eikν ·rp |kν ⟩ and thus kν · rp = 2πN 1/3 ν · p. The grey dashed line for
+the ∥ν∥1,[η] norm plot describes the scaling of the rightmost four red (numerical) points. The red dashed line corresponds to a
+fit to the rightmost five red (numerical points). Similarly in the ∥τ ∥1 norm plot the N scalings are determined by fitting the
+rightmost five points.
+In order to determine the constant ξ in Eq. (55) we numerically determine the spectral norm of Eq. (52) for a
+variety of product formulas for a variety of systems scaling in N and η. To avoid building an exponentially large
+
+=== PDF PAGE 16 ===
+16
+matrix, we adapt the power method to determine the spectral norm of ∆( t) = Sk(t) − e−itH as the square root of
+the maximal eigenvalue of ∆( −t)∆(t). Numerically taking the square root would halve the precision, so we instead
+use the power iteration to estimate the spectral norm of half an application of ∆( −t)∆(t). The full algorithm is
+outlined in Algorithm 1 which is implemented in the Fermionic Quantum Emulator (FQE) [105]. Using the FQE we
+can target a particular particle number sector, projected spin sz sector, and use fast time evolution routines based
+on the structure of the Hamiltonian in Eq. (51). Our numerics involved 64 orbital (128 qubit) systems involving 2-4
+particles.
+In the Figure 4 we determined ξ by explicitly calculating the spectral norm of the difference between the exact
+unitary and a bespoke 8 th-order product formula discribed in Appendix C. The ‘prefactor’ variable corresponds to
+(∥τ ∥1 + ∥ν∥1,[η])k−1 ∥τ ∥1 ∥ν∥1,[η] η tk+1 for t = 0.65. For N = 64 η = 4 we estimate a ξ = 3.4 × 10−8 which is the
+value of the rightmost point.
+For the 8 th-order product formula, each step requires 17 exponentials. Each exponential has a complexity on the
+order of 2395 η(η − 1)/2. Combining the constant factors, norm computation, and number of Toffolis required per
+exponential allowed us to calculate the Toffoli and qubit complexities for time evolution via product formula. We
+provide comparative costs to QSP in Section III.
+Algorithm 1:Power iteration algorithm to compute the spectral norm ∥∆(t)∥Wη = Γ
+Data: ϵ, ∆(t) = Sk(t) − e−itH
+ψi=0 ← 1√|H| Pj |j⟩;
+δ ← ∞;
+Γ− ← 0;
+Γ ← 0;
+while δ ≥ ϵ do
+ψi+ 12 ← ∆(t)ψi;
+Γ ← ∥ψi+ 12 ∥;
+ψi+1 ← ∆(−t)ψi+ 12 ;
+ψi+1 ← ψi+1/∥ψi+1∥;
+δ ← |Γ− − Γ|;
+Γ− ← Γ;
+end
+
+=== PDF PAGE 17 ===
+17
+2 3 4
+1.2
+1.4
+1.6
+1.8
+2.0
+||Sp(t) e itH||  / prefactor
+1e 2
+p = 2, N = 64
+2 3 42.0
+2.5
+3.0
+3.5
+4.0
+4.5
+1e 4
+p = 4, N = 64
+2 3 4
+3
+4
+5
+6
+7
+8
+||Sp(t) e itH||  / prefactor
+1e 6
+p = 6, N = 64
+2 3 4
+0.4
+0.6
+0.8
+1.0
+1e 7
+p* = 8, N = 64
+Figure 4. N = 64, Ω = 5 grid based Hamiltonian convergence of the prefactor ξ with respect to particle number. ξ = 3.4 × 10−8
+is used as an upper bound for the prefactor in all subsquent product formula resource estimates. p indicates the product
+formula order (star on the lower right plot indicates a numerically determined product formula). The blue points (upper left)
+are for the Strang product formula, red points (upper right) are for 4th-order Suzuki-Trotter, yellow (lower left) are for 6th-order
+Suzuki-Trotter, and green (lower right) corresponds to a custom 8 th-order formula described in Appendix C.
+E. Projectile kinetic energy estimation
+Our protocol estimates the stopping power from a time series for the projectile kinetic energy loss over the course
+of the electron-projectile evolution. Here we analyze the sampling overheads for two approaches to estimating the
+projectile kinetic energy, one at the standard quantum limit and the other with Heisenberg scaling. This allows us
+to estimate the number of circuit repetitions required to achieve stopping power estimates with a target accuracy,
+and thus the aggregate Toffoli count for the entire protocol. For either approach, an estimate of the total number of
+samples needs to account for both the thermal distribution of the electrons in the initial state, the variance of the
+kinetic energy operator, and the effect of time evolution on both of these. Short of implementation and empirical
+assessment, there is no clean way to precisely bound the number of samples required to compute the stopping power
+while taking into account all of these factors and we rely on a few simplifying assumptions to facilitate analysis.
+Our estimate of the sampling overhead for the first approach (at the standard quantum limit, see Fig. 5) is based on
+classical Monte Carlo sampling of the projectile’s kinetic energy, given in Eq. (15), using thekproj(t) from a plane-wave
+TDDFT calculation with classical nuclei and σk set according to the discussion in Section II B. The variation in σk is
+assumed to be negligible over the timescale associated with electronic stopping, which is short relative to the timescale
+over which such a wave packet would diffuse thanks to the large difference between the electron and projectile masses.
+We estimate the stopping power by computing the slope of the kinetic energy change of the projectile as a function
+of time. We take 10 points within the simulated time interval and extract the slope and its error through least-
+
+=== PDF PAGE 18 ===
+18
+squares regression. In Fig. 5 we compare the number of samples required to resolve the stopping power to within 0.1
+eV/˚A ≈ 0.002 a.u. We find that between 10 1 and 103 samples are required depending on the desired accuracy in the
+stopping power, with the sample cost growing with the velocity of the projectile. In practice we expect to require
+only 101 − 102 samples for accuracy relevant to applications in WDM. As shown in Appendix D, this corresponds to
+a precision (standard error) in the individual kinetic energy points of approximately 0.1 Ha. If the desired accuracy
+in the stopping power is lowered from 0.1 eV/ ˚A to 0.5 eV/ ˚A (corresponding to the green shaded region in Fig. 5)
+then the number of samples required drops by a factor of 10.
+However, this estimate does not directly account for the sampling overhead associated with capturing the thermal
+distribution of the electrons. Because the projectile and medium are far from equilibrium and will remain so over the
+timescale of our simulation, we do not expect that variance of the wave packet to depend on the electronic temperature
+and these two sources of randomness are independent. A complete assessment of the associated sampling overhead
+would require evaluating an ensemble of full quantum dynamics simulations in which the initial states are thermally
+distributed, thus we leave this to future work. However, we expect the sampling overhead associated with capturing
+the thermal distribution of the electrons to already be accounted for in the overhead associated with sampling the
+final observable, provided we measure a low variance observable like the kinetic energy of the projectile. We note that
+we have tested another related strategy to estimate the sampling overhead, involving Monte Carlo estimation of the
+increase in energy of the electronic system. It was found to have a substantially larger variance and required an order
+of magnitude more samples to obtain comparable precision in the stopping power.
+1 2 3 4 5
+Velocity [au]
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8Stopping Power [au]
+DFT Data
+Ns = 50
+Ns = 100
+Ns = 1000
+1 2 3 4 5
+initial veloctiy [au]
+0.04
+0.03
+0.02
+0.01
+0.00
+0.01
+0.02
+0.03
+0.04
+Stopping Power error [au]
+Ns = 50
+Ns = 100
+Ns = 1000
+Figure 5. (Left) Comparison between the TDDFT stopping power and the stopping power computed through random sampling
+of the expected value of a Gaussian wave packet’s kinetic energy. The shaded area represents an error of 0.01 a.u. demonstrating
+that the main features of the stopping curve can be resolved with a higher error threshold. (Right) Error in stopping power as
+a function of the projectile’s initial velocity and number of samples ( Ns) used to estimate the Gaussian wave packet’s kinetic
+energy. Horizontal lines represent an accuracy in the stopping power of 0.1 eV/ ˚A (≈ 0.002 a.u.) and 0.5 eV/ ˚A (≈ 0.01 a.u.).
+The second method we consider is a Heisenberg-scaling kinetic energy estimate based on an algorithm by Kothari and
+O’Donnell [82] (later referred to as KO). This mean-estimation algorithm has O(σ2/ϵ) scaling of the time-evolution
+oracle, a quadratic advantage over Monte Carlo sampling, but requires coherent evolution of a Grover-like iterate
+constructed from the time-evolution unitary and a phase-oracle constructed from the projectile kinetic energy cost
+function–i.e. the projectile kinetic energy SELECT. To compare this strategy to expectation value estimation by
+Monte Carlo sampling we estimate the Toffoli complexity of time-evolution based on QSP and determine the constant
+factors associated with constructing the Grover-like iterate. Details on the phase-oracle construction are described
+in Appendix B. Reference [82] describes a decision problem associated with the mean-estimation task which can be
+lifted to full expectation value estimation through a series of classical reductions. Using the assumption that we have
+a fairly accurate estimate of the kinetic energy (valid for an almost classical projectile) the number of calls to the core
+decision problem is expected to be a small integer multiple. Thus our cost estimates focus on Toffoli counts associated
+with the core decision problem.
+To facilitate resource estimation we have built a model of the entire protocol using the Cirq-FT software pack-
+age [106], which allows us to quantify the cost of each subroutine. In Figure 6 we plot this estimate (in black) along
+with estimates for standard Monte Carlo estimates based on the variance of the Gaussian wave packet representing
+the projectile which assumes no spreading of the particle. In the low precision regime needed for the stopping power
+calculations standard sampling has a computational advantage due to the lower overhead (smaller prefactors). Co-
+incidentally, the crossover is just beyond the ϵ necessary for the kinetic energy observable precision. In applications
+where higher precision is necessary (e.g., stopping at/below the Bragg peak or other dynamics problems entirely)
+
+=== PDF PAGE 19 ===
+19
+the KO algorithm likely provides a computational advantage over sampling despite the classical reduction and phase
+estimation overheads.
+Figure 6. The Toffoli cost of estimating the projectile kinetic energy with traditional Monte Carlo sampling and the mean
+estimation algorithm from Kothari and O’Donnell [82] (KO). Both techniques have standard error that linearly depends on
+square root of the variance of the observable. The number of samples required for fixed standard error in Standard Monte
+Carlo mean estimation scales as O(1/ϵ2) while the KO algorithm scales as O(1/ϵ) but with larger constant factors originating
+from code (circuit) for the random variable and quantum phase estimation on the Grover like iterate used in the algorithm.
+More details of the algorithm’s main subroutines are provided in Appendix B.
+III. RESOURCE ESTIMA TES FOR ICF-RELEV ANT SYSTEMS
+We present resource estimates for stopping power calculations in three systems relevant to ongoing efforts aimed
+at characterizing errors in transport property calculations used in the design and interpretation of ICF and general
+high-energy density physics experiments [72]. This allows us to explore how costs vary with the projectile and target
+conditions over the relevant phase space. The first system is an alpha-particle projectile in a hydrogen target at a
+density of 1 g/cm 3. The second system is a proton projectile in a deuterium target at a density of 10 g/cm 3. The
+third is a proton projectile in a high-density carbon target at 10 g/cm 3. Details of associated Ehrenfest TDDFT
+calculations of the latter two can be found in Ref. [58]. Each system’s relevant classical parameters are defined in
+Table II.
+Projectile + Host Volume [ a30] η [electrons] Wigner-Seitz radius [ a0] Ecut [eV] (Ha) N 1/3 ∆ [a0] np
+Alpha + Hydrogen 2419.68282 218 1.383 2000 (73.49864) 53 0.25330 6
+Proton + Deuterium 3894.81126 1729 0.813 2000 (73.49864) 63 0.24974 6
+Proton + Carbon 861.328194 391 0.807 1000 (36.74932) 27 0.35239 5
+Table II. Summary of ICF-relevant systems considered in this work and associated classical simulation parameters. a0 is the
+atomic Bohr radius, Ecut is the cut off energy used in classical TDDFT calculations to model the system, which corresponds
+to a grid spacing in one direction of N 1/3 using a spherical cutoff, ∆ is the grid spacing of the TDDFT calculations, and np is
+the number of qubits needed to achieve a similar resolution along one grid dimension.
+For each of the systems we consider a stopping power calculation with a projectile kinetic energy of 4 a.u. and a
+projectile wave packet variance of σk = 6 a.u. This allows us to determine the number of bits of precision needed
+to represent the projectile wavepacket. Considering the costs in the previous section we tabulate the block encoding
+costs CB.E. , λ, and number of logical qubits, for each system in Table III. For all systems it was considerably cheaper
+to amplitude amplify the state preparation cost instead of reweighting the kinetic and potential terms.
+
+=== PDF PAGE 20 ===
+20
+C1
+C2
+C3
+C4
+C5
+C6
+C7
+C8
+C9
+CR
+Subroutine
+102
+103
+104
+105
+Toffolis
+H-C
+He-H
+H-D
+Figure 7. Subroutine costs for each component of implementing the block-encoding. The labels C {n} correspond to the costs
+enumerated in protocol II C 1. CR is the reflection cost which given the additional register and augmented λ is nT + 2nη +
+6nn + nM + 16 where nT = 10 + log(λ/ϵ), with ϵ being the target precision of time evolution, and nη = ⌈log(η)⌉.
+Projectile + Host Mproj/Mproj,H nn kproj @ 4 a.u. CB.E. [Toffolis] Num. Qubits λ
+Alpha + Hydrogen 3.9726 8 29376 2 .498 × 104 5650 1744784.42
+Proton + Deuterium 1 8 7344 1 .423 × 105 33038 88202784.59
+Proton + Carbon 1 8 7344 3 .836 × 104 8841 7727607.07
+Table III. Summary of quantum algorithmic parameters and costs associated with the systems listed in Table II. Each column
+of the table is as follows: System description in terms of the projectile and host type, mass of the projectile Mproj relative to
+the proton mass Mproj,H, the number of bits for the projectile, nn, for projectile wave packet variance of σk = 6 a.u., the cost
+of block encoding the system, the required number of logical qubits, and total system λ.
+To further analyze the cost breakdown and to demonstrate the expected ˜O(η) block encoding complexity we plot
+the Toffoli requirements for each subroutine outlined in the protocol II C 1 in Figure 7. As expected controlled
+swaps of each electron into the working register for performing SELECT (C4) dominates the costs by an order of
+magnitude or more for each system. It is unlikely that this step can be further improved within this simulation
+protocol and representation. Finally, we can estimate the total Toffoli costs for performing time evolution on the
+electron-projectile system. In Figure 8a we plot the total Toffoli counts for evolving the Alpha + Hydrogen system for
+times t = 10, 20, 30, 40 in units of a.u. for various infidelities ϵ. As the Toffoli complexity scales logarithmically in ϵ
+there is little change in the total Toffoli complexity with infidelity. Time linearly scales the query complexity which is
+already linearly proportional to λ. Given the λ values in Table III and the block encoding costs the 10 13 Toffoli gates
+for small constant t values is not unexpected. While this is the price of one state preparation at time t it has already
+been discussed in Section II E that an additional Ns ≈ 50 − 100 samples for 10 points are needed to reach the desired
+accuracy of the stopping power estimate. To probe costs for smaller systems we examine the cost of systematically
+shrinking the unit cell at fixed Wigner-Seitz radius. Given the scaling of qubitization, ˜O
+
+η2
+∆2 + η3∆ , fixing the number
+of planewaves and shrinking the unit cell at fixed particle density corresponds to increasing the grid resolution ∆.
+Expressing the total complexity in terms of η, the Toffoli complexity is expected to scale somewhere between O(η4/3)
+and O(η8/3) depending on which term is dominant in the qubitization costs. This value is plotted in blue in Figure 8b
+with a slope of approximately O(η2). For reference we provide the QPE scaling costs assuming the QPE precision
+in 10 −3 demonstrating that time-evolution with sampling can be substantially cheaper than eigenvalue estimation.
+While decreasing the system size while maintaining fixed grid resolution is possible we are only able to decrease the
+number of gridpoints by powers of two. Shrinking the system by powers of two quickly leads to nonphysically realistic
+system sizes and thus we focus on shrinking the system with increasing grid resolution which leads to a quadratic
+decrease in complexity with the number of particles at fixed Wigner-Seitz radius.
+
+=== PDF PAGE 21 ===
+21
+Projectile + Host η QSP Toffoli Product Formula Toffoli QSP Qubits Product Formula Qubits
+Alpha + Hydrogen (50%) 28 5 .593 × 1014 1.124 × 1013 1749 2666
+Alpha + Hydrogen (75%) 92 2 .033 × 1016 3.069 × 1014 3309 3902
+Alpha + Hydrogen 218 1 .992 × 1017 1.399 × 1015 5650 6170
+Proton + Deuterium 1729 2 .121 × 1020 2.079 × 1017 33038 33368
+Proton + Carbon 391 2 .225 × 1018 1.074 × 1016 8841 9284
+Table IV. Comparison of the total Toffoli cost for time-evolution using QSP or product formulas for 10 uniformly spaced times
+starting from t = 1 and going to t = 10 with infidelity ϵ = 0 .01 including 50 samples to measure the kinetic energy of the
+projectile. The smallest Alpha + Hydrogen system used np = 5 while all other systems used np = 6. For all systems the
+projectile kinetic energy register used nn = 8 bits. The number of qubits for the product formula is estimated based on the
+system size plus an upper bound to the number of ancilla needed for performing the polynomial interpolation multiplications
+and Newton-Raphson step floating point arithmetic.
+102 103
+1010
+1011
+1012
+1013
+1014
+1015
+1016
+Toffolis
+rs 0.8, np = 6
+Time evolution ( 2.06)
+QPE( = 10 3) ( 2.06)
+(a) (b)
+Figure 8. a) Toffoli complexity to synthesize the system propagator of the Alpha + Hydrogen system for time t = 10, 20, 30, 40
+(in atomic units) for a range of fidelities. Using the lowest sample complexity considered Ns ≈ 50 − 100 and 10 total times
+to estimate the slope the Toffoli complexity is ≈ 200 times the Toffoli costs shown. b) Toffoli scaling with respect to particle
+number at fixed rs and a fixed number of planewaves (increasing grid resolution). Time evolution cost is expected to scale as
+somewhere in between O(η4/3) and O(η8/3) using quantum signal processing. In blue the time evolution cost for t = 1 is shown
+demonstrating the expected scaling along with constant factors. Constant factors associated with QPE are shown in red for
+1/t = ϵ = 10−3 which is should proportionally increase the cost. The displayed constant factor resources are in line with what
+is demonstrated in Ref. [1] for constant rs ≈ 1.
+We now make a comparison of the total Toffoli and logical qubit costs to estimate the stopping power. This
+requires ten kinetic energy estimations at times from t = 1 to t = 10. Each time evolution is constructed with
+infidelity ϵ = 0.01. A comparison between building the propagator with QSP and the 8 th-order product formula is
+shown in Table IV which includes a factor of Ns = 50 accounting for the sampling overhead at each of the 10 time
+points. The product formula numerics use a prefactor of ξ = 3.4 × 10−8 and the analytical values for the ∥τ ∥1 and
+∥ν∥1,η norms.
+IV. DISCUSSION
+We have described a quantum protocol for estimating stopping power and derived constant factor resource estimates
+for systems relevant to ICF. To our knowledge this is the first analysis of a practically relevant quantum time dynamics
+simulation. It is also the first specific proposal for how fault-tolerant quantum computers can contribute to the
+development of inertial fusion energy platforms. While the overall resource estimates are high, we expect that the
+product formula estimates are loose and further algorithmic innovations are possible. Supporting this optimism are
+the orders-of-magnitude improvements in constant factors for second-quantized chemistry simulation seen over the
+last five years [2–5].
+We estimated that fully converged (in system size and basis-set size, with respect to TDDFT) calculations for
+an alpha particle projectile stopping in a hydrogen target would require 10 17 Toffoli gates using QSP as the time-
+
+=== PDF PAGE 22 ===
+22
+evolution routine. If 8 th-order product formulas are used to build the electron-projectile propagator then we estimate
+that approximately 10 15 Toffoli gates would be required. Both strategies require 10 3 logical qubits to represent the
+system and a modest number of additional ancilla required for QROM and implementing product formulas. This
+estimate is for a system that is substantial in size (219 quantum particles) and corresponds to a calculation that
+has only been classically tractable using mean-field-like methods like TDDFT or more approximate models. Scaling
+down the system to a benchmark scale (29 quantum particles) would require substantially fewer resources (1013 Toffoli
+gates) and could be used to quantify the accuracy of TDDFT calculations and other approximate dynamics strategies.
+In order to determine the constant factors we compiled all time-evolution subroutines that contribute to the leading-
+order complexity. To implement time-evolution we considered two methods to construct the electron-projectile propa-
+gator: QSP with qubitization and high-order product formulae. For QSP we extended the block encoding construction
+of Ref. [1] to account for the non-Born-Oppenheimer treatment of the projectile and analyzed the trade-off for con-
+structing the block encoding with and without amplitude amplification for the potential state preparation. Specifically,
+this required modifications to the potential state preparation, additional kinetic energy preparation analysis, and new
+LCU 1-norm values. We expect that these modifications can serve as the basis for other mixed non-BO simulations in
+first quantization. For the product formula analysis we introduced a newly optimized eighth-order formula based on
+the numerical protocol described in Reference [107] and greatly improved the algorithmic implementation for comput-
+ing the inverse square root, the most expensive step of the propagator construction. Here we have improved this step
+by using QROM function approximation from Reference [103] followed by a single step of Newton-Raphson iteration.
+In order to analyze the overall effect of these subroutine improvements we derived the total number of product formula
+steps required for fixed precision and analyzed constant factors by numerically computing the spectral norm of the
+difference between the product formula and the exact unitary through an adapted power-iteration algorithm. This
+worst-case bound indicated two-orders of magnitude reduction in the Toffoli complexity for time evolution.
+To complete our cost estimates for the stopping power we explored two different projectile kinetic energy estimation
+strategies. One involved sampling the kinetic energy of the projectile via Monte Carlo mean estimation and the
+second involved a Heisenberg scaling algorithm, developed in Reference [82], with a quadratic improvement over
+generic sampling. For the Monte Carlo sampling strategy we utilized classical TDDFT to numerically determine an
+error bound, and required number of samples, for low-Z projectiles. In the KO-algorithm case, we provided the first
+constant factor analysis of the algorithm’s core primitives leveraging Cirq-FT [106]’s resource estimation functionality.
+While stopping power for ICF targets turns out to only require standard limit Monte Carlo mean estimation there
+are a number of other settings where stopping power estimation with different accuracy parameters can be useful. In
+those cases, additional constant factor analysis would be required to analyze the additional classical reduction and
+state preparation overheads.
+This work adds to the body of literature seeking to articulate specific real-world problems of high value where
+quantum computing might have a large impact, and to quantify the magnitude of advantages offered by fault-tolerant
+quantum computers. As previous work in this area has shown it is not always straightforward to identify scientific
+problems amenable to large quantum speedups [4]. However, recent work suggests that when one is interested in ex-
+act electron dynamics – perhaps the most natural simulation problem for quantum computers – asymptotic speedups
+are possible over even computationally efficient mean-field classical strategies [88]. These speedups are even more
+pronounced at finite temperature. Thus, materials properties in the pre-ignition phase of ICF and other applications
+in the WDM regime are examples from a particularly rich area for exploration. Adding to this argument is the
+considerable difficulty in simulating flagship scale problems classically. For WDM there are no efficient, systemati-
+cally improvable classical methods for first-principles electron dynamics. This work has shown that while quantum
+dynamics on quantum computers are a promising area, large constant factors for systems of practical interest continue
+to encourage further investigation into problem representation, observable estimation, classical benchmarking, and
+classical determination of scaling factors.
+Acknowledgments
+The authors thank Bill Huggins, Lucas Kocia, Robin Kothari, Alicia Magann, Jarrod McClean, Tom O’Brien,
+Shivesh Pathak, Antonio Russo, Stefan Seritan, Rolando Somma, and Andrew Zhao for helpful discussions. We thank
+Alexandra Olmstead for providing some of the atomic configurations taken from Ref. [58]. DB worked on this project
+under a sponsored research agreement with Google Quantum AI. DB is also supported by Australian Research Council
+Discovery Project DP210101367. AK and ADB were supported by Sandia National Laboratories’ Laboratory Directed
+Research and Development Program (Project No. 222396) and the National Nuclear Security Administration’s Ad-
+vanced Simulation and Computing Program. This article has been co-authored by employees of National Technology
+& Engineering Solutions of Sandia, LLC under Contract No. DE-NA0003525 with the U.S. Department of Energy
+(DOE). The authors own all right, title and interest in and to the article and are solely responsible for its contents.
+
+=== PDF PAGE 23 ===
+23
+The United States Government retains and the publisher, by accepting the article for publication, acknowledges that
+the United States Government retains a non-exclusive, paid-up, irrevocable, world-wide license to publish or repro-
+duce the published form of this article or allow others to do so, for United States Government purposes. The DOE
+will provide public access to these results of federally sponsored research in accordance with the DOE Public Access
+Plan https://www.energy.gov/downloads/doe-public-access-plan . Some of the discussions and collaboration
+for this project occurred while using facilities at the Kavli Institute for Theoretical Physics, supported in part by the
+NSF under Grant No. NSF PHY-1748958.
+[1] Y. Su, D. Berry, N. Wiebe, N. Rubin, and R. Babbush, Fault-tolerant quantum simulations of chemistry in first quanti-
+zation, PRX Quantum 4, 040332 (2021).
+[2] J. Lee, D. W. Berry, C. Gidney, W. J. Huggins, J. R. McClean, N. Wiebe, and R. Babbush, Even More Efficient Quantum
+Computations of Chemistry Through Tensor Hypercontraction, PRX Quantum 2, 030305 (2021).
+[3] V. von Burg, G. H. Low, T. H¨ aner, D. S. Steiger, M. Reiher, M. Roetteler, and M. Troyer, Quantum computing enhanced
+computational catalysis, Physical Review Research 3, 033055 (2021).
+[4] N. C. Rubin, D. W. Berry, F. D. Malone, A. F. White, T. Khattar, A. E. DePrince III, S. Sicolo, M. K¨ uhn, M. Kaicher,
+J. Lee, et al. , Fault-tolerant quantum simulation of materials using Bloch orbitals, arXiv:2302.05531 (2023).
+[5] D. W. Berry, C. Gidney, M. Motta, J. McClean, and R. Babbush, Qubitization of Arbitrary Basis Quantum Chemistry
+Leveraging Sparsity and Low Rank Factorization, Quantum 3, 208 (2019).
+[6] S. Lee, J. Lee, H. Zhai, Y. Tong, A. M. Dalzell, A. Kumar, P. Helms, J. Gray, Z.-H. Cui, W. Liu, et al. , Evaluating
+the evidence for exponential quantum advantage in ground-state quantum chemistry, Nature Communications 14, 1952
+(2023).
+[7] Two of the coauthors (AK and ADB) have maintained allocations on capability-class supercomputers to do stopping
+power calculations for nearly a decade. In their last year of allocations, this has involved 14 days of CPU time on a
+machine with approximately 300,000 processors.
+[8] W. H. Bragg and R. Kleeman, XXXIX. On the α particles of radium, and their loss of range in passing through various
+atoms and molecules, The London, Edinburgh, and Dublin Philosophical Magazine and Journal of Science 10, 318 (1905).
+[9] N. Bohr, II. On the theory of the decrease of velocity of moving electrified particles on passing through matter, The
+London, Edinburgh, and Dublin Philosophical Magazine and Journal of Science 25, 10 (1913).
+[10] W. C. Fan, C. R. Drumm, S. B. Roeske, and G. J. Scrivner, Shielding considerations for satellite microelectronics, IEEE
+Transactions on nuclear science 43, 2790 (1996).
+[11] A. E. Sand, R. Ullah, and A. A. Correa, Heavy ion ranges from first-principles electron dynamics, npj Computational
+Materials 5, 43 (2019).
+[12] D. Schardt, T. Els¨ asser, and D. Schulz-Ertner, Heavy-ion tumor therapy: Physical and radiobiological benefits, Reviews
+of Modern Physics 82, 383 (2010).
+[13] W. D. Newhauser and R. Zhang, The physics of proton therapy, Physics in Medicine & Biology 60, R155 (2015).
+[14] C. Shepard, D. C. Yost, and Y. Kanai, Electronic excitation response of dna to high-energy proton radiation in water,
+Physical Review Letters 130, 118401 (2023).
+[15] D. C. Joy and C. S. Joy, Low voltage scanning electron microscopy, Micron 27, 247 (1996).
+[16] A. Kononov and A. Schleife, Anomalous stopping and charge transfer in proton-irradiated graphene, Nano Letters 21,
+4816 (2021).
+[17] A. Kononov, A. Olmstead, A. D. Baczewski, and A. Schleife, First-principles simulation of light-ion microscopy of
+graphene, 2D Materials 9, 045023 (2022).
+[18] N. H. Wan, T.-J. Lu, K. C. Chen, M. P. Walsh, M. E. Trusheim, L. De Santis, E. A. Bersin, I. B. Harris, S. L. Mouradian,
+I. R. Christen, et al. , Large-scale integration of artificial atoms in hybrid photonic circuits, Nature 583, 226 (2020).
+[19] S. Asaad, V. Mourik, B. Joecker, M. A. Johnson, A. D. Baczewski, H. R. Firgau, M. T. Madzik, V. Schmitt, J. J. Pla,
+F. E. Hudson, et al. , Coherent electrical control of a single high-spin nucleus in silicon, Nature 579, 205 (2020).
+[20] A. M. Jakob, S. G. Robson, V. Schmitt, V. Mourik, M. Posselt, D. Spemann, B. C. Johnson, H. R. Firgau, E. Mayes,
+J. C. McCallum, et al. , Deterministic shallow dopant implantation in silicon with detection confidence upper-bound to
+99.85% by ion–solid interactions, Advanced Materials 34, 2103235 (2022).
+[21] M. J. Berger, J. S. Coursey, and M. A. Zucker, ESTAR, PSTAR, and ASTAR: computer programs for calculating
+stopping-power and range tables for electrons, protons, and helium ions (version 1.21), (1999).
+[22] J. F. Ziegler, M. D. Ziegler, and J. P. Biersack, SRIM–the stopping and range of ions in matter (2010), Nuclear Instruments
+and Methods in Physics Research Section B: Beam Interactions with Materials and Atoms 268, 1818 (2010).
+[23] C. C. Montanari and P. Dimitriou, The IAEA stopping power database, following the trends in stopping power of ions in
+matter, Nuclear Instruments and Methods in Physics Research Section B: Beam Interactions with Materials and Atoms
+408, 50 (2017).
+[24] F. Graziani, M. P. Desjarlais, R. Redmer, and S. B. Trickey, Frontiers and challenges in warm dense matter , Vol. 96
+(Springer Science & Business, 2014).
+[25] T. Dornheim, S. Groth, and M. Bonitz, The uniform electron gas at warm dense matter conditions, Physics Reports 744,
+1 (2018).
+
+=== PDF PAGE 24 ===
+24
+[26] N. Booth, A. Robinson, P. Hakel, R. Clarke, R. Dance, D. Doria, L. Gizzi, G. Gregori, P. Koester, L. Labate, T. Levato,
+B. Li, M. Makita, R. Mancini, J. Pasley, P. Rajeev, D. Riley, E. Wagenaars, J. Waugh, and N. Woolsey, Laboratory
+measurements of resistivity in warm dense plasmas relevant to the microphysics of brown dwarfs, Nature communications
+6, 8742 (2015).
+[27] A. Kritcher, C. Young, H. Robey, C. Weber, A. Zylstra, O. Hurricane, D. Callahan, J. Ralph, J. Ross, K. Baker, D. Casey,
+D. Clark, T. D¨ oppner, L. Divol, M. Hohenberger, L. Berzak Hopkins, S. Le Pape, N. Meezan, A. Pak, P. Patel, R. Tom-
+masini, S. Ali, P. Amendt, L. Atherton, B. Bachmann, D. Bailey, L. Benedetti, , R. Betti, S. Bhandarkar, J. Biener,
+R. Bionta, N. Birge, E. Bond, D. Bradley, T. Braun, T. Briggs, M. Bruhn, P. Celliers, B. Chang, T. Chapman, H. Chen,
+C. Choate, A. Christopherson, D. Clark, J. Crippen, E. Dewald, T. Dittrich, M. Edwards, W. Farmer, J. Field, D. Fit-
+tinghoff, J. Frenje, J. Gaffney, M. Gatu Johnson, S. Glenzer, G. Grim, S. Haan, K. Hahn, G. Hall, B. Hammel, J. Harte,
+E. Hartouni, J. Heebner, V. Hernandez, H. Herrmann, M. Herrmann, D. Hinkel, D. Ho, J. Holder, W. Hsing, H. Huang,
+K. Humbird, N. Izumi, L. Jarrott, J. Jeet, O. Jones, G. Kerbel, S. Kerr, S. Khan, J. Kilkenny, Y. Kim, H. Geppert Klein-
+rath, V. Geppert Kleinrath, C. Kong, J. Koning, J. Kroll, M. Kruse, B. Kustowski, O. Landen, r. S. Lange, D. Larson,
+N. Lemos, J. Lindl, T. Ma, M. MacDonald, B. MacGowan, A. Mackinnon, S. MacLaren, A. MacPhee, M. Marinak,
+D. Mariscal, E. Marley, L. Masse, K. Meaney, N. Meezan, P. Michel, M. Millot, J. Milovich, J. Moody, A. Moore, J. Mor-
+ton, T. Murphy, K. Newman, J. Di Ncola, A. Nikroo, R. Nora, M. Patel, L. Pelz, J. Peterson, Y. Ping, B. Pollock,
+M. Ratledge, N. Rice, H. Rinderknecht, M. Rosen, M. Rubery, J. Salmonson, J. Sater, S. Schiaffino, D. Schlossberg,
+M. Schneider, C. Schroeder, H. Scott, S. Sepke, K. Sequoia, M. Sherlock, S. Shin, V. Smalyuk, B. Spears, P. Springer,
+M. Stadermann, S. Stoupin, D. Strozzi, L. Suter, C. Thomas, R. Town, E. Tubman, C. Trosseille, P. Volegov, C. We-
+ber, K. Widmann, C. Wild, C. Wilde, B. Van Wonterghem, D. Woods, B. Woodworth, Y. Yamaguchi, S. Yang, and
+G. Zimmerman, Design of inertial fusion implosions reaching the burning plasma regime, Nature Physics 18, 251 (2022).
+[28] J. L¨ utgert, M. Bethkenhagen, B. Bachmann, L. Divol, D. Gericke, S. Glenzer, G. Hall, N. Izumi, S. Khan, O. Landen,
+S. MacLaren, L. Masse, R. Redmer, M. Sch¨ orner, M. Sch¨ olmerich, S. Schumacher, N. Shaffer, C. Starrett, P. Sterne,
+C. Trosseille, T. D¨ oppner, and D. Kraus, Platform for probing radiation transport properties of hydrogen at conditions
+found in the deep interiors of red dwarfs, Physics of Plasmas 29, 083301 (2022).
+[29] D. Saumon and T. Guillot, Shock compression of deuterium and the interiors of Jupiter and Saturn, The Astrophysical
+Journal 609, 1170 (2004).
+[30] N. Nettelmann, B. Holst, A. Kietzmann, M. French, R. Redmer, and D. Blaschke, Ab initio equation of state data for
+hydrogen, helium, and water and the internal structure of Jupiter, The Astrophysical Journal 683, 1217 (2008).
+[31] A. Benuzzi-Mounaix, S. Mazevet, A. Ravasio, T. Vinci, A. Denoeud, M. Koenig, N. Amadou, E. Brambrink, F. Festa,
+A. Levy, M. Harmand, S. Brygoo, G. Huser, V. Recoules, J. Bouchet, G. Morard, F. Guyot, T. de Resseguier, K. Myanishi,
+N. Ozaki, F. Dorchies, J. Gaudin, P. M. Leguay, O. Peyrusse, O. Henry, D. Raffestin, S. Le Pape, R. Smith, and R. Musella,
+Progress in warm dense matter study with applications to planetology, Physica Scripta 2014, 014060 (2014).
+[32] S. Hu, V. Goncharov, T. Boehly, R. McCrory, S. Skupsky, L. A. Collins, J. D. Kress, and B. Militzer, Impact of first-
+principles properties of deuterium–tritium on inertial confinement fusion target designs, Physics of Plasmas 22, 056304
+(2015).
+[33] D. A. Yager-Elorriaga, M. R. Gomez, D. E. Ruiz, S. A. Slutz, A. J. Harvey-Thompson, C. A. Jennings, P. Knapp,
+P. Schmit, M. R. Weis, T. J. Awe, G. Chandler, M. Mangan, C. Myers, J. Fein, B. Galloway, M. Geissel, M. Glinsky,
+S. Hansen, E. Hardin, D. Lamppa, W. Lewis, P. Rambo, G. Robertson, M. Savage, G. Shipley, I. Smith, J. Schwarz,
+D. Ampleford, K. Beckwith, K. Peterson, J. Porter, G. Rochau, and D. Sinars, An overview of magneto-inertial fusion on
+the Z machine at Sandia National Laboratories, Nuclear Fusion 62, 042015 (2022).
+[34] H. Abu-Shawareb, R. Acree, P. Adams, J. Adams, B. Addis, R. Aden, P. Adrian, B. Afeyan, M. Aggleton, L. Aghaian,
+et al., Lawson criterion for ignition exceeded in an inertial fusion experiment, Physical Review Letters129, 075001 (2022).
+[35] O. Hurricane, P. Patel, R. Betti, D. Froula, S. Regan, S. Slutz, M. Gomez, and M. Sweeney, Physics principles of inertial
+confinement fusion and US program overview, Reviews of Modern Physics 95, 025005 (2023).
+[36] J. Soures, R. McCrory, C. Verdon, A. Babushkin, R. Bahr, T. Boehly, R. Boni, D. Bradley, D. Brown, R. Craxton, et al.,
+Direct-drive laser-fusion experiments with the OMEGA, 60-beam, >40 kJ, ultraviolet laser system, Physics of Plasmas
+3, 2108 (1996).
+[37] B. Nagler, B. Arnold, G. Bouchard, R. F. Boyce, R. M. Boyce, A. Callen, M. Campell, R. Curiel, E. Galtier, J. Garofoli,
+et al., The matter in extreme conditions instrument at the Linac coherent light source, Journal of Synchrotron Radiation
+22, 520 (2015).
+[38] K. Falk, Experimental methods for warm dense matter research, High Power Laser Science and Engineering 6, e59 (2018).
+[39] D. Sinars, M. Sweeney, C. Alexander, D. Ampleford, T. Ao, J. Apruzese, C. Aragon, D. Armstrong, K. Austin, T. Awe,
+et al., Review of pulsed power-driven high energy density physics research on Z at Sandia, Physics of Plasmas 27, 070501
+(2020).
+[40] M. MacDonald, C. Di Stefano, T. D¨ oppner, L. Fletcher, K. Flippo, D. Kalantar, E. Merritt, S. Ali, P. Celliers, R. Heredia,
+et al. , The colliding planar shocks platform to study warm dense matter at the National Ignition Facility, Physics of
+Plasmas 30, 062701 (2023).
+[41] J. Frenje, P. Grabowski, C. Li, F. S´ eguin, A. Zylstra, M. G. Johnson, R. Petrasso, V. Y. Glebov, and T. Sangster,
+Measurements of ion stopping around the Bragg peak in high-energy-density plasmas, Physical Review Letters 115,
+205001 (2015).
+[42] A. Zylstra, J. Frenje, P. Grabowski, C. Li, G. Collins, P. Fitzsimmons, S. Glenzer, F. Graziani, S. Hansen, S. Hu, et al. ,
+Measurement of charged-particle stopping in warm dense plasma, Physical Review Letters 114, 215002 (2015).
+
+=== PDF PAGE 25 ===
+25
+[43] S. Malko, W. Cayzac, V. Ospina-Bohorquez, K. Bhutwala, M. Bailly-Grandvaux, C. McGuffey, R. Fedosejevs, X. Vais-
+seau, A. Tauschwitz, J. Api˜ naniz,et al. , Proton stopping measurements at low velocity in warm dense carbon, Nature
+Communications 13, 2893 (2022).
+[44] A. Zylstra, O. Hurricane, D. Callahan, A. Kritcher, J. Ralph, H. Robey, J. Ross, C. Young, K. Baker, D. Casey, et al. ,
+Burning plasma achieved in inertial fusion, Nature 601, 542 (2022).
+[45] R. L. Singleton, Charged particle stopping power effects on ignition: some results from an exact calculation, Physics of
+Plasmas 15, 056302 (2008).
+[46] M. Temporal, B. Canaud, W. Cayzac, R. Ramis, and R. L. Singleton, Effects of alpha stopping power modelling on the
+ignition threshold in a directly-driven inertial confinement fusion capsule, The European Physical Journal D 71, 1 (2017).
+[47] A. Zylstra and O. Hurricane, On alpha-particle transport in inertial fusion, Physics of Plasmas 26, 062701 (2019).
+[48] V. Smalyuk, C. Weber, O. Landen, S. Ali, B. Bachmann, P. Celliers, E. Dewald, A. Fernandez, B. Hammel, G. Hall,
+et al. , Review of hydrodynamic instability experiments in inertially confined fusion implosions on National Ignition
+Facility, Plasma Physics and Controlled Fusion 62, 014007 (2019).
+[49] Y. Zhou, T. T. Clark, D. S. Clark, S. Gail Glendinning, M. Aaron Skinner, C. M. Huntington, O. A. Hurricane, A. M.
+Dimits, and B. A. Remington, Turbulent mixing and transition criteria of flows induced by hydrodynamic instabilities,
+Physics of Plasmas 26, 080901 (2019).
+[50] M. Gomez, S. Slutz, C. Jennings, D. Ampleford, M. Weis, C. Myers, D. Yager-Elorriaga, K. Hahn, S. Hansen, E. Harding,
+et al. , Performance scaling in magnetized liner inertial fusion experiments, Physical Review Letters 125, 155002 (2020).
+[51] M. Roth, T. Cowan, M. Key, S. Hatchett, C. Brown, W. Fountain, J. Johnson, D. Pennington, R. Snavely, S. Wilks,
+et al. , Fast ignition by intense laser-accelerated proton beams, Physical Review Letters 86, 436 (2001).
+[52] S. Atzeni, A. Schiavi, and J. Davies, Stopping and scattering of relativistic electron beams in dense plasmas and require-
+ments for fast ignition, Plasma Physics and Controlled Fusion 51, 015016 (2008).
+[53] A. Solodov and R. Betti, Stopping power and range of energetic electrons in dense plasmas of fast-ignition fusion targets,
+Physics of Plasmas 15, 042707 (2008).
+[54] R. J. Magyar, L. Shulenburger, and A. D. Baczewski, Stopping of deuterium in warm dense deuterium from Ehrenfest
+time-dependent density functional theory, Contrib. Plasm. Phys. 56, 459 (2016).
+[55] Y. Ding, A. J. White, S. Hu, O. Certik, and L. A. Collins, Ab initio studies on the stopping power of warm dense matter
+with time-dependent orbital-free density functional theory, Physical Review Letters 121, 145001 (2018).
+[56] A. J. White, O. Certik, Y. Ding, S. Hu, and L. A. Collins, Time-dependent orbital-free density functional theory for
+electronic stopping power: Comparison to the mermin-kohn-sham theory at high temperatures, Physical Review B 98,
+144302 (2018).
+[57] A. J. White, L. A. Collins, K. Nichols, and S. Hu, Mixed stochastic-deterministic time-dependent density functional
+theory: application to stopping power of warm dense carbon, Journal of Physics: Condensed Matter 34, 174001 (2022).
+[58] T. W. Hentschel, A. Kononov, A. Olmstead, A. Cangi, A. D. Baczewski, and S. B. Hansen, Improving dynamic collision
+frequencies: impacts on dynamic structure factors and stopping powers in warm dense matter, Physics of Plasmas 30,
+062703 (2023).
+[59] G. Faussurier, C. Blancard, P. Coss´ e, and P. Renaudin, Equation of state, transport coefficients, and stopping power of
+dense plasmas from the average-atom model self-consistent approach for astrophysical and laboratory plasmas, Physics
+of Plasmas 17, 052707 (2010).
+[60] G. Maynard and C. Deutsch, Energy loss and straggling of ions with any velocity in dense plasmas at any temperature,
+Physical Review A 26, 665 (1982).
+[61] G. Maynard and C. Deutsch, Born random phase approximation for ion stopping in an arbitrarily degenerate electron
+fluid, Journal de Physique 46, 1113 (1985).
+[62] G. B. Zimmerman, Recent developments in Monte Carlo techniques (1990).
+[63] Z. Moldabekov, P. Ludwig, M. Bonitz, and T. Ramazanov, Ion potential in warm dense matter: Wake effects due to
+streaming degenerate electrons, Physical Review E 91, 023102 (2015).
+[64] Z. A. Moldabekov, T. Dornheim, M. Bonitz, and T. Ramazanov, Ion energy-loss characteristics and friction in a free-
+electron gas at warm dense matter and nonideal dense plasma conditions, Physical Review E 101, 053203 (2020).
+[65] C. Makait, F. B. Fajardo, and M. Bonitz, Time-dependent charged particle stopping in quantum plasmas: testing the
+g1–g2 scheme for quasi-one-dimensional systems, Contributions to Plasma Physics , e202300008 (2023).
+[66] C.-K. Li and R. D. Petrasso, Charged-particle stopping powers in inertial confinement fusion plasmas, Physical Review
+Letters 70, 3059 (1993).
+[67] C.-K. Li and R. Petrasso, Stopping of directed energetic electrons in high-temperature hydrogenic plasmas, Physical
+Review E 70, 067401 (2004).
+[68] L. S. Brown, D. L. Preston, and R. L. Singleton Jr, Charged particle motion in a highly ionized plasma, Physics Reports
+410, 237 (2005).
+[69] P. E. Grabowski, M. P. Surh, D. F. Richards, F. R. Graziani, and M. S. Murillo, Molecular dynamics simulations of
+classical stopping power, Physical Review Letters 111, 215002 (2013).
+[70] F. R. Graziani, V. S. Batista, L. X. Benedict, J. I. Castor, H. Chen, S. N. Chen, C. A. Fichtl, J. N. Glosli, P. E. Grabowski,
+A. T. Graf, et al. , Large-scale molecular dynamics simulations of dense plasmas: The Cimarron project, High Energy
+Density Physics 8, 105 (2012).
+[71] G. Zimmerman, D. Kershaw, D. Bailey, and J. Harte,LASNEX code for inertial confinement fusion, Tech. Rep. (California
+Univ., 1977).
+
+=== PDF PAGE 26 ===
+26
+[72] P. Grabowski, S. Hansen, M. Murillo, L. Stanton, F. Graziani, A. Zylstra, S. Baalrud, P. Arnault, A. Baczewski, L. Bene-
+dict, et al. , Review of the first charged-particle transport coefficient comparison workshop, High Energy Density Physics
+37, 100905 (2020).
+[73] A. Kononov, T. Hentschel, S. B. Hansen, and A. D. Baczewski, Trajectory sampling and finite-size effects in first-principles
+stopping power calculations, arXiv:2307.03213 (2023).
+[74] A. A. Correa, Calculating electronic stopping power in materials from first principles, Computational Materials Science
+150, 291 (2018).
+[75] R. Babbush, C. Gidney, D. Berry, N. Wiebe, J. McClean, A. Paler, A. Fowler, and H. Neven, Encoding Electronic Spectra
+in Quantum Circuits with Linear T Complexity, Physical Review X 8, 041015 (2018).
+[76] R. Babbush, N. Wiebe, J. McClean, J. McClain, H. Neven, and G. K.-L. Chan, Low-Depth Quantum Simulation of
+Materials, Physical Review X 8, 011044 (2018).
+[77] R. Babbush, D. W. Berry, J. R. McClean, and H. Neven, Quantum Simulation of Chemistry with Sublinear Scaling in
+Basis Size, npj Quantum Information 5, 92 (2019).
+[78] A. V. Ivanov, C. S¨ underhauf, N. Holzmann, T. Ellaby, R. N. Kerber, G. Jones, and J. Camps, Quantum computation for
+periodic solids in second quantization, Physical Review Research 5, 013200 (2023).
+[79] J. Pruneda, D. S´ anchez-Portal, A. Arnau, J. Juaristi, and E. Artacho, Electronic stopping power in LiF from first
+principles, Physical Review Letters 99, 235501 (2007).
+[80] M. A. Zeb, J. Kohanoff, D. S´ anchez-Portal, A. Arnau, J. Juaristi, and E. Artacho, Electronic stopping power in gold:
+The role of d electrons and the H/He anomaly, Physical Review Letters 108, 225504 (2012).
+[81] I. Maliyov, J.-P. Crocombette, and F. Bruneval, Quantitative electronic stopping power from localized basis set, Physical
+Review B 101, 035136 (2020).
+[82] R. Kothari and R. O’Donnell, Mean estimation when you have the source code; or, quantum Monte Carlo methods, in
+Proceedings of the 2023 Annual ACM-SIAM Symposium on Discrete Algorithms (SODA) (SIAM, 2023) pp. 1186–1215.
+[83] R. Assaraf and M. Caffarel, Computing forces with quantum monte carlo, The Journal of Chemical Physics 113, 4028
+(2000).
+[84] S. Chiesa, D. Ceperley, and S. Zhang, Accurate, efficient, and simple forces computed with quantum monte carlo methods,
+Physical Review Letters 94, 036404 (2005).
+[85] Y. Su, D. W. Berry, N. Wiebe, N. Rubin, and R. Babbush, Fault-tolerant quantum simulations of chemistry in first
+quantization, PRX Quantum 2, 040332 (2021).
+[86] W. Kohn and L. J. Sham, Self-consistent equations including exchange and correlation effects, Physical Review 140,
+A1133 (1965).
+[87] N. D. Mermin, Thermal properties of the inhomogeneous electron gas, Physical Review 137, A1441 (1965).
+[88] R. Babbush, W. J. Huggins, D. W. Berry, S. F. Ung, A. Zhao, D. R. Reichman, H. Neven, A. D. Baczewski, and
+J. Lee, Quantum simulation of exact electron dynamics can be more efficient than classical mean-field methods, Nature
+Communications 14, 4058 (2023).
+[89] B. Militzer, Path integral Monte Carlo and density functional molecular dynamics simulations of hot, dense helium,
+Physical Review B 79, 155105 (2009).
+[90] K. P. Driver and B. Militzer, All-electron path integral Monte Carlo simulations of warm dense matter: Application to
+water and carbon plasmas, Physical Review Letters 108, 115502 (2012).
+[91] B. Militzer, F. Gonz´ alez-Cataldo, S. Zhang, K. P. Driver, and F. Soubiran, First-principles equation of state database for
+warm dense matter computation, Physical Review E 103, 013203 (2021).
+[92] A. Baldereschi, Mean-value point in the Brillouin zone, Physical Review B 7, 5212 (1973).
+[93] M. Bagherimehrab, Y. R. Sanders, D. W. Berry, G. K. Brennen, and B. C. Sanders, Nearly optimal quantum algorithm
+for generating the ground state of a free quantum field theory, PRX Quantum 3, 020364 (2022).
+[94] G. Kresse and J. Furthm¨ uller, Efficient iterative schemes for ab initio total-energy calculations using a plane-wave basis
+set, Physical Review B 54, 11169 (1996).
+[95] G. Kresse and J. Furthm¨ uller, Efficiency of ab-initio total energy calculations for metals and semiconductors using a
+plane-wave basis set, Comp. Mater. Sci. 6, 15 (1996).
+[96] G. Kresse and D. Joubert, From ultrasoft pseudopotentials to the projector augmented-wave method, Physical Review B
+59, 1758 (1999).
+[97] A. D. Baczewski, L. Shulenburger, M. Desjarlais, S. Hansen, and R. Magyar, X-ray thomson scattering in warm dense
+matter without the Chihara decomposition, Physical Review Letters 116, 115004 (2016).
+[98] G. H. Low and I. L. Chuang, Optimal Hamiltonian simulation by quantum signal processing, Physical Review Letters
+118, 010501 (2017).
+[99] G. H. Low and I. L. Chuang, Hamiltonian Simulation by Qubitization, Quantum 3, 163 (2019).
+[100] R. Babbush, D. W. Berry, and H. Neven, Quantum simulation of the Sachdev-Ye-Kitaev model by asymmetric qubitiza-
+tion, Physical Review A 99, 040301 (2019).
+[101] G. H. Low and N. Wiebe, Hamiltonian Simulation in the Interaction Picture, arXiv:1805.00675 (2018).
+[102] N. C. Jones, J. D. Whitfield, P. L. McMahon, M.-H. Yung, R. V. Meter, A. Aspuru-Guzik, and Y. Yamamoto, Faster
+quantum chemistry simulation on fault-tolerant quantum computers, New Journal of Physics 14, 115023 (2012).
+[103] Y. R. Sanders, D. W. Berry, P. C. S. Costa, L. W. Tessler, N. Wiebe, C. Gidney, H. Neven, and R. Babbush, Compilation
+of Fault-Tolerant Quantum Heuristics for Combinatorial Optimization, PRX Quantum 1, 020312 (2020).
+[104] G. H. Low, Y. Su, Y. Tong, and M. C. Tran, On the complexity of implementing Trotter steps, arXiv:2211.09133 (2022).
+
+=== PDF PAGE 27 ===
+27
+[105] N. C. Rubin, K. Gunst, A. White, L. Freitag, K. Throssell, G. K.-L. Chan, R. Babbush, and T. Shiozaki, The fermionic
+quantum emulator, Quantum 5, 568 (2021).
+[106] T. Khattar, M. P. Harrigan, F. D. Malone, N. Yosri, N. C. Rubin, and C. Developers, Cirq-FT:
+Cirq for Fault-Tolerant Quantum Algorithms (2023), See full list of authors on Github: https://github
+.com/quantumlib/Cirq/graphs/contributors.
+[107] M. E. S. Morales, P. Costa, D. K. Burgarth, Y. R. Sanders, and D. W. Berry, Greatly improved higher-order product
+formulae for quantum simulation, arXiv:2210.15817 (2022).
+[108] H. Yoshida, Construction of higher order symplectic integrators, Physics Letters A 150, 262 (1990).
+
+=== PDF PAGE 28 ===
+28
+Supplementary Information:
+Quantum computation of stopping power for inertial fusion target design
+The supplementary information includes the following.
+• Appendix A accounts for implementation details related to using a larger plane-wave basis set for the projectile
+nucleus than the target electrons.
+• Appendix B provides constant factor resource estimates for measuring the projectile kinetic energy with the
+algorithm in Ref. [82].
+• Appendix C provides details on the 8 th-order product formula used in this work.
+• Appendix D provides numerical justification for the various size of sampling errors for stopping power estimates.
+Appendix A: Accounting for a larger number of plane waves for the nucleus
+We allow a different (larger) set of momenta for the projectile than for the electron. The complete Hamiltonian is
+therefore slightly modified from that in [1] to
+H = Telec + Tproj + Uelec + Uproj + Velec + Velec−proj (A1)
+Telec =
+ηX
+i=1
+X
+p∈G
+∥kp∥2
+2 |p⟩⟨p|i (A2)
+Tproj =
+X
+p∈ ˜G
+∥kp − kproj∥2
+2 Mproj
+|p⟩⟨p|proj (A3)
+Uelec = − 4πΩ
+LX
+ℓ=1
+ηX
+i=1
+X
+p,q∈G
+p̸=q
+
+ζℓ
+eikq−p·Rℓ
+∥kq−p∥2
+
+|p⟩⟨q|i (A4)
+Uproj = 4πΩ
+LX
+ℓ=1
+X
+p,q∈ ˜G
+p̸=q
+
+ζℓζproj
+eikq−p·Rℓ
+∥kp−q∥2
+
+|p⟩⟨q|proj (A5)
+Velec = 2πΩ
+ηX
+i̸=j
+X
+p,q∈G
+X
+ν∈G0
+(p+ν)∈G
+(p−ν)∈G
+1
+∥kν∥2 |p + ν⟩⟨p|i|q − ν⟩⟨q|j (A6)
+Velec−proj = − 4πΩ
+ηX
+i=1
+X
+p∈G
+q∈ ˜G
+X
+ν∈G0
+(p+ν)∈G
+(q−ν)∈ ˜G
+ζproj
+∥kν∥2 |p + ν⟩⟨p|i|q − ν⟩⟨q|proj (A7)
+where the subscript proj is used to indicate quantities for the projectile nucleus treated quantum mechanically and ℓ
+indexes the nuclei treated within the BO approximation. The set ˜G is now the momenta for the projectile, Uproj is
+used for the potential energy between the single projectile treated quantum mechanically and the other nuclei, and
+Velec−proj is used for the potential energy between the projectile and the electrons.
+There will need to be a different preparation of a 1/∥ν∥ state for Uproj than for the other potential operators, because
+it will need differences over the full range of projectile momentum. For Vproj we need to check that (q − ν) ∈ ˜G, which
+means that the projectile momentum has not been shifted outside the range of its allowed values. The sum over ν
+here is still over G0, because that includes all allowable shifts of momenta for electrons. Furthermore, we still have the
+condition that ( p + ν) ∈ G for the electron momentum to not be shifted outside the allowable range. The projectile
+kinetic energy Tproj differs from that for electrons in that it has division by Mproj for the mass of the projectile (with
+units chosen such that the electron mass is 1), as well as the sum over ˜G. The terms Uproj and Vproj have factors for
+the charge of the projectile, ζproj.
+To improve the efficiency, we consider the case where the projectile momentum is centred around some offset. Then
+instead of ∥kp∥2, we would have ∥kp − kproj∥2. We need to add Pw∈{x,y,z}[(kwproj)2 − 2kwp kwproj] where the superscript
+
+=== PDF PAGE 29 ===
+29
+w is indicating the Euler direction. Since ( kxproj)2 is a classically chosen number, it just gives an undetectable global
+phase shift which can be ignored, and we just need −2kwp kwproj (the w-components of kp multiplied by a constant).
+This means that we are effectively adding an extra term to the Hamiltonian
+Tmean = −
+X
+w∈{x,y,z}
+X
+p∈ ˜G
+kwp kwproj
+Mproj
+|p⟩⟨p|proj . (A8)
+We will now analyse the complexity for the block encoding of this Hamiltonian. We will not analyse the interaction
+picture approach, which is likely to be more costly.
+1. V alue of λ
+First, we will define a new value corresponding to the sum of 1 /∥ν∥2 over the wider range as
+λprojν = X
+ν∈ ˜G0
+1
+∥ν∥2 . (A9)
+Here ˜G0 is the equivalent of G0, except for differences between elements of ˜G for the projectile momentum. The
+contributions to λ from Uelec and Uproj are
+λelecU = ηλζπΩ1/3 λν ,
+λprojU = ζprojλζπΩ1/3 λprojν , (A10)
+respectively. For Uproj, we need ν summed over ˜G0 for differences of projectile momentum. The contributions to λ
+from V and Vproj are
+λelecV = η(η − 1)2πΩ1/3 λν ,
+λprojV = ηζprojπΩ1/3 λν , (A11)
+respectively.
+The contribution to λ from the electron component of the kinetic energy is
+λT = 6ηπ 2Ω2/3 22(np−1). (A12)
+As discussed in [1], the reason why there is the square of 2np−1 rather than 2np−1 −1 is because there is a simplification
+in the state preparation for the registers selecting the bits of the momentum. The component of λ for the projectile,
+but ignoring the mean is
+λprojT = 6π2MprojΩ2/3 22(nn−1). (A13)
+The component of λ for the product of the offset and the mean will then be obtained from kmaxkwproj for component
+w, where the factor of 2 from squaring and the factor of 1 /2 for kinetic energy cancel. Because k = 2πp/Ω1/3, that
+gives
+2π Pw∈{x,y,z} |kwproj|
+MprojΩ1/3 2nn−1. (A14)
+Here we have accounted for the state preparation giving an effective 2 nn−1 rather than 2 nn−1 − 1. This will also be
+needed for implementing kwproj (because it will effectively correspond to all ones classically), so the cost will need to
+be adjusted by a factor of 2 nn−1/(2nn−1 − 1). That gives
+λmeanT = 2π Pw∈{x,y,z} |kwproj|MprojΩ1/3 22(nn−1)2(nn−1) − 1 . (A15)
+
+=== PDF PAGE 30 ===
+30
+Now consider the value of λ as given in Eq. (119) of [1], which is
+λ = max [λT + λU + λV , [λU + λV /(1 − 1/η)]/pν] . (A16)
+The reason for this equation is that, in the case where the inequality test i ̸= j fails, or the preparation of the 1 /∥ν∥
+state fails, one can simply apply the kinetic energy component of the Hamiltonian. In the case where that would
+yield a larger contribution to T than the actual size, that would imply you need to perform an AND with a qubit
+flagging T , and flag a result of 0 as ‘failure’ (removing that contribution to the block encoding). When considering
+the effective λ values with failures of state preparation, it is divided by the probability of success, so we would have
+[λU + λV /(1 − 1/η)]/pν. For further explanation see Ref. [1] or Appendix A 2 c. In the case where it would not yield
+a sufficient contribution to T , there would need to be application of T based on an OR with a qubit flagging T . That
+would imply that λT + λU + λV is the correct value of λ to use.
+In our case, the only contribution to the Hamiltonian where we would apply Telec (or Tproj or Tmean) if i = j is if
+we were otherwise applying Velec, which corresponds to λelecV . Then for the preparation of the 1 /∥ν∥ state, we have
+a distinct preparation for Uproj (corresponding to λprojU ) as for the other contributions to the potential energy. We
+would therefore have 1/(1 − 1/η) for λelecV alone, and 1/pν for most potential terms, except 1/pprojν for Uproj. Therefore
+the new expression for λ is
+λ = max
+h
+λelecT + λprojT + λmeanT + λelecU + λprojU + λelecV + λprojV , [λelecU + λelecV /(1 − 1/η) + λprojV ]/pν + λprojU /pν,proj
+i
+.
+(A17)
+This expression will be discussed in more detail below where we analyse the state preparation. In the case where
+amplitude amplification is used for the 1 /∥ν∥ state preparation, there will be a similar expression with pν and pν,proj
+replaced with the corresponding probabilities with the amplitude amplification.
+2. Preparation cost
+We now need to have a separate superposition over ν prepared for Uproj than for all other potential terms, and
+there will need to be a different preparation over the bits of T for the projectile and electron momenta. We will also
+need to adjust the preparation of the registers for selecting between the different terms in the Hamiltonian.
+a. Preparation of ν state
+First note that the most difficult part of the preparation is that we need different superpositions over ν depending
+on whether we have Uproj or any other part of the Hamiltonian. Referring to Eq. (77) of [1], the first step in the
+preparation via nested boxes is to prepare a state of the form
+1√
+2np+2
+np+1X
+µ=2
+√
+2µ |µ⟩ , (A18)
+where |µ⟩ is encoded in unary. In our case we will need the equivalent state except with np replaced with nn for
+the case of Uproj. Because the state is prepared by a sequence of controlled Hadamards, one can control between
+preparing the two states by making nn − np of the Hadamards also controlled by the qubit selecting Uproj. This just
+increases the cost of the controlled Hadamards by 1 each for an extra cost of nn − np Toffolis.
+The useful feature of this approach is that no further amendment to the preparation scheme is needed to make
+it controlled. The rest of the state preparation for ν can proceed exactly as before, with the only extra Toffoli cost
+being nn − np at the beginning for preparing the nested boxes state.
+To explain the controlled preparation scheme in more detail, the unary encoding is of the form
+1√
+2np+2
+np+1X
+µ=2
+√
+2µ |µ⟩ = 1√
+2np+2
+np+1X
+µ=2
+√
+2µ |0 · · ·0 1· · ·1| {z }
+µ
+⟩ . (A19)
+The unary basis state corresponding to µ = np + 1 corresponds to |1 · · ·1⟩. The start of the state preparation is to
+perform a Hadamard on the first qubit, then use that to control a Hadamard on the second qubit, and so forth. At
+the end we would perform a controlled Hadamard on the second-last qubit. This would give an equal superposition
+between µ = 2 and µ = 1, but because we do not allow µ <2, the case µ = 1 would be flagged as a failure. The
+
+=== PDF PAGE 31 ===
+31
+final qubit depicted here can be omitted, because it would always be 1 in this encoding. There will be np qubits, and
+np − 1 controlled Hadamards.
+In our case here, we would want to either prepare this state or
+1√
+2nn+2
+nn+1X
+µ=2
+√
+2µ |0 · · ·0 1· · ·1| {z }
+µ
+⟩ , (A20)
+where np has been replaced with nn. Because these states need to be represented on the same qubits, we would have
+nn − np leading zeros when preparing the first state. Therefore, for the first Hadamard on the first qubit, it would
+need to be controlled on the qubit selecting between the two states. Then for the next qubit, provided nn − np > 1,
+we would perform a doubly-controlled Hadamard. That is, the Hadamard on the second qubit would be controlled by
+the first qubit and the qubit selecting between the two states. This will be true for all following qubits that need to
+be zero for the np state. Making the Hadamard on the first of these qubits controlled, and the remaining Hadamards
+doubly controlled, gives an extra Toffoli complexity of nn − np.
+For the first qubit that is non-zero for the np state, we would need to perform a Hadmard for that state, or a
+controlled Hadmard for the nn state. This selection does not require any further non-Clifford gates. One can simply
+use the qubit selecting the np state as the control for a CNOT on the preceding qubit. That ensures it is 1 for the np
+state. Then perform the controlled Hadamard as before. For the nn case this is just part of the sequence of controlled
+Hadamards, but for np it is ensuring the Hadamard is performed on the qubit. Then just perform another CNOT
+to erase the preceding qubit. Then the sequence of controlled Hadamards can proceed in the same way as when not
+preparing this state in a controlled way. By this procedure one can control between preparing the state with np or
+nn with an extra Toffoli cost of only nn − np.
+b. Preparation of momentum control qubits
+Next consider how to prepare superpositions over control qubits for the bits of the momentum. This preparation
+will need to be controlled by a qubit selecting between the electron and projectile momentum. The preparation is
+described in Eqs. (67) to (69) of [1], and again it proceeds by a sequence of Hadamard gates, except this time it needs
+to be done twice for two states (giving r and s). We can make this controlled in exactly the same way as for the
+preparation of ν. The only difference is that this time there are two states, so the extra Toffoli cost is 2( nn − np).
+We will also need a preparation for a state selecting between the components of kproj for the product kwp kwproj. In
+practice, the direction of kproj does not need to be taken to be very precise, and we can just consider a rounded
+direction. We will therefore just use 8 bits for selecting between the components. The exact value chosen has very
+little effect on the overall cost. The method is to use an 8-qubit equal superposition state (prepared with Hadamards).
+There are then two inequality tests to prepare the qubits for selecting between x, y, z, which a total cost of 16 Toffolis.
+These can be inverted with Cliffords for the inverse state preparation provided the temporary qubits are retained.
+We will also need to use the qubit selecting the product of the mean momentum and offset to control a swap of
+these qubits and those that are used for selecting x, y, zfor the square of the momentum. That will cost another 4
+Toffolis, including 2 for the controlled swap and another 2 for the inversion.
+c. Preparation of state selecting term in Hamiltonian
+In practice we are applying the kinetic component of the Hamiltonian in the case of failure of state preparation for
+the potential terms. In particular, there are two scenarios, corresponding to whether the first or second expression
+in Eq. (A17) gives the maximum. When the first is larger, this implies that only applying the kinetic term in the
+case of state preparation failure will not give sufficient weight on that term. You need to apply the kinetic term if
+there is failure OR a qubit flagging the kinetic term is in the |1⟩ state. That can be computed with a Toffoli. In
+the case where the second expression in Eq. (A17) is larger, that means that applying the kinetic term in the case of
+preparation failure would give too large a weight on the kinetic term. Then one needs to apply the kinetic term if
+there is failure AND the qubit flagging the kinetic term is in the |1⟩ state. That logical AND is again something that
+can be computed with a single Toffoli.
+But, unlike in [1] there are three kinetic components to account for. This means that, in the case of failure of the
+state preparation we also need a register to select between the three kinetic components. To achieve this, we will
+
+=== PDF PAGE 32 ===
+32
+prepare a state of the form
+(√αU V|0⟩ + √αT |1⟩) qµelecT |0⟩ + qµprojT |1⟩ + pµmeanT |2⟩ qµelecU |0⟩ + qµprojU |1⟩ + qµelecV |2⟩ + qµprojV |3⟩ ,
+(A21)
+where the first qubit is used to select the kinetic component, the second register is to select between the different
+kinetic energy components, and the third register is used to select between the potential energy components.
+Now, in the case where the first expression in Eq. (A17) gives the maximum, we would perform an OR between
+the result of state preparation and the first qubit, and use the second register to select between the components of T .
+To describe this state preparation in a simplified way, we will describe it as a rotated qubit flagging success. It will,
+of course, be entangled with the prepared state, but we are ignoring that for the simplicity of the explanation here.
+The state can then be written as
+(√αU V|0⟩ + √αT |1⟩) qµelecT |0⟩ + qµprojT |1⟩ + pµmeanT |2⟩ qµelecU |0⟩ + qµprojV |3⟩ √pν |0⟩ + p1 − pν |1⟩
++
+q
+µprojU |1⟩  √pν,proj |0⟩ + p1 − pν,proj |1⟩ + qµelecV |2⟩ p(1 − 1/η)pν |0⟩ + p1 − (1 − 1/η)pν |1⟩ . (A22)
+This corresponds to a probability of pν for success with U or Vproj, since we only need to prepare the 1 /∥ν∥ state
+with np qubits. Then there is pν,proj for Uproj since there is preparation with nn qubits for the projectile. Lastly, for
+V there is (1 − 1/η)pν since we need preparation of the 1 /∥ν∥ state and i ̸= j in preparing the equal superposition
+state.
+To take account of the case where there is amplitude amplification performed for the state preparation for ν, there
+will be separate boosted probabilities pampν and pampν,proj for the electron and projectile parts. This is because the state
+preparation and amplitude amplification is performed entirely controlled by the register selecting between electron
+and projectile components. (A different expression would be obtained if there were amplitude amplification involving
+the selection between components as well.) We give the reasoning below using the expressions for the un-amplified
+probabilities, but exactly the same reasoning applies with the amplified probabilities.
+The overall squared amplitude for |0⟩ on the ancilla flag qubit is then
+µU V:= pν(µelecU + (1 − 1/η)µelecV + µprojV ) + pν,projµprojU . (A23)
+We would only apply a potential component of the Hamiltonian if we have |0⟩ on this qubit and |0⟩ on the first qubit,
+which has a squared amplitude αU V. Therefore the squared amplitude for performing the kinetic component of the
+Hamiltonian at all is 1 − αU VµU V. The squared amplitudes for applying the kinetic components will correspond to
+this factor times the squared amplitudes in the second register. So, for example, the squared amplitude for Telec is
+(1 − αU VµU V)µelecT .
+In the overall block encoding, the block encoding for the Hamiltonian gives H/λ, which is how λ is defined. Here
+we would have a squared amplitude for Telec, then block encode Telec with a factor of 1 /λelecT . This means that the
+factor of 1 /λ in the overall block encoding needs to be the same as (1 − αU VµU V)µelecT /λelecT . Solving for λelecT then
+gives
+λelecT = λ (1 − αU VµU V) µelecT . (A24)
+In exactly the same way, for the other kinetic components we obtain
+λprojT = λ (1 − αU VµU V) µprojT , λ meanT = λ (1 − αU VµU V) µmeanT . (A25)
+Then, for the potential components, we need to multiply the squared amplitude for that component in the third
+register by the squared amplitudes for |0⟩ on the first register and flag qubit. For example, for Uelec we have
+λelecU = λ αU VpνµelecU , (A26)
+where the factor of λ arises from exactly the same reasoning as for the kinetic components. Similarly, for the other
+potential components we have
+λprojU = λ αU Vpν,projµprojU , λ elecV = λ αU Vpν(1 − 1/η)µelecV , λ projV = λ αU VpνµprojV . (A27)
+Next, note that when we sumλelecT , λelecU , λelecV , λprojT , λprojU , λprojV , λmeanT , we just get λ. That is what is expected, because
+there is no case here where no component of the Hamiltonian is implemented. This means that the individual λ values
+
+=== PDF PAGE 33 ===
+33
+should correspond to sums of weights in linear combinations of unitaries for the components of the Hamiltonian, with
+their sum corresponding to the sum of weights for the complete Hamiltonian. This is also consistent with the first
+expression in Eq. (A17).
+Let us prepare the registers using inequality tests using numbers of qubits nV T, nT , and nU V, for the respective
+registers. There will then need to be six inequality tests for the preparation. First, the possible error in αT or αU V
+will be λ/2nV T+1. The total contribution to the error in λelecT , λprojT , λmeanT will come from the sum of that in the
+expressions for those three quantities. The contribution to the error should be no more than
+λ
+2nV T+1 µU V. (A28)
+We get this exact same expression if we sum the possible contributions to the error from λelecU , λprojU , λV , λprojV . We
+therefore find that the contribution to the error from this source (preparation of the first qubit) is no larger than
+λ
+2nV TµU V≤ λ2nV T . (A29)
+Next, consider the contribution to the error from the imprecision in the inequality tests for the second register.
+The error in µelecT , µprojT , µmeanT can be 1 /2nT +1 for two, and 1 /2nT for the third, for a total of 2 /2nT . This error is
+multiplied by λ(1 − αU VµU V), to give
+2λ
+2nT (1 − αU VµU V) . (A30)
+Then, the contributions to the error from the inequality tests for the third register are 1 /2nU V+1 for two, and 1/2nU V
+for two. The total contribution to the error will then be smaller than
+λ
+2nU VαU VµU V. (A31)
+Now, if we take nU V= nT − 1, then the total of the error from the two sources (preparation of the second and third
+registers) is upper bounded by
+2λ
+2nT . (A32)
+If we take nV T= nT , then the total error from the three sources is upper bounded as
+3λ
+2nT . (A33)
+The other case is that when the second expression in Eq. (A17) gives the maximum. That corresponds to the
+failure cases of the state preparation giving a weighting that is too large for T , so an AND is performed with the qubit
+flagging T to reduce the weight to the correct value. In that case, the same three-register state is used, and the result
+of the state preparation success flag state is the same. But, we apply kinetic components only if there is a failure
+of the state preparation (which happens with squared amplitude 1 − µU V, and there is |1⟩ on the first qubit, with
+squared amplitude αT . By exactly the same reasoning as before, we obtain the individual λ-values as the squared
+amplitudes multiplied by λ. That gives the kinetic λ-values as
+λelecT = λ αT (1 − µU V) µelecT , λ projT = λ αT (1 − µU V) µprojT , λ meanT = λ αT (1 − µU V) µmeanT . (A34)
+For the potential energy components, we apply them whenever there is success of the state preparation, regardless of
+the state of the first qubit. This means that the λ-values are
+λelecU = λ pνµelecU , λ projU = λ pν,projµprojU , λ elecV = λ pν(1 − 1/η)µelecV , λ projV = λ pνµprojV . (A35)
+It is then easy to check that
+[λelecU + λelecV /(1 − 1/η) + λprojV ]/pν + λprojU /pν,proj = λ , (A36)
+so the second expression in Eq. (A17) gives λ as expected. Note that this is the expression without amplitude
+amplification for ν. When amplitude amplification is used the probabilities pν and pν,proj are replaced with the
+amplified probabilities pampν and pampν,proj.
+
+=== PDF PAGE 34 ===
+34
+The error in αT will only affect λelecT , λprojT , λmeanT , because the implementation of the potential energy components
+is independent of the first qubit. Given that the error in αT is upper bounded as 1 /2nV T+1, the contribution to the
+error in the three kinetic terms is upper bounded as
+λ
+2nV T+1 (1 − µU V) . (A37)
+Next consider the contribution to the error from the preparation of the second register. The total error in
+µelecT , µprojT , µmeanT can be upper bounded as 2 /2nT , to give an upper bound on the contribution to the error in
+λelecT , λprojT , λmeanT as
+2λ
+2nT αT (1 − µU V) . (A38)
+The contributions to the error from the inequality tests for the third register will then be
+λ
+2nU V[pν(µelecU + (1 − 1/η)µelecV + µprojV ) + pν,projµprojU ] = λ2nU VµU V. (A39)
+The only difference from the first case (using an AND) is that we have removed the factor of αU V. That is because
+the potential energy component does not depend on the first qubit. Provided we take nU V= nV T+ 1, adding this to
+the contribution to the error from αT gives
+λ
+2nU V. (A40)
+If we take nU V= nT , then the total error from the three sources (preparation on the three registers) is again upper
+bounded as
+3λ
+2nT . (A41)
+When performing the inequality tests for the state preparation on each register, we naturally obtain a result encoded
+in unary. This is we will have one alternative where none of the inequalities are satisfied, giving 000, another with
+one satisfied to give 001, another with two satisfied giving 011, and so forth. The encoding of the registers in unary
+is convenient because we have separate qubits flagging each of the component of the Hamiltonian (after converting to
+one-hot unary).
+In our implementation we will need a qubit selecting between electron and projectile components (so, for example,
+between Velec and Vproj). It is trivial to prepare such qubits separately for the kinetic and potential registers without
+Toffolis. But, we will also need to select between these qubits based on a qubit we prepare (discussed further below)
+selecting between the kinetic and potential components. That can be performed via a single controlled swap, with
+another controlled swap in the inverse preparation for a total of two Toffolis.
+3. Selection cost
+For the storage of the state, a larger number of qubits 3 nn are used for the projectile, but the electron momenta
+are stored in the same way as in [1]. The projectile state is stored in a given location, with the antisymmetrization
+only for the electron registers. Then, when we are performing the controlled swap of the momentum register to an
+ancilla, there will be two, one controlled by i and the other by j. For the second we only swap electron momenta
+into the ancilla, so the procedure is identical to that in [1]. For the first, we also control on a qubit for selecting the
+projectile momentum, and the ancilla will include extra qubits to allow for storage of the projectile momentum. The
+controlled swaps can just be performed as before, except in the case that the qubit flagging the momentum component
+is set we swap the nn qubits for the projectile momentum. We are performing operations on the ancilla register in
+superposition (over the registers selecting the electron register or projectile register). The qubits in this ancilla will
+all be zeroed, so when we swap in an electron momentum the extra qubits that would be used in the case of the
+projectile momentum are all zero. This means it is possible to perform most operations on the momentum register in
+common between projectile and electron momenta.
+Next we consider the cost. In our implementation, we use i, jto index electron registers, with an extra qubit to
+select between electron and projectile components. We will perform the controlled swaps of the projectile momentum
+into only one of the temporary registers. This means the cost of the controlled swaps is 2(η −2) for the unary iteration
+
+=== PDF PAGE 35 ===
+35
+for the electron registers, then 2[( η + 1)− 2] for iteration over the electron and projectile registers. That gives a total
+of 4η − 6. Then cost of the controlled swaps themselves is
+12ηnp + 6nn. (A42)
+This is just an extra cost of 6 nn for the projectile momentum, for two controlled swaps on 3 nn qubits. That gives a
+cost
+12ηnp + 6nn + 4η − 6. (A43)
+The other main change to the select operations is that the operations need to be on nn qubits rather than np. This
+will impact the selection cost of the components of the Hamiltonian in different ways, detailed in the next subsection.
+There also needs to be selection between the square of the momentum and the product of the momentum with the
+momentum offset for the kinetic energy.
+To see how to modify the procedure to perform this selection, recall how the kinetic energy is computed as in
+Eq. (65) of [1]. There the kinetic energy is written as
+T = 2π2
+Ω2/3
+ηX
+j=1
+X
+p∈G
+X
+w∈{x,y,z}
+np−2X
+r=0
+np−2X
+s=0
+2r+spw,rpw,s |p⟩⟨p|j . (A44)
+Here the two bits pw,rpw,s correspond to products of bits in a component of p in order to obtain the square. The
+method is very simply modified to obtain the product of the form kxp kxmean, simply by selecting w as x, and replacing
+bit px,s with the corresponding bit for kxmean. The way we encode kxmean is that it is represented by all bits equal to
+1, with its actual value (the multiplying factor times that integer) being governed by the state preparation.
+In particular, we need to modify step 4 in the list of steps in the left column of page 17 of [1]. This step involves
+performing a Toffoli controlled by the qubits storing pw,r and pw,s. Here we would make the NOT controlled on
+pw,r ∧ (pw,s ∨ b), for b the flag for the Tmean component of the Hamiltonian.
+There is also the selection of the component of the momentum depending on whether we want the square or product
+with the mean. As explained above, there is a cost of 4 Toffolis. The register to select the x, y, zcomponent can be
+given in binary or unary, since we can convert between binary and unary with Cliffords for three. We can therefore
+assume that the w registers for the square and product are given using 2 qubits each (for binary). The qubit selecting
+Tmean can be used to control a swap between these two registers, with a cost of 2 Toffolis, then there are another 2
+Toffolis to invert the swap for the inverse state preparation.
+There is no extra non-Clifford cost for the minus sign in Tmean, because it is just a (Clifford) controlled phase gate.
+We may also perform controlled phase gates to apply signs of the components of kmean with no extra Toffoli cost.
+The condition that ( p + ν) ∈ G versus (q − ν) ∈ ˜G needs no modification. The operation p + ν is for an electron
+momentum, so (p + ν) /∈ G the extra nn − np qubits will not be all zero. Then those qubits are not swapped back into
+the momentum register in the controlled swap, so nonzero qubits are remaining to flag a ‘fail’ and remove that part
+in the block encoding. Similarly, if ( q − ν) /∈ ˜G for the projectile momentum, then there will be an extra ancilla qubit
+flagging ‘fail’ resulting from the subtraction. There will be no need to treat these registers differently apart from the
+controlled swaps addressed above.
+Appendix B: Constant factor estimates for projectile kinetic energy measurement using the Knockout
+algorithm
+For a fixed standard error ϵ, Monte Carlo sampling provides the optimal bound on the number of samples needed to
+estimate the expected value of an observable. This standard sampling limit states the number of samples to estimate
+the observable to ϵ precision goes as O(σ2/ϵ2) where σ2 is the variance of the observable. Recently, a quantum
+algorithm was developed by Kothari and O’Donnell (KO) [82] that allows one to estimate the expected value of an
+observable to ϵ precision with the number of samples going as O(σ2/ϵ); a quadratic improvement over the standard
+limit. The main protocol in this algorithm is the use of phase estimation on a unitary that is the composition of a
+reflection around the prepared state–called the synthesizer–and a phasing operation that phases basis states according
+the value the random variable takes on those basis states. This protocol allows one to solve a decision problem that
+identifies if the expected value, encoded as the eigenvalue of the unitary, is to the left or right of a gapped range,
+thereby knocking out part of the possible range (Theorem 1.3 in Ref. [82]). Using additional classical reductions
+allows one to boost this decision problem to the mean estimation problem (Theorem 1.1 in Ref. [82]). In this section
+we describe a rough estimate of the constant factors associated with performing the KO algorithm to estimate the
+
+=== PDF PAGE 36 ===
+36
+kinetic energy of the projectile. We do not detail all classical reductions necessary for the task but instead focus
+on the primary decision problem to obtain an estimate of when ϵ is small enough such that the KO algorithm has
+a computational advantage over Monte Carlo sampling. The unitary that needs to be phase estimated in the KO
+algorithm is the composition of a reflection analogous to the Grover diffusion operator REFL and a phase oracle
+ROTy
+U = REFL · ROTy. (B1)
+Given a circuit that prepares the desired probability distribution
+P |0⟩ =
+X
+ℓ
+p
+p(ℓ)|ℓ⟩ (B2)
+the reflection is defined as
+REFL = P (2|0⟩⟨0| −I) P † (B3)
+and the ROT y is
+ROTy|ℓ⟩ = eiαℓ |ℓ⟩ (B4)
+where αℓ = −2arctan(yℓ) and yℓ is the value of the random variable for the event indexed by ℓ. In order to perform
+phase estimation on the KO algorithm U we need controlled forms of REFL and ROT y along with controlled forms
+of their inverses. For a non-abridged version of the algorithm and details surrounding allowed ancilla registers see
+Section 3 of Ref. [82].
+For the synthesizer ( P ) in REFL we use the time-evolution operator. Therefore, building the reflection operator
+requires two calls to the state previously described state preparation circuit. For the ROT y operator we first encode
+the kinetic energy of the projectile into an ancilla register through a series of multiplications and additions on the
+ancilla and the projectile register. Second, we calculate the arctan on this register which is linear complexity in the
+ancilla register size. Finally, controlled phase gates are used to accomplish the correct action defined by the ROT y
+unitary. The remaining task to get order of magnitude estimates of the quantum resources required for the KO
+algorithm is to derive a circuit for writing the random variable value to the ancilla register used to compute αℓ.
+Recall that the kinetic energy operator on the projectile
+T =
+X
+p∈ ˜G
+∥kp − kproj∥2
+2Mproj
+|p⟩⟨p| (B5)
+where ∥kp − kproj∥2 = Pw∈{x,y,z}  (kwp )2 + (kwmean)2 − 2kwp kwproj where Pw∈{x,y,z}(kwproj)2 is a constant term which
+we will add with an addition circuit. We can rewrite the coefficients as
+∥kp − kproj∥2
+2Mproj
+= 12Mproj
+ 2π
+Ω1/3
+2  
+pT p − 2pT pproj + pTprojpproj (B6)
+where p = (px, py, pz). nmean is the number of bits needed to represent the central momentum of the projectile where
+nmean > nproj. If we ignore the constant involving the mass and the volume element we are left with a series of integer
+products and summations. The Toffoli cost of each of the three terms can be derived from protocols described in the
+Appendix of Ref. [1] and are as follows:
+1. The pT p term involves three nproj registers as thus has 3 n2proj − nproj − 1 Toffoli complexity.
+2. The pT pproj involves the sum-product of three integer pairs of sizes ( nproj, nmean). The products each take
+2nmeannproj − nmean and the three sums involved cost 3 n2mean − nmean − 1.
+3. The final addition requires pTmeanpproj stored in 2nmean − 1 bits to be added to the results from steps 1 and 2. if
+we pad out the results from 1 and 2 up to 2 nmean − 1 = nf then we need 3n2f − nf − 1 Toffolis for this operation.
+4. We leave off the constant to be included in multiplying the variance for the mean-estimation algorithm. In the
+last step we must subtract an estimate of µ0 = ⟨pT p − 2pT pproj + pTprojpproj⟩ which we know from classical data.
+This additional step can be included with the previous step by modifying the subtracted value of pTprojpproj to
+pTprojpproj − µ0.
+Thus the total Toffoli complexity of performing the integer encoding step is
+Cencoding = 3n2proj − nproj − 1 + 3(2nmeannproj − nmean) + 3n2mean − nmean − 1 + 3n2f − nf − 1 (B7)
+These costs combined with the costs associated with two calls to the synthesizer, reflection, and computing the arctan
+are combined to produce a total Toffoli complexity.
+
+=== PDF PAGE 37 ===
+37
+Appendix C: Bespoke 8th-order product formula
+The 8 th-order formula we use was numerically determined by solving equations as described in Reference [108].
+We solved for over 100,000 product formulae, and selected the one with the smallest constant factor via testing
+with random Hamiltonians of matrix dimension 6 × 6. Further refinement was performed by minimising the Taylor
+expansion up to 9 th-order (so including the error term) and then solving for the 8 th-order formula. The method for
+performing the Taylor expansion is described in Reference [107]. The symmetric product formula has the form
+Sprod = S2(w10t)S2(w9t)....S2(w2t)S2(w1t)S2(w0t)S2(w1t)S2(w2t)....S2(w9t)S2(w10t) (C1)
+with w0 = 1 − 2 P10i=1 wi and S2(t) = e−itH0/2e−itH1 e−itH0/2 for two non-commuting Hamiltonians H0 and H1. The
+following formula was numerically determined
+w = [5.935806040085031 × 10−1,
+−4.691601234700394 × 10−1,
+2.743566425898439 × 10−1,
+1.719387948465702 × 10−1,
+2.343987448254160 × 10−1,
+−4.861642448032533 × 10−1,
+4.961736738811380 × 10−1,
+−3.266021894843879 × 10−1,
+2.327167934936900 × 10−1,
+9.824955741471075 × 10−2]
+and is the bespoke 8 th-order formula we use in this work.
+Appendix D: Precision requirements for stopping power
+In Fig. 9 we compare the precision in the kinetic energy of the projectile to the resultant precision in the stopping
+power. We find that for a precision of 0.1 eV/ ˚A in the stopping power we require a precision in the kinetic energy
+of approximately 0.02 Ha at the highest velocity which corresponds to approximately 10 4 samples. If the precision is
+lowered to 0.1 eV / ˚A this sampling overhead drops to around O(102).
+10 1
+ 100 101
+T (Ha)
+10 3
+10 2
+10 1
+S (Ha / Bohr)
+vproj = 0.5
+vproj = 1.5
+vproj = 2.5
+vproj = 3.5
+vproj = 4.5
+101 102 103 104
+Ns
+10 1
+100
+101
+T (Ha)
+vproj = 0.5
+vproj = 1.5
+vproj = 2.5
+vproj = 3.5
+vproj = 4.5
+Figure 9. (left) Dependence of precision in the stopping power ϵS estimate on the precision in the individual kinetic energy
+data points ϵT for different values of the projectiles initial velocity ( vproj). We extracted the stopping power using 10 equally
+spaced points and chose σk = 4. Dashed lines represent a desired target precision of 0 .1 and 0.05 eV/ ˚A. (right) Mean precision
+in the kinetic energy as a function of the number of samples Ns. Dashed lines correspond to the values of ϵT which yield the
+desired ϵS in the right hand panel.

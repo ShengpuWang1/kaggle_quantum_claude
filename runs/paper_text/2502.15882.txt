@@ -1,0 +1,2919 @@
+=== PDF PAGE 1 ===
+Fast quantum simulation of electronic structure by spectrum amplification
+Guang Hao Low, 1, ∗ Robbie King, 1, 2 Dominic W. Berry, 3 Qiushi Han, 4 A. Eugene DePrince
+III,1, 5 Alec White, 6 Ryan Babbush, 1 Rolando D. Somma, 1 and Nicholas C. Rubin 1, †
+1Google Quantum AI, Venice, CA 90291, United States
+2Department of Computing and Mathematical Sciences, Caltech, CA 91125, United States
+3School of Mathematical and Physical Sciences, Macquarie University, Sydney, NSW 2109, Australia
+4Department of Computer Science, University of Illinios at Urbana-Champaign, Urbana, IL 61801, United States
+5Department of Chemistry and Biochemistry, Florida State University, Tallahassee, FL, United States
+6Quantum Simulation Technologies Inc., Boston, MA, USA
+The most advanced techniques using fault-tolerant quantum computers to estimate the ground-
+state energy of a chemical Hamiltonian involve compression of the Coulomb operator through tensor
+factorizations, enabling efficient block-encodings of the Hamiltonian. A natural challenge of these
+methods is the degree to which block-encoding costs can be reduced. We address this challenge
+through the technique of spectrum amplification, which magnifies the spectrum of the low-energy
+states of Hamiltonians that can be expressed as sums of squares. Spectrum amplification enables
+estimating ground-state energies with significantly improved cost scaling in the block encoding nor-
+malization factor Λ to just
+p
+2ΛEgap, where Egap ≪ Λ is the lowest energy of the sum-of-squares
+Hamiltonian. To achieve this, we show that sum-of-squares representations of the electronic struc-
+ture Hamiltonian are efficiently computable by a family of classical simulation techniques that
+approximate the ground-state energy from below. In order to further optimize, we also develop a
+novel factorization that provides a trade-off between the two leading Coulomb integral factoriza-
+tion schemes– namely, double factorization and tensor hypercontraction– that when combined with
+spectrum amplification yields a factor of 4 to 195 speedup over the state of the art in ground-state
+energy estimation for models of Iron-Sulfur complexes and a CO 2-fixation catalyst.
+I. INTRODUCTION
+High-accuracy simulation of the electronic structure of molecules and materials is one of the primary motivations
+for building a quantum computer. This motivation originates from the difficulty of robustly simulating electrons
+with classical techniques at low enough cost, to accommodate large systems necessary for quantitative prediction of
+chemical phenomena such as reaction chemistry, molecular spectra, and ground-state bonding information. The phase
+estimation algorithm (PEA) [1], implemented on a fault-tolerant quantum computer, provides one such route towards
+quantitative electronic structure simulation at polynomial cost in the system size [2, 3]. The asymptotic algorithmic
+advantage of the PEA led to a large body of work examining the constant factors associated with ground-state energy
+estimation. While initial quantum resource estimates were exceedingly high [4], the focus on optimizing quantum
+algorithms has resulted in drastic reductions. As a representative example, over the past six years, the quantum
+resources (gate complexity) required for PEA of the Iron-Molybdenum co-factor FeMoco have steadily improved by
+factors of 2–4 with each algorithmic innovation [5–9], resulting in a seven orders of magnitude reduction in resources.
+These reductions enable efficient ground-state energy estimation of classically intractable systems that are predicted to
+run on future, fault-tolerant quantum computers faster than lower-accuracy classical methods [10, 11]. Computational
+prediction of chemistry usually requires many calculations and thus even further reductions will be required to enable
+routine large-scale simulation [12]. Herein, we introduce a new algorithmic strategy and take the first steps towards
+an optimized implementation, resulting in a substantial reduction over prior art.
+At the core of recent algorithmic improvements in second quantized electronic structure simulation is the exploita-
+tion of tensor decompositions of the Coulomb operator yielding an efficient linear combination of unitaries (LCU)
+representation. Using the LCU representation, a unitary (a quantum walk operator) implementing a function of the
+Hamiltonian can be efficiently constructed and used by the PEA [13–15]. Ultimately, the quantum cost of performing
+phase estimation on a walk operator constructed using the LCU representation scales linearly in the normalization
+constant associated with a ‘block-encoding’ of the Hamiltonian [16, 17]. For electronic structure simulation, the
+normalization constant is intimately related to the degree of compression of the two-electron integral operator when
+constructing the LCU. The two primary strategies for compressing the large two-electron integrals using tensor fac-
+torizations are Double-Factorization (DF) [9] and Tensor-HyperContraction (THC) [7], each providing normalization
+∗ guanghaolow@google.com; Equal contribution
+† nickrubin@google.com; Equal contribution
+arXiv:2502.15882v1  [quant-ph]  21 Feb 2025
+
+=== PDF PAGE 2 ===
+2
+constants that scale as low-order polynomials of system size. The freedom of the LCU representation and symmetries
+of chemical Hamiltonians allow for modification of the Hamiltonian and the LCU normalization constant, by adding
+operators that annihilate any state with the desired symmetries. This strategy, called the block-invariant symmetry
+shift (BLISS), was recently demonstrated to reduce LCU normalizations by a factor of 2 when using particle num-
+ber symmetry shifts [18, 19]. Bounds identifying the limits of symmetry shifting also suggest that current integral
+factorizations combined with symmetry shifting are within a factor of 4 of the optimal LCU normalization [8, 20].
+Therefore, finding the algorithmic improvements necessary to make quantum chemistry calculations routine will not
+be possible solely through more sophisticated tensor factorizations.
+To address the stagnating returns of symmetry-shifting and compression, we show that further quantum speedups
+are achievable by the quantum algorithmic idea of ‘spectrum amplification’ (SA). Fundamentally, SA allows one to
+relax the precision requirements in certain estimates, potentially resulting in significantly improved resource counts.
+The concept was initially introduced to achieve a quadratic quantum speedup within the context of adiabatic quantum
+computation [21], and was more recently used to obtain improved quantum algorithms for simulating dynamics of
+low-energy states [22, 23]. SA first produces a ‘square root’ of the Hamiltonian, so that the low-energy spectrum is
+amplified (i.e., √x ≫ x for x ≪ 1). A precise estimate of a small eigenvalue of the original Hamiltonian can then
+be obtained by squaring a coarser estimate of an eigenvalue of its square root. The latter problem is expected to
+be solved more efficiently using the PEA [24]; however, to obtain a net gain, we must ensure that simulating the
+Hamiltonian square root is not considerably more difficult than simulating the original Hamiltonian. Otherwise, the
+improvements due to requiring less precision in the estimate could be negated by the overhead due to simulating the
+square root.
+To this end, we note that SA is directly applicable to Hamiltonians represented as a sum-of-squares (SOS):
+H =
+X
+α
+O†αOα + ESOS = H †sqrtHsqrt + ESOS , (1)
+where ESOS is an energy shift ensuring that ( H − ESOS) is positive semidefinite. The matrix representations of
+operators Oα are not necessarily square and we can define Hsqrt := Pα |χα⟩ ⊗Oα for any orthogonal set of states
+|χα⟩1. SA focuses then on simulating Hsqrt rather than H. To quantify the potential improvement due to SA, we
+can consider a dimensionless parameter ∆ gap := (Egs − ESOS)/λ2sqrt, where Egs ≥ ESOS is the ground-state energy
+of H, and λsqrt is a normalization factor that will appear in the process that block-encodes Hsqrt [22]. Ideally, we
+would like to satisfy ∆ gap ≪ 1, in which case
+p
+∆gap ≫ ∆gap, allowing us to achieve a large amplification of the
+low-energy spectrum and exploit the power of SA. However, this is not always easy to obtain; SOS representations for
+Hamiltonians of practical relevance with this property might not be efficiently computed [21, 23]. And, even in cases
+where Hsqrt can beefficiently computed, we need to ensure that it can besimulated efficiently, which is not obvious
+using known block-encoding techniques. In this work we are able to address these difficulties with three results.
+First, we introduce practical quantum algorithms for spectrum amplification of the SOS representation. As Hsqrt
+has singular values
+p
+∆gapλsqrt =
+p
+Egs − ESOS, an asymptotic improvement in ground-state energy estimation can
+already be obtained by singular value estimation of Hsqrt [24, 25]. However, current methods for block-encoding
+matrix square-roots [23, 26] and for singular value estimation have much larger constant factors than standard block-
+encoding and phase estimation techniques [14]. We resolve this by introducing rectangular block-encodings of Hsqrt
+that are conceptually simpler and cheaper than previous approaches based on Hermitian dilations [27]. A quantum
+walk unitary can then be defined on rectangular block-encodings with eigenphases arccos(
+p
+∆gap) [25]. A subtlety
+arises from this kind of quantum walk as it maps right singular values to left singular values and vice-versa, which
+complicates a naive application of standard phase estimation techniques [14]. Nevertheless, we prove that two quantum
+walk steps restores the use of standard phase estimation techniques whilst maintaining the SA advantage.
+Second, we elucidate how to express a second quantized representation of H as an SOS Hamiltonian and compute
+an optimal ∆gap. The protocol for achieving the equality of Eq. (1) is related to SOS relaxations of non-commutative
+polynomial optimization problems which have been extensively used in the quantum chemistry, condensed matter,
+and quantum information communities [28–30]. The optimization relaxations rely on an SOS representation of non-
+negative model Hamiltonians which are used to construct an optimization protocol based on semidefinite programming.
+The primal variables of the semidefinite program (SDP) are the pseudoexpectation values defining approximations to
+the quantum marginals of a state [30–34]. With minor modification, the dual of the lower bound program provides
+the solution to Eq. (1) with an optimal ∆ gap given a particular form for the SOS algebra defining the functional form
+of Oα. It is well understood that expanding the algebra leads to tighter lower bound estimates ESOS for bosonic
+and fermionic Hamiltonians [30, 35] and that ESOS can be made arbitrarily close to Egs, and thus ∆ gap ≪ 1, with
+1 Equation (1) is also known as a ‘gap-amplifiable’ Hamiltonian in Ref. [23].
+
+=== PDF PAGE 3 ===
+3
+Year Innovation FeMoco-54 [37] FeMoco-76 [38]Qubits Toffolis Reference Qubits Toffolis Reference
+2017 First resource estimate by Trotterization [37] 111 5.0 × 1013 [37] - - -
+2019 Qubitization of Single-Factorization [17] 3320 9.5 × 1010 [7] 3628 1.2 × 1011 [7]
+2020 Qubitization of Double-Factorization (DF) [9] 3600 2.3 × 1010 [9] 6404 5.3 × 1010 [7]
+2020 Tensor-Hyper-Contraction (THC) [7] 2142 5.3 × 109 [7] 2196 3.2 × 1010 [7]
+2024 Symmetry compression of DF [39] 1994 2.6 × 109 [39] - - -
+2025 Symmetry compression of THC [8] - - - 1512 4.3 × 109 [8]
+This work Spectrum amplification & DFTHC 1137 3.41 × 108 1459 9.99 × 108
+Improvement of this work over [39] and [8] a 1.8× 7.0× 1.0 × 4.3 ×
+a Our approach is distinct and independent of recent results by Caesura et. al [8].
+TABLE I. Improvements in Toffoli and qubit costs on benchmark molecules for performing phase estimation targeting ground-
+state energies with a standard deviation of at most chemical accuracy ϵchem = 1.6mHa. Total Toffoli counts are based on a
+phase estimation uncertainty of σPEA = 1mHa.
+exponential classical resources [36]. In the context of SA, minimizing the ∆ gap by using a large SOS algebra is in
+tension with a low-cost block-encoding of the SOS Hamiltonian. We find for interesting quantum systems represented
+by the spin-free Hamilonian
+H =
+X
+pq
+h(1)pq Epq + 12 Xpqrs h(2)pqrsEpqErs, E pq := Xσ∈{0,1} a†pσaqσ , (2)
+where h(1)pq and h(2)pqrs are coefficients for the one- and two-electron operators respectively, that a spin-free variant of
+the level-2 sum-of-squares algebra (where Oα are of quadratic many-body order) already gives small gaps and leads
+to improvements in ground-state energy estimation. The spin-free variant of the level-2 SOS algebra is the simplest
+algebra in the SOS hierarchy for chemistry Hamiltonians and more bespoke constructions of the SOS algebra provides
+a route to investigate the trade-off between gap minimization and block-encoding costs.
+Third, we introduce a new tensor factorization, DFTHC, that realizes an SOS Hamiltonian representation that
+further optimizes the block-encoding cost. The representation found by semidefinite programming minimizes ∆ gap,
+but does not optimize other quantum-algorithm-relevant parameters. DFTHC is a variational ansatz that allows for
+a direct minimization of the block-encoding normalization factor λsqrt, almost achieves the optimal ESOS, and finds
+extremely compact approximations to the two-body interaction tensor. DFTHC is also readily combined with BLISS.
+For benchmarks on molecules with up to N = 150 orbitals, DFTHC finds chemically accurate representations with
+block-encoding Toffoli gate costs scaling like ∼ N 0.96, λ2sqrt ∼ N 1.46, and Egap ∼ N 0.88.
+Combining the three aforementioned results, we report the quantum resources needed for ground-state energy
+estimation of FeMoco in Table I compared with prior works. The efficiency of DFTHC+BLISS+SA enables a factor
+of 4 reduction in costs for the larger FeMoco active space [38] using the simplest SOS algebra of the hierarchy. To
+verify the robustness of the method we also compute resource estimates for small Iron-Sulfur clusters [40], a CO 2
+Ruthenium catalyst [9] series, and the CPD1 active space of P450 [11]; all of which have been targets of recent resource
+estimation work and demonstrate the scaling of the effective LCU normalization. For these systems, improvement
+factors of up to 200 are obtained for un-symmetry-shifted Hamiltonians. Like prior work [7, 9, 17] the reported Toffoli
+and qubit complexities correspond with the task of obtaining an estimate of Egs with a standard deviation σE of at
+most chemical accuracy ϵchem = 1.6mHa. This is accomplished using the PEA to accuracy σPEA, which projects an
+input trial state |ψtrial⟩ onto the true ground state with probability almost p = |⟨ψgs|ψtrial⟩|2 and then returns an
+estimate of Egs with standard deviation σPEA. For many interesting electronic structure problems, we can obtain
+p ≈ 1 by preparing matrix-product-states (MPS) trial states based on modest bond dimension DMRG calculations
+which are still estimated to need further energy refinement [10, 41]. For consistency with previous work, we assume
+p = 1 in our resource estimates and the cost of PEA is then π2σPEA λeffCost[Be], where Cost[ Be] is the cost of blockencoding a function of the Hsqrt.
+Attaining chemical accuracy requires bounding error contributions fromσPEA and the DFTHC tensor approximation
+error. Tightly and efficiently bounding the error associated with an approximate Hamiltonian in DFTHC form presents
+a numerical and theoretical challenge that can ultimately impact the overall cost of phase estimation. In order to
+fully quantify how to deploy the DFTHC factorization we challenge the commonly used truncation threshold metric
+based on the high-spin CCSD(T) correlation energy ϵcorr of the factorized representation. If errors are systematic,
+chemical accuracy is attained if these error satisfy
+σE ≤ σPEA + |ϵcorr| ≤ϵchem. (3)
+
+=== PDF PAGE 4 ===
+4
+enabling us to select σPEA = 1.0mHa, and |ϵcorr| ≤0.6mHa consistent with prior resource estimates [7, 9]. However,
+we demonstrate that it is possible to choose much larger σPEA = 1.4mHa by randomizing bits-of-precision truncation
+and initial conditions in the DFTHC optimization, so that ϵcorr is a random variable with standard deviation σcorr ≤
+0.774mHa and zero mean. The randomization protocol has the added benefit that the variances of random errors
+satisfy
+σE ≤
+q
+σ2PEA + σ2corr ≤ ϵchem. (4)
+We present resource estimates for this approach in a later section as it is not directly comparable to previous work
+but constitutes an improved strategy for accounting for errors in ground-state energy estimation.
+The remainder of the paper is structured as follows: Section II reviews the general SA protocol and describes
+circuit improvements framed by modifications to singular value estimation, Section III describes the SDP approach
+to minimizing the SOS gap for electronic structure problems and demonstrates that ∆ gap ≪ 1 are achievable at
+polynomial classical cost, Section IV introduces DFTHC, the quantum circuits for its block-encoding, and numerical
+result. In Section V we present resource estimates for a variety of benchmark systems and report improvement factors
+over prior work. We also highlight potential challenges in using high-spin correlation energy from CCSD(T) and
+improved strategies for optimizing errors for each algorithmic component to achieve chemical precision.
+II. QUANTUM CIRCUITS FOR SPECTRUM AMPLIFICA TION
+We describe SA within the context of SOS representations for Hamiltonians, discuss block-encodings and PEA, and
+present practical quantum circuits for their implementations. Let
+HSA :=
+L−1X
+α=0
+O†αOα, H = HSA + ESOS, (5)
+where Oα corresponds to a linear combination of operators. Assuming an SOS representation like Eq. (5) for an
+arbitrary Hamiltonian acting on a finite-dimensional space is without loss of generality; in Section III, we show how
+this representation can be computed efficiently. As O†αOα ⪰ 0 is positive semidefinite, the eigenvalues of HSA are
+non-negative. The special case where the lowest eigenvalue of HSA is zero corresponds to HSA being ‘frustration free’,
+in which case the smallest eigenvalues of all O†αOα’s are also zero. For a given H, it is always possible to shift it and
+find a frustration-free HSA, but this might require exponential-cost preprocessing and thus is not feasible. Despite
+this, it might be possible to efficiently find an HSA that can be written as an SOS and that is ‘near’ frustration free,
+with lowest eigenvalue Egap = Egs − ESOS close to zero, which is the approach considered in this work. Note that the
+square root Hsqrt of HSA = H †sqrtHsqrt has a singular value pEgap, having an amplified sensitivity to variations in
+Egs.
+The quantum circuits we present for SA are based on the block-encoding framework [16]. We say a finite-dimensional
+operator O is block-encoded with normalization factor λ >0 such that ∥O∥ ≤λ, if there is a unitary quantum circuit
+Be [O/λ] =
+ O/λ · · ·
+... . . .
+!
+∈ Cn×n =⇒ ΠlBe[O/λ]Πm = O/λ, (6)
+where O/λ ∈ Cl×m appears as a block of Be [O/λ], with l ≤ n and m ≤ n. The operators Π l and Πm are orthogonal
+projectors onto subspaces of dimension l and m, specified by the (all-zero) strings |0⟩l, and |0⟩m, respectively. (Note
+that l ̸= m if O is not square.) Highly-efficient block-encoding of Hsqrt are possible to construct. Assume we are
+given access to controlled-block-encodings Be[Oα/λα], for some λα ≥ ∥Oα∥. Then, one may apply unitary iteration
+and coherent alias sampling state preparation [14] to synthesize the ‘SELECT’ and ‘PREPARE’ circuits
+Sel :=
+L−1X
+α=0
+|α⟩⟨α| ⊗Be
+ Oα
+λα
+
+, Prep |0⟩a = 1λsqrt
+L−1X
+α=0
+λα |α⟩a |garbα⟩a = 1λsqrt
+L−1X
+α=0
+λα |χα⟩a , (7)
+where λsqrt :=
+pP
+α λ2α, ‘a’ refers to ancillary qubits, and|garbα⟩a represents a ‘garbage’ (unit) state that is irrelevant.
+Then, we can let Hsqrt = PL−1α=0 |χα⟩ ⊗Oα and use these operations to construct the desired block-encoding of Hsqrt;
+that is,
+ΠlSelΠm · Prep |0⟩a = 1λsqrt
+L−1X
+α=0
+|χα⟩ ⊗Oα =⇒ Sel · Prep = Be
+ Hsqrt
+λsqrt
+
+:= U . (8)
+
+=== PDF PAGE 5 ===
+5
+Note that U acts on an enlarged space and the (column) dimension of the block containing Hsqrt/λsqrt is larger than
+that of the blocks containing the individual Oα/λα’s. Also, observe that H †sqrtHsqrt = HSA as desired and, if Ek ≥ 0
+is an eigenvalue of HSA, then √Ek is a singular value of Hsqrt. Our definition and block-encoding of Hsqrt using
+rectangular matrices is more efficient than previous works based on a Hermitian dilation [21, 23], which use more
+qubits and are at least a factor of two more expensive to block-encode as shown in Appendix A.
+As its core, the standard PEA estimates the eigenphases of a unitary operator. For Hermitian matrices H with
+eigenvalues E1, E2, . . ., it is well known that qubitization [16] converts a block-encoding Be[H/λ] to a quantum walk
+with spectrum e±i arccos (Ek/λ) [42]. This reduction was recently employed to construct circuits for quantum eigenvalue
+estimation of a Hamiltonian represented as an LCU [7, 9, 14]. The eigenphases of the quantum walk have positive and
+negative values, but this has no effect on the estimated Hamiltonian eigenvalues, and will be ignored in the following.
+In Appendix A 2, we describe a quantum walk W := RefaBeU †RefBeU on block-encodings for rectangular matrices
+like Hsqrt [25], where RefBe and and RefaBe are reflections over the subspaces spanned by the the columns and rows
+of U that block-encode Hsqrt/λsqrt, respectively. There, we show that W has spectrum
+e±i arccos (Ek/Λ−1), Λ := 12 λ2sqrt. (9)
+In fact, one may show that the first three operations of the quantum walk provide a block-encoding of HSA/Λ − 1:
+Be
+ HSA
+Λ − 1
+
+≡ U †RefBeU = Prep · Sel† · RefBe · Sel · Prep†. (10)
+This is equivalent to constructing a controlled-block encoding Pα |α⟩⟨α| ⊗Be 2O†αOα/λ2α − 1 = Pα |α⟩⟨α| ⊗
+Be
+
+T2
+ 
+Be[O†α], Be[Oα] using a single step of qubitization as shown in Fig. 1, followed by taking a linear com-
+bination block-encodings of T2(Be[Oα], Be[O†α]), using preparation Prep and ‘unpreparation’ Prep† of the control
+state Prep |0⟩a in Eq. (8). This generalizes similar constructions in prior work: Oblivious amplitude amplification [43]
+when Hsqrt is unitary, or for obtaining a 12 improvement in the block-encoding normalization for Hermitian Hsqrt [9].
+Be
+[
+2
+∑
+α O†αOα
+Λ − 1
+]
+=
+|α⟩ α
+Be
+[
+T2
+(
+Be[O†α], Be[Oα])]
+|α⟩†
+=
+|α⟩ α
+Be [Oα] REF
+α
+Be [Oα]†
+|α⟩†
+FIG. 1. Controlled block encoding of the second Chebyshev polynomial of Oα. The control register contains the control state,
+|α⟩, of Eq. (8) which provides the appropriate weighting to each T2 in the LCU. For simplicity, λα = 1.
+We now perform the PEA on W , which provides an estimate of the eigenphase with standard deviation σPEA, using
+π
+2σPEA total queries to controlled U and U † [14]. The Hamiltonian HSA has lowest eigenvalue Egap, and this results
+in eigenphases |ϕgap| = arccos(Egap/Λ − 1) for the walk operator W . We use a first-order error propagation formula
+to obtain the query cost for estimating Egap with variance σ2Egap , being proportional to
+PEA queries to W = πλeff
+2σEgap
+, λ eff =
+q
+Egap(2Λ − Egap) . (11)
+Thus, the ‘effective lambda’ λeff for performing PEA on a single step of qubitization depends on the block-encoding
+scaling factor for HSA and
+p
+Egap. There can be some inaccuracy in the error propagation formula near a divergence
+of the derivative when Egap → 0. However, we show in Appendix H that the fractional corrections to σEgap are
+negligible for the parameters we consider.
+In summary, SA has a smaller effective scaling constant λeff when considering the uncertainty scaling of the arccos
+function of the Hamiltonian. The main idea in the next section is to construct an SOS representation HSA that has a
+low value of Egap. We will see that methods for computing good lower bounds to Egs translate directly to maximizing
+ESOS, which in turn minimizes Egap.
+III. SUM-OF-SQUARES REPRESENT A TIONS OF THE CHEMISTR Y HAMIL TONIAN
+Given a Hamiltonian H that is a 2k-degree polynomial in a set of operators {oj}, which do not necessarily commute,
+the Hamiltonian plus a constant shift can be represented as an SOS:
+H − ESOS =
+L−1X
+α=1
+O†αOα, (12)
+
+=== PDF PAGE 6 ===
+6
+where each Oα is itself a polynomial in {oj} of degree at least k, and ESOS is a constant. While this is not generally
+possible for continuous commutative variables (the Motzkin polynomial being one example [44]), operators that are
+constructed from polynomials of non-commutative variables can be represented as SOS of Hermitian operators [45].
+More generally, it is possible to represent the Hamiltonian with Oα involving polynomials of degree ≥ k which can
+lead to ESOS being closer to the lowest eigenvalue of H. Such a representation of the Hamiltonian constitutes a proof
+for the lowest eigenvalue of the Hamiltonian being at least ESOS. In fact, the problem of expressing the Hamiltonian
+in this form is the dual problem of identifying a lower bound to Egs through the pseudomoment method [28, 31, 32].
+The variational two-electron reduced-density-matrix method is one such example relevant to electronic structure,
+where a hierarchy of operator witnesses constrains the 2-particle reduced-density-matrix (2-RDM) to have a fermionic
+n-electron wavefunction preimage while directly optimizing with respect to the 2-RDM degrees of freedom. We
+now describe the efficient protocol for determining an SOS representation of a Hamiltonian through semidefinite
+programming.
+We first note that by fixing a degree k, we define SOSk to be the subset of operators which can be written as a sum
+of squares of degree k polynomials in {oj}. Given the generator set involving operators in SOS k
+Oα =
+k/2X
+d=0
+X
+j
+cj,α,d
+dY
+ℓ=0
+oj,d,α, (13)
+we can express the determination of the optimal shifted Hamiltonian as a semidefinite program
+max ESOS (14)
+s.t. H− ESOSI =
+ ⃗o†T G⃗o,
+G ⪰ 0,
+where ⃗o is the vector of operators in Eq. (13). The SOS generators, oj,d,α, can be an arbitrary algebra as long as it
+is possible to represent H in that algebra. Considering fermionic Hamiltonians, the natural SOS generating algebra
+is the set of fermionic ladder operators, and thus a specific example of ⃗o is
+⃗o =
+
+I, aiσ, a†jτ , aiσajτ , aiσa†jτ , ...T . (15)
+where aiσ represents an annihilator for fermionic mode i with spin projection σ. The equality constraint on the Gram
+matrix, G, in Eq. (14) is short hand for relating coefficients of normal ordered operators. We include the identity
+operator in this set as it can arise from the anticommutation relations. As a simple example, consider a spinless
+quadratic Hamiltonian
+H =
+X
+j
+vja†jaj, (16)
+and the SOS algebra {ai, a†i }. One can determine an SOS representation of Eq. (16) by solving the program in
+Eq. (14) to find the optimal lower bound. Factorizations of the Gram matrix G provide the SOS representation of
+the Hamiltonian via Eq. (13). In this example, it is also possible to analytically solve for the optimal ESOS and Oα.
+First, note that operators associated with positive vj are already in SOS form. For negative vj the anticommutation
+relations can be applied to return an SOS operator with a positive coefficient plus an identity term. More explicitly,
+H =
+X
+j:vj ≥0
+vja†jaj + X
+j:vj <0
+(−vj)aja†j + X
+j:vj <0
+vj =
+X
+α
+O†αOα + ESOS , (17)
+where the Oα’s are the a†j’s or aj’s depending on the sign of vj, and the shift is ESOS = Pj:vj <0 vj. This proves that
+for diagonal quadratic Hamiltonians, and using the SOS algebra {ai, a†i }, the optimal ESOS can be determined. The
+result can be extended to non-diagonal quadratic Hamiltonians involving terms like a†i aj, as they can be diagonalized
+efficiently. For Hamiltonians beyond quadratic many-body order more sophisticated SOS generating algebras are
+required to represent the Hamiltonian. Returning to the electronic structure Hamiltonian of Eq. (2), we can consider
+the entire level-2 SOS algebra spanned by generators
+n
+ajσ , a†jσ
+o
+∪
+n
+aiτ ajσ , a†iτ ajσ , aiτ a†jσ , a†iτ ajσ
+o
+(18)
+
+=== PDF PAGE 7 ===
+7
+with an element of the algebra defined by a particular linear combination of the generators
+Oα =
+X
+j,σ
+cαjσ ajσ + X
+jσ
+dαjσ a†jσ + X
+i,j,σ,τ
+bαiσjτ ajτ aiσ + X
+i,j,σ,τ
+dαiσjτ a†jτ a†iσ + X
+i,j,σ,τ
+eαiσjτ a†jτ aiσ + X
+i,j,σ,τ
+f αiσjτ ajτ a†iσ (19)
+where the coefficients {c, d, b, d, e, f} are complex values and thus
+HSOS :=
+X
+α
+O†αOα = X
+i,j,k,l,σ,τ,κ,λ
+D2 Giσjτkκlλa†iσa†jτ alλakκ + Q2 Gkκlλiσjτ akκalλa†jτ a†iσ + ..., (20)
+as is done commonly in the chemistry application of outer approximations–2-RDM constraints that are known as
+DQG [46]. While optimization over this set of SOS-generators gives a tight Egap mirroring the high quality solutions
+from the variational 2-RDM method [46, 47], the block-encoding would require a full spinful representation of Hsqrt
+as the different spin sectors of the SOS Hamiltonian would contain different coefficients. Furthermore, the largest
+DQG-lower bound calculations that have been performed are on the order of 60 orbitals [48] and thus it is potentially
+challenging to scale the classical preprocessing needed to employ SA. Therefore, we consider the simplified algebra
+spanned by
+(
+I, ajσ , a†jσ , X
+σ
+a†iσajσ
+)
+(21)
+with elements defined by
+Oα :=
+X
+j,σ
+cαjσ ajσ + X
+j,σ
+dαjσ a†jσ +
+
+eαI + X
+i,j
+gαij X
+σ
+a†iσajσ
+
+ . (22)
+The number of generators that span this algebra is slightly larger than the minimum SOS algebra to represent the
+Hamiltonian. The addition of I makes this algebra equivalent to the spin-free algebra augmented with hole-rotation
+generators Pσ aiσa†jσ .
+The equality constraint of the SDP, Eq (14), mapping operators in the algebra of Eq. (22) to the chemistry
+Hamiltonian Eq. (2) can be obtained by re-ordering the fermionic ladder operators according to the anticommutation
+relations. We provide a complete derivation of the linear constraints in Appendix G. In order to numerically verify
+that Egap is small for challenging electronic structure simulations we use a combination of variational wavefunctions,
+primarily low bond dimension MPS, to upper bound the size of the gap. In Table II we report known or computed
+variational upper bounds for common benchmarked systems. The lower bounds are computed from the solution of
+the semidefinite program defined in Eq. (14) using the spin-free algebra defined in Eq. (22) modified to the isospectral
+algebra containing the hole rotation generators. To solve the semidefinite program we use the cuLoRADS solver [49]
+which implements a GPU-accelerated low-rank factorization-based solver [50]. In all SDPs we use a rank on the
+primal solution scaling as O(log(m)) where m is the number of linear constraints. This scaling is inspired by the
+existence of approximate solutions with that order of rank [51]. Rank scaling as the logarithm of the number of
+constraints is substantially smaller than the rank necessary to certify that the local minimum corresponds to the
+global minium [52]. Despite this, we find stable solutions with a tight gap. In Table II we report variational upper
+bounds, spin-free algebra lower bounds, and energy gaps ( Egs − ESOS) that we use in the next section to inform
+the search for symmetry-shifted Hamiltonians. In the final column of Table II we report a lower bound on the SA
+effective LCU normalization. The lower bound is computed using the reported gaps and the lower bound to the LCU
+normalization computed by single determinant wavefunctions for the maximum and minimum energy state in a given
+particle and spin sector [20].
+The lower bounds in Table II are far from accuracies required for thermochemistry, but this is not the most important
+metric for SA. The parameter scaling walk operator queries is the square root of the ground-state energy of HSOS and
+thus extremely tight gaps–close to frustration free representations of H–are not necessary to achieve a large speedup.
+The bounds reported in Table II demonstrate that SOS representations with small enough ground-state energies
+can be found with polynomial classical computing effort. Tighter lower bounds could be derived by the addition of
+penalty parameters or BLISS [18] like operators to the SOS representation. An alternative to penalty parameters
+is directly converting solutions from the pseudomoment problem (like variational 2-RDM) to a HSOS Hamiltonian.
+In Appendix F we describe how the primal non-commutative polynomial optimization problem can be rewritten in
+a standard form such that all linear constraints are necessarily zero when a primal feasible solution is found. Using
+the optimal dual variables of the primal problem, the gram matrix G can be constructed with BLISS-like operators
+appearing as the equality constraints mapped to SOS operators. The SOS mapping of equality constraints can be
+non-trivial or require significant modification of the standard primal program meaning it is not always a computational
+benefit to solve the primal problem and then convert to the dual SOS.
+
+=== PDF PAGE 8 ===
+8
+System Method Variational energy [Ha] λeff lowerabove below Egap bound [Ha]
+Fe2S2 [30e, 20o] DMRG M=1500 −116.60551 −117.582 0.976 3.632
+Fe4S4 [54e, 36o] DMRG M=600 −327.21257 −329.079 1.866 7.472
+FeMoco [54e, 54o] DMRG M=500 −269.06020 −272.524 3.464 16.025
+FeMoco [113e, 76o] DMRG M=6000 [10] −1119.05933 −1123.300 4.240 21.691
+CO2[XVIII] [64e, 56o] DMRG M=500 −295.24441 −296.941 1.695 11.065
+CO2[XVIII] [100e, 100o] DMRG M=500 −632.32045 −635.134 2.813∗ 21.478
+CO2[XVIII] [150e, 150o] CISD −1350.65168 −1355.571 4.919∗ 37.365
+CPD1-P450G [47e, 43o] DMRG M=1500 [11] −232.38295 −235.136 2.753 11.720
+CPD1-P450X [63e, 58o] DMRG M=500 −419.84903 −424.550 4.700 21.141
+TABLE II. Variational energies from above and below computed with different methods. The lower bounding energies are
+obtained by solving the SDP program (14) defined over the spin-free algebra described in Eq. (22). The SDP finds a lower
+bound to the lowest energy in Fock space versus the variational energies are for a fixed particle sector. The gaps in the
+penultimate column are the difference between the upper and lower bound. All variational energies are for the active space
+Hamiltonians without a core shift Hecore = 0. The asterisk ( ∗) indicates the systems where, due to a runtime constraints
+we did not converge the SDP for the ≥ 100 orbital CO 2 systems and instead computed the gap using DFTHC as described
+in Appendix E. The last column reports a lower bound on the SA λeff ≥
+p
+Egap(∆u − Egap) using the LCU normalization
+lower bound ∆ µ/2 computed using the protocol in Ref. [20]. The bound for FeMoco-[113e,76o] was computed using using the
+S = 3/2 sector, for CPD1-P450 both the X and G Hamiltonian bounds were computed using S = 5/2. For all other systems
+the bound was computed using the singlet S = 0 sector.
+IV. DOUBLE F ACTORIZED-TENSOR-HYPERCONTRACTION SUM-OF-SQUARES: DFTHC-SOS
+We introduce the Double-Factorized-Tensor-Hypercontraction (DFTHC) of two-body electronic structure tensor,
+which is designed to span the spin-free generating set Eq. (22). DFTHC generalizes Double-Factorization [9, 53],
+its variations [39, 54], and also the factorized form of Tensor-Hypercontraction [7]. For spin-free Hamiltonians, the
+DFTHC representation is
+HDFTHC =
+X
+pq
+h(1)′Epq + 12 Xr∈[R] Xc∈[C]
+ 
+W (rc)I +
+B−1X
+b=0
+w(rc)b X
+pq
+u(r)b,pu(r)b,q Epq
+!2
+− 12 Xr∈[R] Xc∈[C] W (rc)2 , (23)
+h(2)′pqmn = X
+r∈[R],c∈[C]
+
+ X
+b∈[B]
+w(rc)b u(r)b,pu(r)b,q
+
+
+
+ X
+b∈[B]
+w(rc)b u(r)b,mu(r)b,n
+
+ , (24)
+where h(2)′ is the approximated two-body tensor, Rank, Bases, and Copies ( R, B, C) parameters may be varied freely,
+and all parameters h(1)′, W, w, uare real with ∥⃗ u(r)b ∥2 = 1. Note the inclusion of the identity componentW (rc)B I as a free
+parameter, which is necessary according to Eq. (22). We also find it convenient to define w(rc)B = W (rc) + PB−1b=0 w(rc)b .
+Thus, double-factorization the is special case of varying R while fixing B = N , w(rc)B = 0, and C = 1 [9, 53] or
+C = 2 [39] or C = N [54], in addition to imposing a mutual orthogonality constraint on ⃗ u(r)b · ⃗ u(r)b′ = δb,b′ for each
+rank component. Furthermore, ( R, B, C) = (1, RTHC, RTHC) captures the factorized THC representation of two-body
+terms Pc∈[RTHC] Pb∈[RTHC] w(c)b Ppq ub,pub,qEpq2.
+Let us now express HDFTHC in the SOS form and evaluate its normalization factor Λ. We represent regular fermion
+operators with Majorana operators
+apσ = γpσ0 + iγpσ12 , a †pσ = γpσ0 − iγpσ12 , {γpσx, γqτ y} = 2δpqδστ δxy. (25)
+In the following, we also find it convenient to define the rotated Majorana operator γ⃗ uσx:= Pj ujγjσx for any real
+unit vector ⃗ u. This representation is convenient for compiling to quantum circuits as each Majorana operator maps
+to a Pauli operator. Let the eigendecomposition of h(1)′pq = Ps∈{−,+} Pr sw(r)s u(r)s,pu(r)s,q be split into semipositive and
+negative parts where all w(r)± ≥ 0. Then h(1)′pq Epq is diagonalized and, following Eq. (17), we find its optimal ESOS
+
+=== PDF PAGE 9 ===
+9
+contribution by
+h(1)′pq Epq = X
+σ∈{0,1}
+
+X
+j
+w(j)+ a†⃗ u(j)+ σa⃗ u(j)+ σ + Xj w(j)− a⃗ u(j)− σa†⃗ u(j)− σ
+
+ − 2 X
+j
+w(j)− . (26)
+It is possible to verify the SOS representation:
+H ≈ HDFTHC =
+X
+G∈{D1,Q1}
+X
+r
+X
+σ∈{0,1}
+OGσ,r †OGσ,r + X
+r∈[R],c∈[C]
+O†SF,rcOSF,rc + ESOS, (27)
+ODσ1 ,r =
+q
+w(r)+
+γ⃗ u(r)+ σ0 + iγ⃗ u(r)+ σ1
+2 , O Qσ1 ,r =
+q
+w(r)−
+γ⃗ u(r)− σ0 − iγ⃗ u(r)− σ1
+2 , (28)
+OSF,rc = 1√2
+
+w(rc)B + i2 Xb∈[B] Xσ∈{0,1} w(rc)b γ⃗ u(r)b σ0γ⃗ u(r)b σ1
+
+ , (29)
+ESOS = −2
+X
+r
+w(r)− − 12 Xr∈[R] Xc∈[C] W (rc)2 . (30)
+As the operators γ⃗ u(j)s σx, γ⃗ u(r)b σ0γ⃗ u(r)b σ1 are also unitary, the generators Eqs. (28) and (30) may be block-encodedusing the LCU technique to obtain
+Be
+ OGσ1 ,r
+λGσ1 ,r
+
+, λ Gσ1 ,r =
+q
+w(j)s , ∀(s, G) ∈ {(+, D), (−, Q)}, (31)
+Be
+ OSF,rc
+λSF,rc
+
+, λ SF,rc = 1√2 Xb∈[B+1] |w(rc)b |. (32)
+Following Eq. (7) and Eq. (9), we obtain the block-encodings
+Be
+"
+H †sqrtHsqrt
+Λ − 1
+#
+, Λ = 12
+ X
+rσ
+λ2Dσ1 + λ2Qσ1 + X
+rc
+λ2SF,rc
+!
+= ∥h(1)′∥1 + 14 Xr∈[R] Xc∈[C]
+ Xb∈[B+1] |w(rc)b |2 . (33)
+At a high-level, the quantum circuit that block-encodes the DFTHC representation Eq. (33) has some components
+similar to that of double-factorization, with the main difference arising from block-encoding the one-body terms in
+an SOS format. We provide all details of the block-encoding circuit in Fig. 2 with a step-by-step description of the
+compilation in Appendix B. From the summary of block-encoding costs in Table III, we see that cost is dominated
+by the following table-lookup oracles [55] and Sel:
+• Rot controlled by N + RB indices to outputs (N − 1) brot rotation angles, where each of the N − 1 is represented
+by brot bits, that rotate γ0σx to γ⃗ urb σx.
+• Qroam controlled by N + R(B + 1)C indices to output bQ = ⌈log2 B⌉ + bcoeff coefficients w(r)s , w(rc)b .
+• Sel which takes the table-lookup outputs to block-encode the generators ODσ1 ,r, OQσ1 ,r, OSF,rc.
+The Toffoli counts of these components then each scale very differently with N, R, B, C.
+Hence, DFTHC is beneficial following the intuition that the expressive power of the factorization can be greatly
+improved by making the costs of Rot and Qroam comparable. By taking advantage of spacetime trade-offs [55]
+and measurement-based uncomputation [17] to reduce the Toffoli gate cost of Qroam using the idle qubits that later
+occupied by the output of Rot, the Toffoli counts of these components are
+• Computing and uncomputing Rot twice: Each computation costs ≈ N + RB.
+• Computing and uncomputing Qroam twice: Each computation costs ≈ RBCλ+1 + λbQ for any choice of λ ≤
+(N −1)bRot
+bQ .
+• Applying Sel twice: Each application costs ≈ 4(N − 1)bRot.
+
+=== PDF PAGE 10 ===
+10
+succ xo
+prep
+• • •
+prep†
+xo Inxo Inxo Inxo Inxo
+succ b
+eq
+•
+eq†
+eq
+•
+eq†
+b Inb prep Inb Inb prep† Inb Inb prep Inb Inb prep† Inb
+G
+dataxo
+• • •
+dataxo
+dataxo
+• • •
+dataxo
+r Inr Inr Inr Inr
+c
+alt
+datxo,b
+In
+In
+datxo,b
+datxo,b
+In
+In
+datxo,b
+keep
+rotations
+datar,b
+• •
+datar,b datar,b
+• •
+datar,b
+b = B • •
+|σ0⟩ H • • H H • • H
+|σ1⟩ H • • • • H
+|σ⟩ • • • •
+|ψ↓⟩ × R Maj R† × × R Maj† R† ×
+|ψ↑⟩ × × × ×
+FIG. 2. The complete quantum circuit for the block-encoding. First, ‘prep’ is the state preparation on xo. The operation ‘eq’
+creates an equal superposition on the b register with succ b flagging success. Then the QROM on xo and b is used to output
+alt and keep data for the coherent alias sampling, as well as G, r, c(which is independent of b). The operation with ‘In’ on alt
+and keep, with ‘prep’ on b indicates the inequality test and controlled swap used in coherent alias sampling. Then b, rare used
+to output the data for the rotations as well as flipping a flag qubit to indicate if b = B. There are two spin qubits |σ0⟩ and
+|σ1⟩, with one used for SF (the inner sum) and the other for D 1 and Q 1 (the outer sum). The controlled operation copies it
+out into |σ⟩ depending on G, and that is used to control the swap between the spin up and spin down system registers. The
+operation ‘Maj’ indicates the circuit for performing the Majorana operator as shown in Fig. 4. The operations are all inverted,
+except for the Hadamard on |σ1⟩ and prep on xo, which are part of the outer sum. There is a reflection on the control qubits
+used in the inner block-encoding, then the entire procedure is performed again. Note that we apply the Hermitian conjugate
+of this operator using Maj †.
+For instance, the cost Rot strongly dominates in DF, whereas Qroam strongly dominates in THC.
+DFTHC achieves then chemical accuracy with a most compact representation for molecules such as FeMoco
+[113e,76o] when ( R, B, C) is roughly in-between the equivalent DF and THC parameters as shown in Table X. The
+selected DFTHC values lead to lookup-table sizes that are already substantially smaller than previously reported DF
+or THC methods, and an exhaustive search for optimal ( R, B, C) would lead to even further improvement. For the
+typical DFTHC solutions that we found, the three contributions Rot, Qroam, Sel capture ∼ 90% of the Toffoli cost,
+with Sel being the dominant cost accounting for ∼ 60%. For example, Table III gives a full cost breakdown.
+We use the following heuristic for choosing ( R, B, C).
+• Amdahl’s law: C = Θ( N ) so that the Toffoli counts of Rot and Qroam are roughly similarly with Θ( RB)
+scaling.
+• Linear cost scaling: THC is notable for exhibiting an almost linear ˜Θ(N ) block-encoding Toffoli with RTHC =
+˜Θ(N ). Hence we choose B = Θ(N ) and R = ˜Θ(1).
+• Extensivity: Suppose a given N0 orbital system is well-approximated by some ( R, B, C) = (R0, Θ(N0), Θ(N0)).
+Then given K non-interacting copies of the same system, one expects a good approximation with ( R, B, C) =
+(R0K, Θ(N0), Θ(N0)). In other words, B, C≲ N suffices.
+We also carefully study the bits-of-precision needed in Appendix D. Roughly speaking, chemical precision is attained
+with bRot ∈ [11, 18], bcoeff ∈ [6, 14], depending on the system. This is consistent with previous work [7, 56] and all
+resource estimates use bit counts reported in Appendix D.
+A. Numerical optimization
+DFTHC allows us to simultaneously find electronic structure SOS with good gaps, block-encoding costs, and
+normalization factors, without directly solving the SDP in Eq. (14). We find good DFTHC approximations h(2)′ of
+
+=== PDF PAGE 11 ===
+11
+Subroutine Cost Persistent Ancilla Temporary Ancilla Calls/Walk
+Outer PREP
+Uniform State prep 4⌈log(N + RC)⌉ = 36 ⌈log(N + RC)⌉ + 2 = 11 ⌈log(N + RC)⌉ −2 = 7 1
+AliasSampling
+l
+N +RC
+2k1
+m
++ 2k1 b1 = 177 , b1 = 24, k1 = 2 b1(QROM-out) + bk1 (uniform) = 39 2k1 b1 + ⌈log2( N +RC2k1 )⌉ = 103 1
+AliasSampling† b1 + l N +RC2k5 m + 2k5 = 61 1
+Uniform State prep † 4⌈log(N + RC)⌉ = 36 1
+Total 310 50 110
+Inner PREP
+for xo do: QROAM( b) RC
+l
+B+1
+2k2
+m
++ 2k2 b2 = 860, b2 = 20, k2 = 4 b2 + bk2 + ⌈log(R)⌉ + ⌈log(C)⌉ + 2 = 46 llog RC l B+12k2 mm + (2k2 − 1)b2 = 310 2
+( for xo do: QROAM( b))† b2 + N + l RC2k4 m + 2k4 (B + 1) = 254, k4 = 2 2
+uniform(b) 4⌈log(B + 1)⌉ = 20 ⌈log(B + 1)⌉ + 2 = 7 ⌈log(B + 1)⌉ −2 = 3 2
+uniform(b)† 4⌈log(B + 1)⌉ = 20 2
+Total 1154 53 313∗
+RPREP
+QROM(⃗ u) N + RB = 324 (N − 1)brot = 795 max (⌈log(N + RC)⌉ = 9, ⌈log(RB)⌉ = 9) 2
+QROM(⃗ u)† R + B = 37 2
+Total 361 795 9
+SEL
+ROT 4brot(N − 1) = 3180 brot = 15 0 2
+CSW AP 2N = 108 0 0 2
+Maj-control 7 0 0 2
+Total 3295 15 0
+REF
+T2 ⌈log(B + 1)⌉ + bk2 + 1 = 21 0 0 1
+Walk ⌈log(N + RC)⌉ + ⌈log(B + 1)⌉ + bk1 + bk2 + 2 = 46 0 0 1
+Total 9997 913 + 108 (system) = 1021 max(110, 9)
+TABLE III. FeMoco54 cost breakdown. N = 54, ( R, B, C) = (10, 27, 27), brot = 15, bcoeff = bk1 = bk2 = 15. Total qubit costs
+is 1131 because the 313 temporary qubits for inner state prep QROM can use the 795 persistent qubits for RPREP. We denote
+this reuse with an asterisks on the temporary ancilla for the inner PREP subroutine.
+the exact two-body integrals h(2) using a cost function that minimizes the Frobenius error ϵfro = ∥h(2) − h(2)′∥fro
+together with regularization on Λ and Egap.
+It is only necessary to approximate the two-body terms in DFTHC as we have freedom to choose the one-body
+terms. By expanding Eq. (23) and then comparing to the original exact Hamiltonian Eq. (2),
+HDFTHC =
+X
+pq
+
+h(1)′pq + X
+rc
+W (rc) X
+b∈[B]
+w(rc)b u(r)b,pu(r)b,q
+
+ Epq + 12 Xrc
+
+ X
+b∈[B]
+w(rc)b X
+pq
+u(r)b,pu(r)b,q Epq
+
+
+2
+, (34)
+H = HDFTHC + 12 Xpqrs(h(2)pqrs − h(2)′pqrs)EpqErs, (35)
+we see for any computed w, utensors, the choice h(1)′pq = h(1)pq − Prc W (rc) Pb∈[B] w(rc)b u(r)b,pu(r)b,q leads to a one-body
+contribution equal to the exact Hamiltonian, with some error in the two-body DFTHC tensor h(2)′.
+We reduce the contribution of error terms by using the identity W (rc) = w(rc)B + Pb∈[B] w(rc)b to rewrite
+h(1)′pq = h(1)pq + X
+r
+h(2)′pqrr − X
+rc
+w(rc)B X
+b∈[B]
+w(rc)b u(r)b,pu(r)b,q , (36)
+2
+X
+j
+w(j)− = ∥h(1)′∥1 − Tr[h(1)′] = ∥h(1)′∥1 − Tr[h(1)] − X
+pq
+h(2)′ppqq + X
+rc
+w(rc)B X
+b∈[B]
+w(rc)b , (37)
+1
+2
+X
+rc
+W (rc)2 = 12 Xpq h(2)′ppqq + 12 Xrc |w(rc)B |2 − Xrc w(rc)B Xb∈[B] w(rc)b , (38)
+where ∥ · ∥1 is the Schatten one-norm. Hence,
+Egap = Egs + ∥h(1)′∥1 − Tr[h(1)] − 12 Xpq h(2)′ppqq + 12 Xrc |w(rc)B |2. (39)
+Then using prior knowledge of the limit where DFTHC is exact, we make the replacements Pr h(2)′pqrr ← Pr h(2)pqrr . A
+similar replacement was made previous work [17] when going from the normal-ordered representation to Eq. (2) or to
+the Majorana representation [9].
+We expand the space of good solutions using symmetry shifting (BLISS) [18, 19], which is based on the observation
+that the spectrum of the symmetry sector with fixed particle number η is invariant under any operator that multiplies
+the annihilator ( ˆN −η). In this work, we consider first and second order annihilators constructed from particle number
+conservation, which correspond to a continuous set of spectrally equivalent Hamiltonian where original electronic
+
+=== PDF PAGE 12 ===
+12
+Molecule (N, R, B, C) λreg [mHa] ϵreg [mHa] Ereg [Ha] Time per step [ms] Steps to solution
+Fe2S2 [30e, 20o] (20, 14, 15, 5) 20 10 [1, 4] 0.8 10[5,6]
+Fe4S4 [54e, 36o] (36, 9, 18, 18) 20 10 1.87 × [1, 2] 1.2 10[5,6]
+FeMoco [54e, 54o] (54, 10, 27, 27) 50 10 3.46 × [1, 1.6] 1.3 10[5,6]
+FeMoco [113e, 76o] (76, 15, 57, 19) 100 10 [4, 8] 4.4 10[5,6]
+CO2[XVIII] [64e, 56o] (56, 5, 28, 28) 50 10 [1, 4] 1.8 10[5,6]
+CO2[XVIII] [100e, 100o] (100, 9, 75, 25) 50 10 [2, 8] 8.2 10[5,6]
+CO2[XVIII] [150e, 150o] (150, 13, 112, 37) 200 10 [4, 16] 49.0 10[5,6]
+CPD1-P450X [63e, 58o] (58, 9, 29, 14) 50 10 4.70 × [1, 1.5] 1.3 10[5,6]
+TABLE IV. Runtime for evaluating a single gradient descentAdam step of Eq. (41) for typical examples in aJax implementation
+running on a single Nvidia L4 GPU, and typical hyperparameters. In all cases, the learning rate is geometrically decreasing
+from 10−1 to a final value that is typically 10 −4,−5,−6.
+structure tensor ( h(2), h(1), h(0)) may be replaced by any ( h(2)S , h(1)S , h(0)S ) in
+Hη =
+
+h(2) + h(sym) ⊗ I + I ⊗ h(sym)
+2 , h(1) − η2 h(sym) + β1I, h(0) − η2 β1
+ ∀β1 ∈ R, h(sym) = h(sym)† ∈ RN ×N  .
+(40)
+We optimize the DFTHC ansatz for good block-encoding parameters by defining the non-linear program
+argmin
+u∈RR×B×N ,
+w∈RR×(B+1)×C ,
+(h(2)S ,h(1)S ,h(0)S )∈Hη
+"
+∥h(2)S − h(2)′∥fro
+ϵreg
++ Λλreg + Relu  Egap − EregEreg # , Relu(x) := (x, x ≥ 0,0, x < 0. (41)
+where ·reg are regularization hyperparameters. Equation (41) minimizes the error between the DFTHC approximation
+h(2)′ which is a function of u and w, and any exact two-body tensor h(2)S in the η-particle symmetry sector. At the
+same time, it places some priority on minimizing the block-encoding normalization factor Λ, which is implicitly a
+function of u, w, h(2)S , h(1)S as seen in Eq. (36). This program also attempts to get solutions close to the optimal
+gap through Egap, which implicitly depends on all parameters. Note the Relu function, which avoids optimizing for
+unrealistic gaps less than the optimal. Whereas prior approach to solving similar nonlinear linear programs for DF or
+THC required chemically motivated initial conditions ( u0, w0) for ( u, w) from which gradient descent begins, we find
+that it suffices to make the much simpler choice of initial parameter values P = (u0, w0, β1,0, h(sym)0 ), where u(r)b is a
+random unit vector, w0, h(sym)0 ∼ N(0.01) and β1 ∼ N(0.05) to be element-wise sampled from a distribution where
+N (σ) is the normal distribution with mean zero and standard deviation σ.
+We approximately solve Eq. (41) by first-order gradient descent using the Adam optimizer implemented in the
+Optax and Jax libraries for the Python programming language. The most expensive operation in each step is
+the tensor contraction in Eq. (24), which costs O(RCN 4) multiplications. A major benefit is this approach is auto-
+differentiation, which allows for easily computing gradients even through complicated functions, such as the Schatten
+norm in Eq. (39). Our approach is also GPU-accelerated, which allows us to collect robust statistics and optimize
+over a large number of ( R, B, C) parameters for systems up to N = 150 orbitals, as shown in Table IV together with
+typical hyperparameters.
+B. Selection of good solutions
+Although finding the optimal solution to Eq. (41) could take exponential time in N, R, B, C, we emphasize that
+it suffices to find approximate solutions more rapidly, so long as they are chemically accurate. Chemical accuracy
+for each DFTHC solution is validated by calculating the difference in CCSD(T) correlation energy ϵcorr compared to
+the original representation H, as commonly recommended [7, 17], as a proxy to the difference in exact correlation
+energy ϵ∗corr. Prior work [12, 39] computed good DF or THC solutions by scanning over ranks, searching for good
+hyperparameters, and finally picking the lowest quantum cost solution with |ϵcorr| below some threshold ϵth. In other
+words, using ·′ to refer to variables computed from a DFTHC solution,
+Egs = EHF + Ecorr, E ′gs = E′HF + E′corr, ϵ corr = Ecorr − E′corr, (42)
+
+=== PDF PAGE 13 ===
+13
+101 102
+R
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+|ϵcorr| / mHa
+DFTHC rank ( R, B, C)
+(R, 54, 1), R∗=190
+(R, 27, 13), R∗=10
+(R, 27, 27), R∗=10
+(R, 54, 27), R∗=6
+(1, R, R), R∗=200
+FIG. 3. FeMoCo-54 CCSD(T) correlation energy error vs. rank of DFTHC truncation (small dots). The dashed line at 1 .6mHa
+is the chemical accuracy threshold and the shaded region is the threshold 0 .3mHa used to select the rank R∗ (large dots) of
+good solutions.
+where EHF is the Hartree-Fock energy, which can be computed in O(N 3) time. Hence, using a quantum computer
+to estimate ˆE′gs with standard deviation σPEA from the PEA, we may obtain the true ground-state energy ˆEgs =
+ˆE′gs + (EHF − E′HF) + ϵ∗corr with standard deviation
+σE ≤ σPEA + |ϵ∗corr| ≈σPEA + |ϵcorr| ≤σPEA + ϵth. (43)
+We use the same approach to generate candidate DFTHC solutions below the threshold ϵth ≤ 0.3mHa as il-
+lustrated for FeMoCo-54 in Fig. 3. Following the heuristics in Section IV, we choose ( R, B, C) values with B ∈
+{N, ⌊3N/4⌋, ⌊N/4⌋} and C ∈ {⌊N/2⌋, ⌊N/4⌋}, and scan over R. To make a comparison with prior art, we also study
+DF-like (R, N,1) and THC-like (1 , RTHC, RTHC) factorizations. The best Toffoli gate costs for points below the ϵth
+threshold is reported in Table V together with relevant parameter like Egap – see Table X and Table XI for best
+solutions for each choice of ( B, C). As the absolute energy of each DFTHC factorization may shift by a large amount
+E′HF − EHF, we also recompute Egap using the CCSD(T) energy to approximate the ground-state energy. CCSD(T) is
+not a upper bound on E′gs, but we expect the correction to be small compared Egap, which is on the order of Hartrees.
+CCSD(T) in the spin-0 sector is run on the systems FeMoCo-54 and the XVIII complexes. For other molecules,
+convergence requires targeting the high-spin sector: as described in prior art [7, 10], we choose n↑ − n↓ for Fe2S2,
+Fe4S4, FeMoCo-76, and CPD1-P450X to be 8, 16, 35, and 5 respectively.
+Drawing general conclusions about the best hyperparameters is not straightforward, as ϵcorr fluctuates significantly
+in Fig. 3 and does not improve monotonically with rank. Similar to DF and THC, these fluctuations arise as the
+DFTHC program of Eq. (41) is nonlinear and the final solution is sensitive to initial conditions. This is easily resolved
+by collecting statistics on ϵcorr, by restarting the DFTHC program for multiple different initial conditions P, in a
+randomized fashion as described in Section IV A. This allows us to make statistically robust conclusions in Appendix C
+about the scaling of various parameters of interest, such as the standard deviation σcorr, Λ, and Egap with DFTHC
+rank R, and enables the use of a different bound on error contributions like
+σE ≤
+q
+σ2PEA + σ2corr + |¯ϵcorr| ≤ϵchem. (44)
+This bound also tolerates larger errors, say σPEA = 1 .4mHa and σcorr = 0 .7mHa. In Table XI of Appendix C, we
+present an alternate set of resource estimates based on Eq. (44), as they represent average-case solutions rather than
+best-case solutions and are of independent interest.
+V. RESOURCE ESTIMA TES
+In Table V, we report the quantum resource estimates of the DFTHC+BLISS+SA protocol for estimating the
+ground-state energy, and compare these with prior art using the double-factorization, tensor hypercontraction, and
+BLISS where applicable. We consider a variety of chemical systems: Iron-Sulfur complexes (Fe 2S2 [40], Fe4S4 [40],
+
+=== PDF PAGE 14 ===
+14
+54 orbital FeMoco active space [37], 76 orbital FeMoco active space [38]), a representation of the cytochrome P450
+enzyme active site (CPD1) [11], and the CO 2-fixation Ruthenium catalyst [9]. Beyond being chemically distinct and
+a robust test of the method, the varying size and degree of correlation in each of the systems allows us to extrapolate
+scalings in Table V, based on the eight system considered spanning an order of magnitude difference in number of
+orbitals and electrons.
+The DFTHC resources were computed by scanning over (R, B, C) values to find lowest cost solutions balancing gap,
+rotation, and coefficient oracle costs along with the difference in correlation energy with respect to the untruncated
+integrals ϵcorr. We report the LCU rescaling value for the SOS Hamiltonian Λ, differences between DFTHC two-
+electron integral tensors, the effective DFTHC+SA LCU rescaling value λeff, block-encoding space and time resources,
+and improvement factors over prior work. The improvement factors are computed as the ratio of the products of block-
+encoding and λ. The bits for LCU coefficients and rotations bcoeff and bcoeff respectively were estimated according
+to Appendix D, where we design a randomized rounding scheme that converts bit truncation errors to a variable ϵtrunc
+contribution to ϵcorr. We choose the maximum number of bits that satisfies the error bound
+σE ≤
+q
+σ2PEA + σ2trunc + |ϵcorr| + |¯ϵtrunc| ≤ϵchem. (45)
+We obtain a Λ that is smaller than those computed by prior techniques, which combined along with a small Egap, in-
+dicates that the DFTHC factorization of spin-free algebra is sufficient for finding spectrum amplifiable representations
+where speedups in phase estimation are possible.
+Our results are at least a factor of 3 times cheaper than the best costs reported in the literature for this set of
+systems. For the FeMoco-76 orbital system from Li et al. [38] we find a factor of 4 improvement over recent work
+integrating tensor hypercontraction and BLISS [8] resulting in a cost of 9.99×108 Toffoli gates for ground-state energy
+estimation. For smaller Iron-Sulfur systems (Fe 2S2, Fe4S4, FeMoco54) and the CO2 systems where symmetry shifting
+is used to a lesser extent in prior art, DFTHC+BLISS+SA constitutes a substantial improvement by a factor of 10
+to 195. The SA effective LCU normalization, λeff determined by DFTHC are within a factor of 2 of the lower bounds
+to the optimal values provided in Table II. This does not indicate a limit of the SA technique – only that for a given
+SOS algebra we have found a tight gap and a highly compressed form of the the two-electron integral tensor.
+Utilizing the same quantum error correction model as Ref. [7] we can estimate the physical resources required for
+ground-state energy estimation using DFTHC+BLISS+SA. Using four CCZ factories, a physical error rate of 0.001, a
+surface code cycle time of 1 microsecond and reaction time of 10 microseconds we estimate that the FeMoco76 example
+will require 4.5 million physical qubits running for 8.6 hours on a set of d = 27 surface code patches. FeMoco54 is
+estimated to require 3.2 million physical qubits running for 2.7 hours on a set of d = 27 surface code patches. For
+reference, prior THC based runtime estimates from Reference [7], not considering the additional space-time tradeoffs
+made in that work, result in a FeMoco54 runtime of 2 days and FeMoco76 runtime of 12 days [7].
+The DFTHC protocol requires selecting a large enough ( R, B, C) such that a faithful representation of the original
+Hamiltonian is preserved while optimizing for the desired phase estimation cost. Prior works have used the difference
+in correlation energy, ϵcorr, with respect to untruncated representation of the two-electron integrals in a high-spin
+electronic configuration. We follow this trend and report factorized solutions with ϵcorr of ≤ 0.3 mHa in a similar
+fashion to Ref. [8]. Recovering correlations from a quantum computer is a viable way to compute high accuracy energy
+differences and thus correlation energy difference is a reasonable target when using an approximate wavefunction with
+a faithful representation of the correlation energy and multireference nature of the target eigenstate. High-spin
+electronic configuration are selected such that CCSD(T) converges without issue. In this regime the wavefunction is
+primarily single reference and thus correlation energy based metrics can differ substantially from low-spin, potentially,
+multireference targets for phase estimation. In Table VI we demonstrate a substantial difference in correlation energy
+differences computed from high-spin CCSD(T) energies and low-spin DMRG wavefunctions. This suggests that higher
+truncation thresholds may be needed for high accuracy electronic structure calculations on quantum computers. We
+raise this question for further research.
+VI. DISCUSSION
+In this work we have reduced the cost of ground-state energy estimation of second quantized electronic structure
+Hamiltonians by utilizing ideas from SA. For SA to provide a net gain, an SOS Hamiltonian with a sufficiently
+small gap and a sufficiently simple Hsqrt is required. Our work demonstrates that an SOS algebra that is similar to
+the algebra needed to express the spin-free chemistry Hamiltonian is sufficient for tight energy gaps and low block-
+encoding costs yielding reduced quantum resources. To ensure the block-encoding of Hsqrt is low-cost we developed a
+new tensor factorization that provides an optimal trade-off between the best prior art (DF and THC factorizations).
+The new factorization efficiently compresses the two-electron integral tensor, results in a tight SOS gap ∆gap ≪ 1, and
+
+=== PDF PAGE 15 ===
+15
+Molecule Fe2S2-20 Fe4S4-36 FeMoCo CPD1-P450X CO2 [XVIII][30e, 20o] [54e, 36o] [54e, 54o] [113e, 76o] [63e, 58o] [64e, 56o] [100e, 100o] [150e, 150o]
+DF
+λDF 41.13 [10] 154.83 [10] 78.00 [39] 584.54 [10] 111.3 [39] 293.50 [9] 782.1 [9] 1923.8 [9]
+CB.E. 7177 16505 19589 40442 21736 54227 97679 182005
+Qubits 989 3115 3722 6404 2596 3700 18017 34218
+THC
+λTHC 63.81 [10] 168.34 [10] 306.30 [7] 198.90 [8] 130.9 [8] – – –
+CB.E. 4626 8573 11016 13763 8334 – – –
+Qubits 579 1081 2142 1512 1357 – – –
+DFTHC+BLISS+SA
+(R, B, C) (14, 15, 5) (9, 18, 18) (10, 27, 27) (15, 57, 19) (9, 29, 14) (5, 28, 28) (8, 75, 25) (9, 112, 37)
+ϵcorr/mHa 0.0131 0.0041 0.1254 0.1362 0.2766 0.2697 0.042 0.062
+ϵfro/Ha 0.0221 0.1669 0.2383 0.0825 0.3083 0.4182 0.2187 0.3510
+Λ/Ha 17.5299 49.8149 58.3440 179.7296 97.4395 55.4773 155.5 336.1
+Egap/Ha 1.2381 2.3070 4.0535 5.3820 5.6837 2.6918 4.565 6.454
+λeff/Ha 6.4690 14.9842 21.3674 43.6538 32.7923 17.0712 37.68 65.87
+CB.E 3906 7322 10169 14563 9535 7651 17975 27237
+Qubits 466 873 1137 1459 1150 924 1960 2870
+Total Toffoli 3.97×107 1.72×108 3.41×108 9.99×108 4.91×108 2.05×108 1.06×109 2.81×109
+Improvement (DF) 11.7 23.3 7.0 37.1 7.7 121.9 112.7 195.2
+Improvement (THC) 11.7 13.2 15.5 4.3 3.5 – – –
+25 26 27
+22
+25
+28
+211 Toﬀolis = 0.079×N 2.09 million
+Λ = 0.23×N 1.46 Ha
+λeﬀ = 0.24×N 1.14 Ha
+Egap = 0.10×N 0.88 Ha
+N
+Arbitrary units
+TABLE V. (top) Improvements in simulating electronic structure to chemical accuracy with DFTHC and spectral amplification
+compared to best prior double-factorization methods and tensor hypercontraction methods. Improvement factors are computed
+as the ratio of the product the LCU 1-norm λ· and the block-encoding cost CB.E.. The source for each cost is provided as a
+citation reference in the λ-row. The number of calls to the block-encoding is computed as ⌈ πλ2σPEA ⌉ [14]. In line with previous
+work we take σPEA = 1.0mHa. (bottom) Scaling of parameters Toffoli cost (green), block-encoding normalization Λ, spectrum
+amplified normalization λeff, and SOS gap Egap
+balances the trade-off between the two dominant table lookup oracles. The efficiency of this new integral compression
+scheme is demonstrated by the fact that the effective LCU normalization is within a factor of two of the optimal value
+for all systems studied. These results establish that the major obstacles of combining SA and ground-state energy
+estimation can be surmounted.
+Application of DFTHC and SA to FeMoco continues the trend of cost reductions. In this case, a factor of 4 over
+prior art employing THC combined with block-invariant symmetry shifting [8]. With this reduction in costs the
+phase estimation component (9 .99 × 108 Toffoli gates) of ground-state energy estimation is now similar cost as state
+preparation (between 7.6×108 and 1.3×109) for MPS with estimated ground-state overlaps between 0.95 and 0.99 [10].
+Even more refinements to DFTHC and SA are possible. For DFTHC, improved optimal parameter search that
+minimizes space-time instead of simply the Toffoli complexity can lead to improved circuits for execution on real
+systems. Furthermore, it may be possible to convert the large non-linear optimization to a low-rank semidefinite
+program which also includes various hyperparameter optimizations [57]. Such a conversion would provide a provable
+polynomial-time pre-processing that optimizes quantum algorithm parameters and not just Egap. SA can be further
+optimized by exploring minimal expansions to the SOS algebra to decrease the ground-state energy of HSA. In terms
+of physical resources, the cost models of Ref. [7] are now out of date with the invention of magic state cultivation
+in Ref. [58]. Considering the small space-time volume of magic state cultivation, it is possible that the predicted 8
+hours of runtime is a substantial overestimate. At the logical level, with the reduction in space-time costs for T-gates
+a re-analysis of space-time trade-offs at the QROM level, which will then completely dominate the spacetime volume
+of Sel, will be required.
+Applying SA beyond second quantized chemistry will require detailed examination of the trade-off between the
+
+=== PDF PAGE 16 ===
+16
+(R, B, C) In units of [Ha] In units of [mHa]Escf ECCSD(T)(corr) EDMRG(corr) ϵscf ϵCCSD(T)(corr) ϵDMRG(corr) ϵCCSD(T) ϵDMRG
+Fe2S2
+(12,20,10) -116.381358 -0.159411 -0.217612 6.516516 0.077150 0.028436 6.593666 6.544952
+(14,10,10) -116.387588 -0.159194 -0.219803 0.285888 0.294471 2.162635 0.580359 1.876747
+(14,15,5) -116.344198 -0.159501 -0.218300 43.675643 0.013070 0.659010 43.662573 43.016632
+(11,15,10) -116.372589 -0.159387 -0.215839 15.284690 0.101229 1.801982 15.385919 17.086672
+Fe4S4
+(16,27,9) -326.903132 -0.178192 -0.219675 101.275269 0.405329 2.645671 101.680599 103.920941
+(9,18,18) -326.772089 -0.178601 -0.213938 232.317519 0.004119 8.383212 232.313399 240.700731
+(12,18,18) -326.865711 -0.173126 -0.210854 138.695868 0.242423 11.467001 138.938291 150.162870
+(12,27,18) -326.944912 -0.178400 -0.218820 59.494843 0.197676 3.500753 59.692519 62.995596
+TABLE VI. Various energies and energy difference between a DFTHC representation of the two-electron integrals and the true
+two-electron integrals. All simulations used the exact one-electron integrals. The DMRG calculations for Fe 2S2 used a bond
+dimension of M = 2000 while Fe 4S4 used M = 1000. The key difference in correlation energies is shown in columns labeled
+ϵCCSD(T)(corr) and ϵDMRG(corr). The variance and orders-of-magnitude difference suggest high spin CCSD(T) correlation
+energy may not be an optimal metric when selecting tensor factorization thresholds even with a randomization protocol
+proposed in Section IV B. The last two columns show absolute energy differences of substantial magnitude suggesting that low
+threshold truncations may be representing a Hamiltonian with fundamentally different physics.
+growing SOS complexity needed to express a Hamiltonian close to a frustration free form and the commensurate
+increased block-encoding cost. Possible avenues forward are improving the pre-processing cost of using the full spin-
+ful level-2 algebra or, based on recent work on perturbative analysis of SOS representations [59–61], including a
+subset of level-3 algebra components. Application of SA to lattice models will require a careful trade-off between SOS
+algebra size and block-encoding cost due to the existing methods already providing linear scaling in system size [14].
+We expect SA to be integral to further reducing ground-state energy estimation costs.
+ACKNOWLEDGEMENTS
+DWB worked on this project under a sponsored research agreement with Google Quantum AI. DWB is also sup-
+ported by Australian Research Council Discovery Projects DP210101367 and DP220101602.
+[1] A. Y. Kitaev, Quantum measurements and the abelian stabilizer problem, arXiv preprint quant-ph/9511026 (1995).
+[2] D. S. Abrams and S. Lloyd, Simulation of many-body Fermi systems on a universal quantum computer, Phys. Rev. Lett.
+79, 2586 (1997).
+[3] A. Aspuru-Guzik, A. D. Dutoi, P. J. Love, and M. Head-Gordon, Simulated quantum computation of molecular energies,
+Science 309, 1704 (2005).
+[4] D. Wecker, B. Bauer, B. K. Clark, M. B. Hastings, and M. Troyer, Gate-count estimates for performing quantum chemistry
+on small quantum computers, Phys. Rev. A 90, 022305 (2014).
+[5] E. Campbell, Random compiler for fast Hamiltonian simulation, Phys. Rev. Lett. 123, 070503 (2019).
+[6] I. D. Kivlichan, C. E. Granade, and N. Wiebe, Phase estimation with randomized Hamiltonians, arXiv preprint
+arXiv:1907.10070 (2019).
+[7] J. Lee, D. W. Berry, C. Gidney, W. J. Huggins, J. R. McClean, N. Wiebe, and R. Babbush, Even more efficient quantum
+computations of chemistry through tensor hypercontraction, PRX Quantum 2, 030305 (2021).
+[8] A. Caesura, C. L. Cortes, W. Poll, S. Sim, M. Steudtner, G.-L. R. Anselmetti, M. Degroote, N. Moll, R. Santagati,
+M. Streif, et al., Faster quantum chemistry simulations on a quantum computer with improved tensor factorization and
+active volume compilation, arXiv preprint arXiv:2501.06165 (2025).
+[9] V. von Burg, G. H. Low, T. H¨ aner, D. S. Steiger, M. Reiher, M. Roetteler, and M. Troyer, Quantum computing enhanced
+computational catalysis, Phys. Rev. Res. 3, 033055 (2021).
+[10] D. W. Berry, Y. Tong, T. Khattar, A. White, T. I. Kim, S. Boixo, L. Lin, S. Lee, G. K. Chan, R. Babbush, et al., Rapid
+initial state preparation for the quantum simulation of strongly correlated molecules, arXiv preprint arXiv:2409.11748
+(2024).
+[11] J. J. Goings, A. White, J. Lee, C. S. Tautermann, M. Degroote, C. Gidney, T. Shiozaki, R. Babbush, and N. C. Rubin,
+Reliably assessing the electronic structure of cytochrome P450 on today’s classical computers and tomorrow’s quantum
+computers, Proceedings of the National Academy of Sciences 119, e2203533119 (2022).
+[12] N. C. Rubin, D. W. Berry, F. D. Malone, A. F. White, T. Khattar, A. E. DePrince, S. Sicolo, M. K¨ uehn, M. Kaicher,
+J. Lee, and R. Babbush, Fault-tolerant quantum simulation of materials using Bloch orbitals, PRX Quantum 4, 040303
+
+=== PDF PAGE 17 ===
+17
+(2023).
+[13] D. Poulin, A. Kitaev, D. S. Steiger, M. B. Hastings, and M. Troyer, Quantum algorithm for spectral measurement with a
+lower gate count, Phys. Rev. Lett. 121, 010501 (2018).
+[14] R. Babbush, C. Gidney, D. W. Berry, N. Wiebe, J. McClean, A. Paler, A. Fowler, and H. Neven, Encoding electronic
+spectra in quantum circuits with linear T complexity, Phys. Rev. X 8, 041015 (2018).
+[15] D. W. Berry, M. Kieferov´ a, A. Scherer, Y. R. Sanders, G. H. Low, N. Wiebe, C. Gidney, and R. Babbush, Improved
+techniques for preparing eigenstates of fermionic Hamiltonians, npj Quantum Information 4, 22 (2018).
+[16] G. H. Low and I. L. Chuang, Hamiltonian simulation by qubitization, Quantum 3, 163 (2019).
+[17] D. W. Berry, C. Gidney, M. Motta, J. R. McClean, and R. Babbush, Qubitization of arbitrary basis quantum chemistry
+leveraging sparsity and low rank factorization, Quantum 3, 208 (2019).
+[18] I. Loaiza and A. F. Izmaylov, Block-invariant symmetry shift: Preprocessing technique for second-quantized hamiltonians
+to improve their decompositions to linear combination of unitaries, Journal of Chemical Theory and Computation 19, 8201
+(2023).
+[19] S. Patel, A. S. Brahmachari, J. T. Cantin, L. Wang, and A. F. Izmaylov, Guaranteed global minimum of electronic
+Hamiltonian 1-norm via linear programming in the block invariant symmetry shift (BLISS) method, arXiv preprint
+arXiv:2409.18277 (2024).
+[20] C. L. Cortes, D. Rocca, J. F. Gonthier, P. J. Ollitrault, R. M. Parrish, G.-L. R. Anselmetti, M. Degroote, N. Moll,
+R. Santagati, and M. Streif, Assessing the query complexity limits of quantum phase estimation using symmetry-aware
+spectral bounds, Phys. Rev. A 110, 022420 (2024).
+[21] R. D. Somma and S. Boixo, Spectral gap amplification, SIAM Journal on Computing 42, 593 (2013).
+[22] G. H. Low and I. L. Chuang, Hamiltonian simulation by uniform spectral amplification (2017), arXiv:1707.05391 [quant-ph].
+[23] A. Zlokapa and R. D. Somma, Hamiltonian simulation for low-energy states with optimal time dependence, arXiv preprint
+arXiv:2404.03644 (2024).
+[24] S. Gu, R. D. Somma, and B. S ¸ahino˘ glu, Fast-forwarding quantum evolution, Quantum5, 577 (2021).
+[25] A. Gily´ en, Y. Su, G. H. Low, and N. Wiebe, Quantum singular value transformation and beyond: exponential improvements
+for quantum matrix arithmetics, in Proceedings of the 51st Annual ACM SIGACT Symposium on Theory of Computing,
+STOC 2019 (Association for Computing Machinery, New York, NY, USA, 2019) p. 193–204.
+[26] A. N. Chowdhury and R. D. Somma, Quantum algorithms for Gibbs sampling and hitting-time estimation, Quantum Info.
+Comput. 17, 41–64 (2017).
+[27] A. W. Harrow, A. Hassidim, and S. Lloyd, Quantum algorithm for linear systems of equations, Phys. Rev. Lett. 103,
+150502 (2009).
+[28] A. J. Coleman, The convex structure of electrons, International Journal of Quantum Chemistry 11, 907 (1977).
+[29] D. A. Mazziotti, Quantum chemistry without wave functions: Two-electron reduced density matrices, Accounts of Chemical
+Research 39, 207 (2006).
+[30] S. Pironio, M. Navascu´ es, and A. Acin, Convergent relaxations of polynomial optimization problems with noncommuting
+variables, SIAM Journal on Optimization 20, 2157 (2010).
+[31] H. Kummer, n-representability problem for reduced density matrices, Journal of Mathematical Physics 8, 2063 (1967).
+[32] R. M. Erdahl, Representability, International Journal of Quantum Chemistry 13, 697 (1978).
+[33] J. Eisert, A note on lower bounds to variational problems with guarantees, arXiv preprint arXiv:2301.06142 (2023).
+[34] W. Hall, Compatibility of subsystem states and convex geometry, Phys. Rev. A 75, 032102 (2007).
+[35] D. A. Mazziotti, Structure of fermionic density matrices: Complete n-representability conditions, Phys. Rev. Lett. 108,
+263002 (2012).
+[36] Y.-K. Liu, Consistency of local density matrices is qma-complete, in Approximation, Randomization, and Combinatorial
+Optimization. Algorithms and Techniques: 9th International Workshop on Approximation Algorithms for Combinatorial
+Optimization Problems, APPROX 2006 and 10th International Workshop on Randomization and Computation, RANDOM
+2006, Barcelona, Spain, August 28-30 2006. Proceedings(Springer, 2006) pp. 438–449.
+[37] M. Reiher, N. Wiebe, K. M. Svore, D. Wecker, and M. Troyer, Elucidating reaction mechanisms on quantum computers,
+Proceedings of the National Academy of Sciences 114, 7555 (2017).
+[38] Z. Li, J. Li, N. S. Dattani, C. Umrigar, and G. K. Chan, The electronic complexity of the ground-state of the FeMo cofactor
+of nitrogenase as relevant to quantum simulations, The Journal of Chemical Physics 150, 024302 (2019).
+[39] D. Rocca, C. L. Cortes, J. F. Gonthier, P. J. Ollitrault, R. M. Parrish, G.-L. Anselmetti, M. Degroote, N. Moll, R. Santagati,
+and M. Streif, Reducing the runtime of fault-tolerant quantum simulations in chemistry through symmetry-compressed
+double factorization, Journal of Chemical Theory and Computation 20, 4639 (2024).
+[40] Z. Li and G. K.-L. Chan, Spin-projected matrix product states: Versatile tool for strongly correlated systems, Journal of
+Chemical Theory and Computation 13, 2681 (2017).
+[41] M. M¨ orchen, G. H. Low, T. Weymuth, H. Liu, M. Troyer, and M. Reiher, Classification of electronic structures and state
+preparation for quantum computation of reaction chemistry (2024), arXiv:2409.08910 [physics.comp-ph].
+[42] A. M. Childs, On the relationship between continuous- and discrete-time quantum walk, Communications in Mathematical
+Physics 294, 581 (2010).
+[43] D. W. Berry, A. M. Childs, and R. Kothari, Hamiltonian simulation with nearly optimal dependence on all parameters, in
+Foundations of Computer Science (FOCS), 2015 IEEE 56th Annual Symposium on(2015) pp. 792–809.
+[44] T. S. Motzkin, The arithmetic-geometric inequality, Inequalities (Proc. Sympos. Wright-Patterson Air Force Base, Ohio,
+1965) 205, 54 (1967).
+[45] J. W. Helton, “Positive” noncommutative polynomials are sums of squares, Annals of Mathematics 156, 675 (2002).
+
+=== PDF PAGE 18 ===
+18
+[46] D. A. Mazziotti, Variational minimization of atomic and molecular ground-state energies via the two-particle reduced
+density matrix, Phys. Rev. A 65, 062511 (2002).
+[47] N. C. Rubin and D. A. Mazziotti, Comparison of one-dimensional and quasi-one-dimensional hubbard models from the
+variational two-electron reduced-density-matrix method, Theoretical Chemistry Accounts 133, 1492 (2014).
+[48] J. W. Mullinax, E. Maradzike, L. N. Koulias, M. Mostafanejad, E. Epifanovsky, G. Gidofalvi, and A. E. DePrince III,
+Heterogeneous CPU+ GPU algorithm for variational two-electron reduced-density matrix-driven complete active-space
+self-consistent field theory, Journal of Chemical Theory and Computation 15, 6164 (2019).
+[49] Q. Han, Z. Lin, H. Liu, C. Chen, Q. Deng, D. Ge, and Y. Ye, Accelerating low-rank factorization-based semidefinite
+programming algorithms on GPU, arXiv preprint arXiv:2407.15049 (2024).
+[50] Q. Han, C. Li, Z. Lin, C. Chen, Q. Deng, D. Ge, H. Liu, and Y. Ye, A low-rank admm splitting approach for semidefinite
+programming, arXiv preprint arXiv:2403.09133 (2024).
+[51] A. M.-C. So, Y. Ye, and J. Zhang, A unified theorem on SDP rank reduction, Mathematics of Operations Research 33,
+910 (2008).
+[52] I. Waldspurger and A. Waters, Rank optimality for the Burer–Monteiro factorization, SIAM Journal on Optimization 30,
+2577 (2020).
+[53] M. Motta, E. Ye, J. R. McClean, Z. Li, A. J. Minnich, R. Babbush, and G. K.-L. Chan, Low rank representations for
+quantum simulation of electronic structure, npj Quantum Information 7, 83 (2021).
+[54] O. Oumarou, M. Scheurer, R. M. Parrish, E. G. Hohenstein, and C. Gogolin, Accelerating Quantum Computations of
+Chemistry Through Regularized Compressed Double Factorization, Quantum 8, 1371 (2024).
+[55] G. H. Low, V. Kliuchnikov, and L. Schaeffer, Trading T gates for dirty qubits in state preparation and unitary synthesis,
+Quantum 8, 1375 (2024).
+[56] G. H. Low, Halving the cost of quantum multiplexed rotations (2021), arXiv:2110.13439 [quant-ph].
+[57] S. Burer and R. D. Monteiro, A nonlinear programming algorithm for solving semidefinite programs via low-rank factor-
+ization, Mathematical programming 95, 329 (2003).
+[58] C. Gidney, N. Shutty, and C. Jones, Magic state cultivation: growing T states as cheap as CNOT gates, arXiv preprint
+arXiv:2409.17595 (2024).
+[59] M. B. Hastings, Improving perturbation theory with the sum-of-squares: Third order, arXiv preprint arXiv:2412.03564
+(2024).
+[60] M. B. Hastings, Field theory and the sum-of-squares for quantum systems, arXiv preprint arXiv:2302.14006 (2023).
+[61] M. B. Hastings, Perturbation theory and the sum of squares, arXiv preprint arXiv:2205.12325 (2022).
+[62] Y. R. Sanders, D. W. Berry, P. C. Costa, L. W. Tessler, N. Wiebe, C. Gidney, H. Neven, and R. Babbush, Compilation of
+fault-tolerant quantum heuristics for combinatorial optimization, PRX Quantum 1, 020312 (2020).
+Appendix A: Equivalent quantum walk representations of spectral amplifiable Hamiltonians
+In this section, we present alternate methods to generate quantum walks specialized to ‘spectrum-amplifiable’
+Hamiltonians HSA as in Eq. (5), given block-encodings of its constituent parts Be[Oα/λα]. Section II presents a
+specific block-encoding
+Be
+ 2HP
+α λ2α − I
+
+, (A1)
+which can be converted into a quantum walk with eigenphases ± arccos
+h
+2HP
+α λ2α − 1
+i
+though qubitization [16]. The
+quadratic amplification of gradient for phases near π then provides a quadratic advantage in phase estimation for
+estimating the ground-state energy. One may then interpret the quantum walk as the source of advantage stemming
+from the nonlinear dependence of phase on the eigenvalue of the original Hamiltonian. Similarly, it is possible to
+consider the source of advantage by defining an appropriate square-root of Hamiltonian.
+1. Quantum walk on Hermitian square-rooted Hamiltonians
+One possible definition for the square-root of Eq. (5) is the Hermitian operator
+Hsqrt =
+L−1X
+α=0
+ 
+|χα⟩ ⟨0| ⊗Oα + |0⟩ ⟨χα| ⊗O†α . (A2)
+
+=== PDF PAGE 19 ===
+19
+Note that we are free to replace |χα⟩ with any set of mutually orthogonal quantum states that are also orthogonal to
+the multi-qubit computational basis state |0⟩. This squares to
+H 2sqrt =
+ HSA 0
+0 . . .
+!
+, (A3)
+where the upper diagonal block is the original gap-amplifiable Hamiltonian and0 is an all-zero matrix of corresponding
+dimension. We can obtain HSA by applying a projection over the the ancilla space specified by the ancillary state |0⟩.
+As such, if HSA has eigenvalues Ej ≥ 0 and eigenstates |ψj⟩, then Hsqrt has eigenvalues ±
+p
+Ej with closely-related
+eigenstates |ϕ±j ⟩. To prove this, first observe that the subspace spanned by {|0⟩|ψj⟩, Hsqrt|0⟩|ψj⟩} is invariant under
+Hsqrt:
+Hsqrt|0⟩|ψj⟩ =
+X
+α
+|χα⟩ ⊗(Oα|ψj⟩) (A4)
+H 2sqrt|0⟩|ψj⟩ = Hsqrt X
+α
+|χα⟩ ⊗(Oα|ψj⟩) =
+X
+α
+ 
+I ⊗ O†αOα |0⟩ ⊗ |ψj⟩ = Ej|0⟩ ⊗ |ψj⟩. (A5)
+Second, we diagonalize Hsqrt on the subspace spanned by this set of states, to find that it has eigenvalues and
+eigenvectors
+|ϕ±j ⟩ = 1√2
+ 
+|ψj⟩ ± 1pEj Hsqrt|ψj⟩
+!
+, (A6)
+Hsqrt|ϕ±j ⟩ = ±pEj|ϕ±j ⟩. (A7)
+We now discuss a block-encoding for Eq. (A2). Let B also denote an ancillary system. Given access to controlled
+block-encodings Be[Oα/λα], where ⟨0|B Be[Oα/λα] |0⟩B = Oα/λα and λα ≥ ∥Oα∥, unitary iteration and coherent-
+alias-sampling state preparation [14] allows us to synthesize the SELECT and PREPARE circuits:
+Sel = |0⟩⟨0| ⊗I +
+X
+α
+|α⟩⟨α| ⊗Be[Oα/λα], (A8)
+Prep : |0⟩a 7→
+X
+α
+λα
+λsqrt
+|α⟩a |garbα⟩a =
+X
+α
+λα
+λsqrt
+|χα⟩a = |Ψ⟩a , λ sqrt =
+sX
+α
+λ2α . (A9)
+Let Xc = |0⟩ ⟨1|c + |1⟩ ⟨0|c be the ‘Pauli X’ and let CPrep = |0⟩⟨0|c ⊗ I + |1⟩⟨1|c ⊗ Prep, where c is an ancillary
+qubit. Observe that
+CPrep(Xc ⊗ |0⟩⟨0|a)CPrep† = |0⟩ ⟨1|c ⊗ |0⟩⟨0|a Prep† + |1⟩ ⟨0|c ⊗ Prep |0⟩ ⟨0|a
+= |0⟩ ⟨1|c ⊗ |0⟩ ⟨Ψ|a + |1⟩ ⟨0|c ⊗ |Ψ⟩ ⟨0|a
+= |00⟩ ⟨1Ψ|ac + |1Ψ⟩ ⟨00|ac . (A10)
+Let And := Ib ⊗ |0⟩⟨0|a + Xb ⊗ (Ia − |0⟩⟨0|a) be a two-qubit operator, where b is another ancilla qubit, with Ia,b
+denoting the 2 × 2 identity. Hence
+⟨b|b CPrep(Xc ⊗ And)CPrep† |0⟩b = CPrep(Xc ⊗ |0⟩⟨0|a)CPrep† , (A11)
+so CPrep(Xc ⊗ And)CPrep† that block-encodes Eq. (A10).
+Hence, the circuit
+U = Sel · CPrep · (Xc ⊗ And) · CPrep† · Sel†, (A12)
+
+=== PDF PAGE 20 ===
+20
+is a block-encoding of Hsqrt/λsqrt:
+⟨0|b ⟨0|B U |0⟩B |0⟩b = ⟨0|B Sel(|1Ψ⟩ ⟨00|ac + |00⟩ ⟨1Ψ|ac)Sel† |0⟩B
+= ⟨0|B Sel
+ X
+α
+λα
+λsqrt
+|α⟩ |garbα⟩ |1⟩ ⟨0| + |0⟩
+X
+α
+λα
+λsqrt
+⟨α| ⟨garbα| ⟨1|
+!
+Sel† |0⟩B
+= ⟨0|B
+ X
+α
+λα
+λsqrt
+|α⟩ |garbα1⟩ ⟨0| ⊗Be
+ Oα
+λα
+
++ |0⟩
+X
+α
+λα
+λsqrt
+⟨α| ⟨garbα1| ⊗Be†
+ Oα
+λα
+!
+|0⟩B
+= 1λsqrt Xα  |χα⟩ ⟨0| ⊗Oα + |0⟩ ⟨χα| ⊗O†α
+= Hsqrt
+λsqrt
+. (A13)
+Observe that U 2 = I is self-inverse. Hence, following qubitization [16], the quantum walk W = RefU of Hsqrt
+is obtained by applying a reflection Ref = 2 |0⟩⟨0|bB − I. This quantum walk has eigenphases ± arccos(
+p
+Ej) ≈
+±( π2 − pEj). Hence, applying the PEA with precision δ using c/δ queries to W learns pEj/λsqrt, for some constant
+c, which also translates to a quadratic advantage in the error of Ej. In the limit of small δ, the precision ϵ of learning
+Ej is
+ϵ =
+ dpEj/λsqrtdEj −1 δ = 2qEjλ2sqrtδ. (A14)
+Overall, each quantum walk step has cost dominated by two queries to Sel and two queries to Prep. Hence, the
+overall query complexity is 4 c
+p
+Ej
+P
+α λ2α/ϵ to Sel and to Prep.
+2. Quantum walk on rectangular matrices
+One may more directly define a non-Hermitian matrix square-root by choosing
+H ′sqrt =
+L−1X
+α=0
+|χα⟩ ⊗Oα, (A15)
+which has a singular value decomposition
+H ′sqrt = X
+j
+p
+Ej | ˜ψj⟩ ⟨ψj| , | ˜ψj⟩ = H ′sqrt |ψj⟩|H ′sqrt |ψj⟩ |. (A16)
+Just like Eq. (A2), we are free to replace |χα⟩ with any set of mutually orthogonal quantum states like basis states.
+As expected, the singular values (SVs) of H ′sqrt are equivalent to those of HSA following
+SV(H ′sqrt) =
+r
+SV
+
+H ′†sqrtH ′sqrt
+
+=
+vuutSV  X
+α
+⟨χα| ⊗O†α X
+α′
+|χα′⟩ ⊗Oα′
+!
+=
+vuutSV  X
+α
+O†αOα
+!
+=
+p
+SV(HSA).
+(A17)
+By forming a quantum walk over rectangular matrices [25], we can again use the PEA to estimate the energies
+p
+Ej.
+Compared to Appendix A 1, the block-encoding of the rectangular matrix H ′sqrt is more straightforward.
+To see this, given access to controlled block-encodings Be[Oα/λα] where ⟨0|B Be[Oα/λα] |0⟩B = Oα/λα, unitary
+iteration and coherent alias sampling state preparation [14] allows us to synthesize the SELECT and PREPARE
+circuits
+Sel =
+X
+α
+|α⟩ ⟨α| ⊗Be[Oα/λα], (A18)
+Prep |0⟩a =
+X
+α
+λα
+λsqrt
+|α⟩a |garbα⟩a =
+X
+α
+λα
+λsqrt
+|χα⟩a , λ sqrt :=
+sX
+α
+λ2α. (A19)
+
+=== PDF PAGE 21 ===
+21
+Then we have the block-encoding
+U := Sel · Prep† = Be
+ H ′sqrt
+λsqrt
+
+, (A20)
+following
+⟨0|B Sel · Prep† |0⟩a |0⟩B =
+P
+α |χα⟩ ⊗Oα
+λsqrt
+= H ′sqrt
+λsqrt
+, (A21)
+where we used the freedom to choose any set of mutually orthogonal states |χα⟩.
+Let us now define the quantum walksW1 := RefBU and W2 := RefaBU † over non-Hermitian matrices following [25].
+We find it useful to introduce the following states
+|⊥j⟩ := (I − |0⟩⟨0|aB)U † |0⟩B | ˜ψj⟩|(I − |0⟩⟨0|aB)U † |0⟩B | ˜ψj⟩ |= (I − |0⟩⟨0|aB)U † |0⟩B | ˜ψj⟩q1 − Ej/λ2sqrt . (A22)
+| ˜⊥j⟩ := (I − |0⟩⟨0|B)U |0⟩a |ψj⟩|(I − |0⟩⟨0|B)U |0⟩a |ψj⟩ |= (I − |0⟩⟨0|B)U |0⟩a |ψj⟩q1 − Ej/λ2sqrt . (A23)
+Consider the eigenstates |ψj⟩ of HSA of eigenvalue Ej ≥ 0. Then W1 maps the the subspace spanned by
+{|0⟩aB |ψj⟩ , |⊥j⟩} to {|0⟩B | ˜ψj⟩ , | ˜⊥j⟩}. We can show this by direct computation:
+W1 |0⟩aB |ψj⟩ = RefB
+ p
+Ej
+λsqrt
+|0⟩B | ˜ψj⟩ +
+s
+1 − Ej
+λ2sqrt | ˜⊥j⟩
+!
+=
+p
+Ej
+λsqrt
+|0⟩B | ˜ψj⟩ −
+s
+1 − Ej
+λ2sqrt | ˜⊥j⟩ , (A24)
+W1 |⊥j⟩ = RefBU (I − |0⟩⟨0|aB)U † |0⟩B | ˜ψj⟩q
+1 − Ej/λ2sqrt
+= |0⟩B | ˜ψj⟩q
+1 − Ej/λ2sqrt
+− RefBU (|0⟩⟨0|aB)U † |0⟩B | ˜ψj⟩q
+1 − Ej/λ2sqrt
+= |0⟩B | ˜ψj⟩q
+1 − Ej/λ2sqrt
+− (2 |0⟩⟨0|B − I)U |0⟩aB
+p
+Ej/λsqrt |ψj⟩q
+1 − Ej/λ2sqrt
+= |0⟩B | ˜ψj⟩q
+1 − Ej/λ2sqrt
+− 2 |0⟩⟨0|B U |0⟩aB
+p
+Ej/λsqrt |ψj⟩q
+1 − Ej/λ2sqrt
++ U |0⟩aB |ψj⟩
+p
+Ej/λsqrt
+q
+1 − Ej/λ2sqrt
+= −
+s
+1 − Ej
+λ2sqrt |0⟩B | ˜ψj⟩ +
+p
+Ej
+λsqrt
+| ˜⊥j⟩ , (A25)
+and similarly for W2, which maps the the subspace spanned by {|0⟩B | ˜ψj⟩ , | ˜⊥j⟩} to {|0⟩aB |ψj⟩ , |⊥j⟩}.
+We can diagonalize W1 and W2 on these subspaces by defining
+|ϕ±j ⟩ := |0⟩aB |ψj⟩ ±i |⊥j⟩√2 , | ˜ϕ±j ⟩ := |0⟩B | ˜ψj⟩ ±i | ˜⊥j⟩√2 . (A26)
+Then by substituting from Eq. (A24),
+W1 |ϕ±j ⟩ =
+p
+Ej
+λsqrt
+|0⟩B | ˜ψj⟩ ±i | ˜⊥j⟩√
+2 ± i
+s
+1 − Ej
+λ2sqrt
+|0⟩B | ˜ψj⟩ ±i | ˜⊥j⟩√
+2 = ei arccos(±
+√
+Ej /λsqrt) | ˜ϕ±j ⟩ , (A27)
+W2 | ˜ϕ±j ⟩ = ei arccos(±
+√
+Ej /λsqrt) |ϕ±j ⟩ . (A28)
+Hence, the quantum walks W1 and W2 apply eigenphases arccos(±
+p
+Ej/λsqrt) on the alternating subspaces |ϕ±j ⟩ and
+| ˜ϕ±j ⟩.
+
+=== PDF PAGE 22 ===
+22
+We may thus perform phase estimation on the quantum walks, so long as we alternate between W1 and W2. For
+instance, if the PEA calls for the kth power of a unitary to be applied, we would replace this with the lengthk sequence
+· · ·W2W1W2W1, ending with W1 if k is odd and with W2 if k is even. Hence, we may estimate Ej with the same
+sensitivity as Eq. (A14), but with half the number of queries to Sel and Prep due to the simpler block-encoding of
+the rectangular H ′sqrt compared to the Hermitian Hsqrt in Eq. (A2).
+Moreover, we may also choose to perform phase estimation on the product W2W1. From Eq. (A27),
+W2W1 |ϕ±j ⟩ = ei2 arccos(±
+√
+Ej /λsqrt) |ϕ±j ⟩
+= (cos(2 arccos(±
+p
+Ej/λsqrt)) + i · · ·) |ϕ±j ⟩
+= (T2[±
+p
+Ej/λsqrt] + i · · ·) |ϕ±j ⟩
+= (2Ej/λ2sqrt − 1) + i · · ·) |ϕ±j ⟩
+= ei arccos(±(2Ej /λ2sqrt−1)) |ϕ±j ⟩ , (A29)
+where we have used the definition of Chebyshev polynomials Tk[cos(θ)] = cos(kθ) with T2[x] = 2x2 − 1. If we expand
+the quantum circuit
+W2W1 = RefaB(U †RefBU ), (A30)
+the attentive reader will notice that the term in round brackets is a block-encoding Be[2HSA/λ2sqrt − I] following
+2HSA
+λ2sqrt − I = ⟨0|aB W2W1 |0⟩aB = ⟨0|aB RefaBU †RefBU |0⟩aB = ⟨0|aB U †RefBU |0⟩aB . (A31)
+Appendix B: DFTHC block-encoding cost
+For block-encoding we will leverage the representation of the spin-free operator in Majorana representation. There
+two high level components to the block-encoding: 1) the linear combination of T2(Be[O†α], Be[Oα]) and 2) imple-
+mentation of each qubitization step on each Oα. The reflection on the ancilla to construct the walk operator is
+controlled on all ancilla associated with the linear combination of T2 and qubitization signal states. In the Majorana
+representation a DFTHC ansatz with r ∈ [R], c∈ [C], b∈ [B] has SOS generators
+OSF,(rc) = w(rc)B I + i2 Xσ∈{0,1} Xb∈[B] w(rc)b ˜γ⃗ u(r)b σ1˜γ⃗ u(r)b σ0, ˜γ⃗ uσx= Xp upγpσx, (B1)
+ODσ1 ,r =
+q
+w(r)+
+2
+
+˜γ⃗ u(r)+ σ0 + i˜γ⃗ u(r)+ σ1
+
+, (B2)
+OQσ1 ,r =
+q
+w(r)−
+2
+
+˜γ⃗ u(r)− σ0 − i˜γ⃗ u(r)− σ1
+
+. (B3)
+As previously mentioned, the optimal D 1 and Q 1 generators are found by an eigendecomposition of the one-body
+N × N coefficient matrix. Hence, we can identify w(r)+ with the positive semidefinite ND1 eigenvalues of the coefficient
+matrix, and w(r)− with the absolute value of the NQ1 = N − ND1 remaining eigenvalues, which are negative. In total,
+there are N + RC(B + 1) different coefficients w and N + RB real unit vectors ⃗ uacross the different generators.
+In the following, we will use qubit registers |r⟩r , |G⟩G , |b⟩b , |c⟩c storing integer the integers r, b, c. It is useful to
+index the different operators with a single integer xo ∈ [Xo] that is a function of G, r, cas follows:
+xo(G, r, c) =
+
+
+
+r, G = GD1 ,
+ND1 + r, G = GQ1 ,
+N + rC + c, G = GSF,
+Xo = N + RC. (B4)
+We adopt the convention that b = B indexes the identity term. We note that the integers last line {N + RB + r}r∈[R]
+can be replaced by set of integers distinct from the earlier cases.
+
+=== PDF PAGE 23 ===
+23
+The sum-of-square Hamiltonian is then
+HSOS =
+X
+g
+X
+rc
+O†g,rcOg,rc = X
+xo
+O†xo Oxo . (B5)
+For each term, we associate a certain block-encoding normalization factor that will be later relevant.
+λSF =
+X
+rc
+λ2SF,rc, λ SF,rc = 1√2
+ 
+|w(rc)B | +
+B−1X
+b=0
+|w(rc)b |
+!
+, (B6)
+λD1 =
+X
+r
+λ2D01,r + X
+r
+λ2D11,r, λ Dσ1 ,r =
+q
+w(r)+ , (B7)
+λQ1 =
+X
+r
+λ2Q01,r + X
+r
+λ2Q11,r, λ Qσ1 ,r =
+q
+w(r)− . (B8)
+The overall block-encoding normalization of the sum-of-squares Hamiltonian will be
+Λ = 12  λQ1 + λD1 + λSF . (B9)
+The key idea is that using an efficiently computable indexing scheme to each distinct coefficient and unit vector, we
+may form table-lookups of the smallest possible size to this data, and hence block-encode with the smallest constant
+factors.
+The method for block-encoding the Hamiltonian uses similar principles to those used for double factorization in
+prior work [7, 9], with some key differences. The main parts that are in common are as follows.
+1. A register is prepared with the appropriate amplitudes over xo, which is used to control the block-encoding of
+Oxo .
+2. The single step of oblivious amplitude amplification is used to provide the factor of 2 improvement, as explained
+above. This means that we block encode Oxo , reflect on the ancilla qubits of the block-encoding, then apply the
+inverse of the block-encoding.
+3. A control register is prepared with an equal superposition to represent σ for the spin, and used to control a
+swap between the system registers representing spin up and spin down.
+4. A superposition over b needs to be prepared.
+5. Each Oxo involves application of Majorana operators in a transformed basis, with the choice of basis controlled
+by xo. This is achieved by applying QROM on xo to output the rotation angles to change the basis, then
+applying a sequence of Givens rotations. These rotations are only applied on one half the qubits representing
+spin up (for example), because of the previous step.
+6. After the basis transformation, the Majorana operators need only be applied to a single qubit representing a
+single (transformed) spin-orbital.
+Next we detail the subtleties involved in each of these steps.
+1. Preparing the superposition over xo
+The new subtlety is that the contiguous register containing xo is used to index multiple variables G, r, c. Recall that
+G is used to select between the operators OSF,(rc), OD1,r, and OQ1,r. The variable r is used for further indexing over
+all three of these operators, and c is used to index only OSF,(rc). At this stage we do not yet output these variables,
+and just prepare the state with the appropriate weightings
+Prep |0⟩ =
+Xo−1X
+xo=0
+λ(Gxo rxo cxo )
+√
+2Λ
+|xo⟩ |garbagexo ⟩garb , (B10)
+where the composite index (Gxo rxo cxo ) from Eq. (B4) selects one of the coefficientsλSF,rc, 2λDσ1 ,r, 2λQσ1 ,r from Eq. (B6).The dominant cost of this step is the alias sampling step which invokes QROAM [17, 55]. This is the control state
+which we will use to index controlled block-encoding.
+
+=== PDF PAGE 24 ===
+24
+2. The step of oblivious-amplitude-amplification/qubitization
+The use of oblivious amplitude amplification is the same as in previous work [9], with the only difference being the
+number of qubits reflected upon due to the different operators, and the non-Hermitian nature of the block encoded
+operators giving T2(O†α, Oα). The qubits we need to reflect on are as follows.
+(i) The ⌈log(B + 1)⌉ qubits that the state for b is prepared on.
+(ii) The bk2 qubits used for the equal superposition state in the coherent alias sampling.
+(iii) One qubit that is rotated as part of the preparation of the equal superposition over b.
+(iv) One qubit for the sum over spins in OSF,rc (see below).
+These registers are similar to those used in prior work.
+The preparation of equal superposition states (as part of coherent alias sampling) has a small amplitude for failure,
+and operations should be controlled on success of these preparations. That results in a very small (less than about
+0.1%) increase in λ, and has a smaller impact than contamination from unwanted operations if the control was not
+used. The reflection in this part needs to be controlled on the success of preparation of the register for xo, so has a
+Toffoli cost of
+⌈log(B + 1)⌉ + bk2 + 1 . (B11)
+In prior work there was one extra control which yielded an additional Toffoli of complexity (on ℓ = 0 in Ref. [7]).
+3. Selecting between the spins
+A new subtlety in the selection of the spins is that for OSF,(rc) the summation over the spin σ is required for the
+block-encoding of that operator, whereas ODσ1 ,r and OQσ1 ,r are dependent on σ, and the summation of spin is part ofthe outer sum (with xo). This means that we need separate control variables for the spin for SF versus D 1 and Q1.
+That is, we have one control qubit in a |+⟩ state, that is used to control the swap of the spin up and spin down
+parts of the system register for D 1 or Q 1. A second control qubit is used to control the swap for the case of SF.
+These controlled swaps are performed in the block-encoding of Oxo . The second qubit is part of the block-encoding
+as well, so is reflected upon in the oblivious amplitude amplification. That ensures that the summation over σ for
+SF is obtained. The first qubit is not reflected upon in the step of oblivious amplitude amplification, ensuring that it
+is part of the outer summation. When we perform the block-encoding of Oxo , we extract the variables G, r, c, so we
+have the variable G selecting between these operators available to control upon.
+To be more specific, the Majorana operators of different spin can be related by
+γp1x =
+
+
+N −1Y
+j=0
+Swapj,j+N
+
+ γp0x
+
+
+N −1Y
+j=0
+Swapj,j+N
+
+ · ⃗ZN −1 , (B12)
+where ⃗ZN −1 accounts for the extra string of operators needed for the Jordan-Wigner representation. In the Jordan-
+Wigner representation, γpσ0 = XσN +p ⃗ZσN +p−1 and γpσ1 = YσN +p ⃗ZσN +p−1, where ⃗ZσN +p−1 = ZσN +p−1 · · ·Z0.
+Because it can be performed with Clifford gates, it does not add to the Toffoli complexity considered in our costings.
+Let us define the controlled operations
+USwap :=
+X
+σ∈{0,1}
+|σ⟩⟨σ| ⊗
+
+
+N −1Y
+j=0
+Swapj,j+N
+
+
+σ
+, (B13)
+U1 :=
+X
+σ∈{0,1}
+|σ⟩⟨σ| ⊗⃗Z σN −1. (B14)
+Then we can apply the appropriate operators using USwap and U1, for example
+X
+σ
+|σ⟩⟨σ| ⊗γpσx = USwapγp0xUSwapU1 . (B15)
+
+=== PDF PAGE 25 ===
+25
+To select the appropriate σ register to use, we will encode G using two qubits, with one selecting between SF and
+the pair D 1 and Q 1. Calling that G0, we will have registers with |G0⟩ |σ0⟩ |σ1⟩. By applying two Toffolis (and X
+gates), we obtain an output qubit |σ⟩, where σ = 1 if σG0 = 1. After the controlled swaps, |σ⟩ may be erased using
+an X measurement and Clifford phase fixups in the usual way, so there is no extra Toffoli cost for erasure.
+Therefore, producing the qubit with |σ⟩ adds an extra cost of two Toffolis to the block-encoding of each Oxo , for
+a total of 4 Toffolis for the overall block-encoding of the Hamiltonian. The four controlled swaps add a cost of 4 N
+Toffolis.
+4. Preparing the superposition over b
+This preparation of the inner superposition is similar to prior work with two key differences. The first is that we
+use this step to also output G, r, c, which are used in later steps. Prior to this we have just prepared a superposition
+over the contiguous register xo, and the unary iteration over this variable in this step is used to output G, r, cas well
+as the information needed for the coherent alias sampling for preparing the appropriate superposition over b.
+The second difference is that no superposition over b is needed for the operators ODσ1 ,r, OQσ1 ,r. When iterating overthe values of xo corresponding to these operators, we can simply not output values used for coherent alias sampling
+for b. However, it is convenient to output the set of rotations needed in the next step when iterating over these values
+of xo.
+5. Rotating the basis
+Before rotating the basis, we need to first output the set of rotations needed in an ancilla register to be used as
+control. The distinction from prior work is what registers are used to control the output of these rotations. For the
+operator OSF,(rc), the rotations are selected using r and b, but the are not selected using c. This reduces the cost of
+the iteration needed to output the set of rotations.
+Another difference is that for D 1, Q1, the rotations are selected only using r and b is not used. A further subtlety is
+that we are using b = B to select the identity term. The way this is accounted for is that we prepare the superposition
+over b including b = B, but then in the iteration to output the rotations, for b = B we instead flip an ancilla qubit to
+flag that we have the identity. The qubit is used as part of the control in the application of the Majorana operators (see
+below). The signs needed in the superposition over b (i.e., the signs of w(rc)b ) can be obtained simply by performing
+the sign flips directly in the iteration over b, and does not add to the Toffoli cost. (There is no need to output signs
+in an ancilla.)
+Otherwise the rotation of the basis is applied in a similar way as in prior work. Note that for any unit vector ⃗ u,
+there exists a unitary rotation U (⃗ u) comprised of N − 1 different arbitrary single-qubit rotations with rotation angle
+θj and O(N ) two-qubit Clifford gates such that U †(⃗ u)γ00xU (⃗ u) = ˜γ⃗ u0x. In particular any sequence of rotation angles
+⃗θ = (θ0, · · ·, θN −2) corresponds to some u = f (⃗θ). By having each of the j ∈ [N − 1] rotation angles θj be specified
+by a brot-bit binary numbers, one may further define the controlled rotation [9]
+URot |⃗θ⟩ |ψ⟩ = |⃗θ⟩ U (u(⃗θ)) |ψ⟩ , (B16)
+U †Rotγ00xURot = X
+⃗θ
+|⃗θ⟩⟨⃗θ| ⊗˜γf (⃗θ)0x, (B17)
+and each URot can be implemented with 2(N −1)brot Toffoli gates. To simplify notation, we use⃗ uand its representation
+through ⃗θ interchangeably. For instance, |⃗ u⟩ = |⃗θ = f −1(⃗ u)⟩. As there are multiple solutions ⃗θ representing the same
+u, we arbitrarily select any one solution from f −1(u).
+Note also that the transformation can be applied in common between the Majorana operators ˜γ⃗ u0x with x = 0 and
+1. we can transform between the two operators using the phase gate S, because X = S†Y S. One could apply S and
+S† before and after (respectively) on all system qubits, but because the tensor product of S commutes through the
+Givens rotations, they need only be applied to the single qubit representing the transformed spin-orbital.
+6. Applying the Majorana operators on a single qubit
+This last step is significantly changed here as compared to prior work. In Ref. [9] the number operator was written
+as a sum of the identity and Z, and the identity was removed from the sum so that only the Z gate needed to be
+applied. Due to the transformation of basis, it need only be applied to a single qubit.
+
+=== PDF PAGE 26 ===
+26
+•
+•
+•
+H • • H
+• •
+FIG. 4. The quantum circuit used to apply the Majorana operators on the single qubit, with the target qubit at the bottom.
+In our operators, we have a similar term in OSF,(rc), with the product of Majorana operators ˜ γ⃗ u(r)b σ1˜γ⃗ u(r)b σ0. Thebasis transformation means that these Majorana operators are only applied to a single qubit, and the sequence of Z
+gates on the other qubits is not required. This means that i˜γ⃗ u(r)b σ1˜γ⃗ u(r)b σ0 simplifies to just a Z gate on a single qubit,similar to prior work.
+The difference is that we also have D1 and Q1, where the operators ˜γ⃗ u(r)b σ1 and ˜γ⃗ u(r)b σ0 need to be applied individually.However, these are simplified to Y and X operators on a single qubit, so are still simple to apply. A single control
+qubit is used to provide the sum ˜γ⃗ u(r)− σ0 ± i˜γ⃗ u(r)− σ1 = X ± iY . A qubit flagging the difference between D 1 and Q1 can
+be used to control the sign in this implementation. A second qubit flagging whether SF is performed can be used to
+control whether the Z gate is performed, or whether it is X or Y .
+To be more specific, we have the following control qubits.
+(i) The first qubit for G, which distinguishes between SF and the pair D 1, Q1.
+(ii) The second qubit for G, which distinguishes between D 1 and Q1.
+(iii) A qubit which flags whether we have the identity component of SF.
+(iv) A qubit in superposition used to distinguish between ˜ γ⃗ u(r)b σ1 and ˜γ⃗ u(r)b σ0 for D1, Q1.
+The quantum circuit used to apply the Majorana operators with these control qubits is then shown in Fig. 4. The
+first operation is to apply the Z gate for SF. The second controlled operation is giving the required X operation for
+˜γ⃗ u(r)− σ0. The third controlled operation applies a Z gate, provided we have D 1, Q1, and the fourth qubit is selecting
+˜γ⃗ u(r)− σ1 (so iY = ZX is needed). The fourth controlled operation applies the correct sign factor in X ± iY needed to
+select between D 1 and Q1. This application of the Majorana operators uses only two Toffolis. We also need controls
+by successful preparation of the equal superposition states for xo and |b⟩. A single Toffoli is used to flag success for
+both, and control by this flag will add another 4 Toffolis for a total of 7.
+7. T otal costs
+a. Summary of costs
+Now we enumerate the total costs for the block-encoding, with the complete circuit illustrated in Fig. 2. A more
+detailed explanation of the block-encoding costs is given in Appendix B 7 b. The total costs for constructing the walk
+operator are as follows.
+1. Preparation of the control register for the outer sum over xo and erasure, corresponding to everything in
+Table VII.
+2. The reflection in the block-encoding of the Hamiltonian for T2(O†α, Oα), with cost
+⌈log(B + 1)⌉ + bk2 + 1 . (B18)
+3. The four controlled swaps for the implementation of the spin, with cost 4( N + 1).
+4. Preparation of the control register for b in the inner sum, given by the costs in Table VIII, with a factor of 2
+for the two calls.
+
+=== PDF PAGE 27 ===
+27
+5. The basis rotation, including the output and erasure of the rotation angles, as well as the rotations themselves,
+as given in Table IX (again with a factor of 2).
+6. The Majorana operators on the single qubit with cost of 7 Toffolis. This is called twice per T2.
+7. A reflection on all the ancilla for the block-encodings to construct the walk operator of Toffoli cost
+⌈log(N + RC)⌉ + ⌈log(B + 1)⌉ + bk1 + bk2 + 2 . (B19)
+Operation Cost Persistent Ancilla Temporary Ancilla Calls Step
+Uniform(xo) 4⌈log(N + RC)⌉ ⌈log(N + RC)⌉ + 2 ⌈log(N + RC)⌉ −2 1 1
+AliasSampling(xo)
+l
+N +RC
+2k1
+m
++ 2k1 b1 b1 + bk1 2k1 b1 + ⌈log2( N +RC2k1 )⌉ 1 2
+AliasSampling(xo)† b1 + l N +RC2k5 m + 2k5 – – 1 10
+Uniform(xo)† 4⌈log(N + RC)⌉ – – 1 11
+TABLE VII. Preparation costs for the state preparation over unitaries T2(O†α, Oα). The right column gives the corresponding
+step number from Appendix B 7 b, and the ‘Calls’ column gives the number of calls for each step of the walk (so the multiplying
+factor for the Toffoli cost). The selection register is xo, which takes on N + RC values. The quantity b1 = ⌈log(N + RC)⌉ + bk1,
+where bk1 is the number of bits used for the ‘keep’ register in coherent alias sampling. The AliasSampling involves an inequality
+test at the cost of bk1 and controlled swap costing ⌈log(N + RC)⌉. The b1 term in the fourth line is for inverting the inequality
+tests and controlled swaps. The integers k1 and k5 may be chosen to minimise costs. The ancillas are not listed for the inverse
+operations because they are considerably smaller than used for the forward operations, so do not affect the maximum qubit
+usage of the algorithm.
+Operation Toffoli Persistent Ancilla Temporary Ancilla Calls Step
+Uniform(b) 4⌈log(B + 1)⌉ ⌈log(B + 1)⌉ + 2 ⌈log(B + 1)⌉ −2 2 3
+AliasSampling(b) RC
+l
+B+1
+2k2
+m
++ 2k2 b2 b2 + bk2 + ⌈log R⌉ + ⌈log C⌉ + 2 llog RC l B+12k2 mm + (2k2 − 1)b2 2 4
+AliasSampling(b)† b2 + N + l RC2k4 m + 2k4 (B + 1) – – 2 8
+Uniform(b)† 4⌈log(B + 1)⌉ – – 2 9
+TABLE VIII. Preparation costs for the b register. Unary iteration is performed over the first RC values of xo, combined
+with QROAM over b, to output data needed for the coherent alias sampling state preparation on b. The quantity b2 =
+⌈log(B + 1)⌉ + bk2 , where bk2 is the bit size of the ‘keep’ register. While performing the unary iteration over xo, we also output
+G, r, cwith no further Toffoli cost. The right column gives the corresponding step from Appendix B 7 b.
+Operation Toffoli Persistent Ancilla Temporary Ancilla Calls Step
+QROM(⃗ u) N + RB (N − 1)brot max (⌈log(N + RC)⌉, ⌈log(RB)⌉) 2 5
+basis rotations 2(N − 1)brot – brot 2 6
+QROM(⃗ u)† R + B – – 2 7
+TABLE IX. QROM to output rotations, implement them, and erase the data. The integer brot is the bits of precision used for
+each rotation angle.
+b. More details of block-encoding costs
+Here we give further details of the block-encoding costs, excluding the controlled swaps for the spin, reflection for
+the step of oblivious amplitude amplification, and implementation of the Majorana operator on a single qubit, as
+these are detailed above.
+1. First we prepare an equal superposition for xo with cost
+4⌈log(N + RC)⌉ . (B20)
+This is omitting small O(1) costs, and also ignoring savings when N + RC has factors of 2. For this costing see
+Section III E 2 of Ref. [62] (pages 42 and 43), where the cost is 4 k + 2s − 13 Toffolis for preparation on k qubits
+
+=== PDF PAGE 28 ===
+28
+and using s bits of accuracy for a rotation. That rotation can be used with s = 7 to give very accurate results,
+for a cost of 4 k + 1. This is why we give the cost above as 4 times the number of qubits, ignoring O(1) costs.
+Qubit cost:The number of qubits used in this step is ⌈log(N +RC)⌉ to store xo, the extra qubit that is rotated
+in the equal superposition, and a qubit which is used to flag success of the preparation. Extra temporary qubits
+are used in the coherent arithmetic (inequality test), which may be ignored as they are fewer than those used
+in later steps. We also use a phase gradient register for rotations, which is used in the entire algorithm so the
+qubits for this register are quantified separately. The total qubit cost is therefore
+⌈log(N + RC)⌉ + 2 (B21)
+persistent qubits, and
+⌈log(N + RC)⌉ −2 (B22)
+temporary qubits for the arithmetic. It is also possible that the number of temporary qubits used for the rotation
+on the ancilla qubit can be larger for small values of N + RC.
+2. Perform QROAM on xo with cost
+ N + RC
+2k1
+
++ (2k1 − 1)b1 , (B23)
+for some choice of integer k1, where b1 is the output size
+b1 = ⌈log(N + RC)⌉ + bk1 , (B24)
+with bk1 the number of bits for the ‘keep’ register in coherent alias sampling. Then the inequality test is cost
+bk1 and the controlled swap is cost ⌈log(N + RC)⌉, for total cost in step 2 of
+ N + RC
+2k1
+
++ 2k1 b1 . (B25)
+Qubit cost: The persistent qubits used in this step are
+b1 + bk1 (B26)
+with b1 for the output of the QROM, and bk1 qubits used for the equal superposition register. (Those must be
+retained because they are not reset.) There are also
+
+log
+ N + RC
+2k1
+
++ (2k1 − 1)b1 (B27)
+temporary qubits for the output of the QROM as well as the temporary qubits used in the unary iteration.
+Recall that there are 2 k1 b1 qubits output, then we swap the b1 output qubits into the correct register, and
+(2k1 − 1)b1 qubits are erased (via an X measurement and a later phase fixup). There are also temporary qubits
+used in the inequality test for coherent alias sampling, but these are much less than those used in the QROM
+so may be ignored.
+3. For the block-encoding of Oxo , we first prepare an equal superposition over b with cost
+4⌈log(B + 1)⌉ . (B28)
+This preparation does not need to be controlled.
+Qubit cost: Similar to step 1, there is a persistent ancilla cost of
+⌈log(B + 1)⌉ + 2 (B29)
+qubits for b and the rotated qubit, and
+⌈log(B + 1)⌉ −2 (B30)
+temporary qubits in the arithmetic.
+
+=== PDF PAGE 29 ===
+29
+4. Next we can perform unary iteration over xo, combined with QROAM on b. This has Toffoli cost
+RC
+ B + 1
+2k2
+
++ (2k2 − 1)b2 . (B31)
+Here k2 is a new choice of integer, and b2 is the output size for coherent alias sampling on b of
+b2 = ⌈log(B + 1)⌉ + bk2 , (B32)
+with bk2 being another choice of the number of bits for the keep register. Again there will be a b2 cost for the
+inequality test as well as a controlled swap, to give total cost
+RC
+ B + 1
+2k2
+
++ 2k2 b2 . (B33)
+The idea of performing the unary iteration in this step is furthermore that we can output other useful information.
+We can output G, r, cwith no further Toffoli cost, since we are already iterating over xo. We separate out the
+QROM for the final N values of xo into a separate step.
+Depending on the values of the parameters, it may also be suitable to output data for all values of b at once,
+then use the controlled swaps to swap the desired data into the correct location. That is, use the entire b register
+like the less significant bits in QROAM. Then the Toffoli cost is instead
+RC + (B + 1)b2 . (B34)
+Qubit cost: The persistent ancilla cost is
+b2 + bk2 + ⌈log R⌉ + ⌈log C⌉ + 2 . (B35)
+This includes b2 for the QROM output, bk2 for the equal superposition state, and the qubits for storing the
+output values of G, r, c. The temporary qubits needed are
+
+log
+
+RC
+ B + 1
+2k2
+
++ (2k2 − 1)b2 . (B36)
+Here (2 k2 − 1)b2 qubits are used as temporary qubits in the QROM output, and the first term is temporary
+qubits in the unary iteration.
+5. In this step we consider the output of the set of rotations. First, we have unary iteration through the final N
+values of xo and to output the set of rotations for GD1 and GQ1 . As part of this we also output the G, rvalues.
+Next, perform QROM on the r, bregisters to output the set of rotations. In previous work there was no advantage
+to QROAM since the size of the output set of rotations is quite large, so here we cost this as regular QROM
+(unary iteration) with cost RB. This gives a total Toffoli cost for this step of
+N + RB . (B37)
+We also will flip an ancilla qubit for the case that the identity is needed, corresponding to b = B. This only
+needs one additional Toffoli, because we may iterate over b first then iterate over r. That is, for each value of
+b in the unary iteration from 0 to B − 1, we use it to control an iteration over r. The cost of the controlled
+iteration over r is R − 1, which is multiplied by B for the number of value of b where we iterate over r. The
+total number of value of b that we iterate over is B + 1, with no iteration over r needed for b = B. The cost of
+the (uncontrolled) iteration over B + 1 values of b is B − 1, for a total of
+B(R − 1) + (B − 1) = RB − 1. (B38)
+Together with the N cost for D 1 and Q1, the cost is N + RB as above, omitting the −1 for simplicity.
+Qubit cost: The persistent ancilla cost is, for the output rotations
+(N − 1)brot . (B39)
+
+=== PDF PAGE 30 ===
+30
+We do not include another ancilla cost for G, routput here as that was accounted for the preceding step. There
+is a temporary ancilla cost of
+⌈log(N + RC)⌉ , (B40)
+for the first unary iteration, and
+⌈log R⌉ + ⌈log(B + 1)⌉ , (B41)
+for the second unary iteration. The total temporary ancilla cost here is the maximum of these. (Part of the
+temporary ancillas are used from the preceding step to save Toffolis.)
+6. Perform the rotations for the select part of the block-encoding. For N orbitals with brot bits of accuracy for the
+rotations, the Toffoli cost of the forward and reverse Givens rotations is
+2(N − 1)brot . (B42)
+Qubit cost: There is just a temporary ancilla cost of brot for the additions into the phase gradient register.
+7. The second QROM from 5 can be erased with phase fixup cost
+R + B . (B43)
+This can be achieved by performing binary-to-unary conversion on one register, then unary iteration on the
+other register with controlled phases on the unary qubits. There is a temporary ancilla cost of min( R, B), with
+the minimum corresponding to which register we perform the binary to unary conversion on. The steps from
+here on have negligible temporary ancilla costs as compared to the earlier steps, so will be omitted from this
+discussion.
+8. Invert the coherent alias sampling from 4. Inverting the controlled swaps and inequality tests has cost b2. For
+the phase fixup, we note that typically RC is larger than B, and also that the method of phase fixup from
+Ref. [17] is to perform binary-to-unary conversion on one subset of qubits, and unary iteration on the other set
+of qubits (see Figure 6 of Ref. [17]). Here, we can perform binary-to-unary conversion on the register containing
+B, and unary iteration on the xo register. That gives the phase fixup cost as
+RC + B + 1 . (B44)
+We can also combine some of the qubits from xo with B in this procedure to give a cost
+ RC
+2k4
+
++ 2k4 (B + 1) . (B45)
+Similar to the procedure for the QROM, we can perform iteration over the final N values, but here to perform
+the phase fixup. This gives a total cost (with the inversion of swaps and inequality test)
+b2 + N +
+ RC
+2k4
+
++ 2k4 (B + 1) . (B46)
+In the case that RC is divisible by some power of 2, we can use a similar phase fixup approach for N to give
+cost
+b2 +
+ N
+2k′4
+
++ 2k′4 +  RC2k4  + 2k4 (B + 1) (B47)
+where RC is divisible by 2 k′4 .
+9. Invert the equal superposition from 3 with cost
+4⌈log(B + 1)⌉ (B48)
+Note that all these costs from 3 to 9 are multiplied by two for the squared operator.
+
+=== PDF PAGE 31 ===
+31
+10. Invert the coherent alias sampling from 2 with cost
+b1 +
+ N + RC
+2k5
+
++ 2k5 , (B49)
+where b1 is for inverting the controlled swaps and inequality test.
+11. Invert the equal superposition preparation from 1 with cost again
+4⌈log(N + RC)⌉ . (B50)
+Further minor savings can be made by retaining ancillas to eliminate the non-Clifford cost of inverting the inequality
+test and controlled swaps for the coherent alias sampling. That would remove the b2 cost from step 8 and b1 cost
+from step 10, at the expense of retaining the same number of ancillas.
+Note that we order the values so that the alternatives for GSF start at xo = 0. This ensures that we do not use the
+temporary qubits for QROM at the same time as the output angles. In important cases we can also obtain r, cfrom
+the appropriate subset of bits. If C is a power of 2 (like 2 or 4), then using xo = rC + c this works, and similarly, if r
+is a power of 2 and we use xo = cR + r.
+In addition to the block-encoding costs above, a reflection is used to provide the complete qubitised operator. The
+registers that need be reflected upon are as follows.
+(i) Registers of size ⌈log(N + RC)⌉ and ⌈log(B + 1)⌉ used for xo and b, respectively.
+(ii) The bk1 and bk2 qubits used for the equal superposition states (that we preform the inequality test with) in the
+two steps of coherent alias sampling.
+(iii) Two qubits that are rotated in the preparation in the equal superposition states for xo and b.
+(iv) Two qubits for the spin (with one for SF in the inner sum, and one for D 1 and Q1 in the outer sum).
+The reflection on these qubits needs to be controlled by a single qubit for the phase estimation, and each step there
+is another Toffoli used for the unary iteration on the control register for phase estimation. That gives a Toffoli cost
+in each step of
+⌈log(N + RC)⌉ + ⌈log(B + 1)⌉ + bk1 + bk2 + 2 . (B51)
+Appendix C: Robust selection of DFTHC solutions
+Finding the rank R∗ of the best DFTHC approximation is not straightforward as ϵcorr fluctuates significantly and
+does not improve monotonically with rank. For instance, best solutions selected by thresholding on the lowest cost
+with |ϵcorr| ≤0.3mHa in Table X and Table XI show no clear pattern of what choice of hyperparametersB, Care best.
+Similar to DF and THC, these fluctuations arise as the DFTHC program Eq. (41) is nonlinear and the final solution
+is sensitive to hyperparameters and the initial values of, say, u, w. However, we can obtain robust estimates of rank
+and mitigate the effect of fluctuations by averaging ϵcorr over many samples for each ( R, B, C), rather than taking
+the best value. This is accomplished by converting ϵcorr to a random variable by initializing the DFTHC solver with
+randomly selected parameters values P for each sample as described in Section IV A. Hence, each ϵcorr is drawn from
+a distribution with mean ¯ϵcorr and variance σ2corr and in Fig. 5, we select R≤ϵth according to the criteria σcorr ≤ ϵth
+and ¯ϵcorr ≪ ϵth. Although this leads to a significantly larger rank than R∗, another major advantage is that we may
+instead bound error contributions to σE differently like
+σE ≤
+q
+σ2PEA + σ2corr + |¯ϵcorr| ≤ϵchem. (C1)
+We find empirically that |¯ϵcorr| concentrates to zero, up to statistical accuracy. Hence, this enables significantly larger
+choice of σPEA = 1.4mHa, and σcorr ≤ 0.7mHa. The costs of simulation in Table XI under this criteria is not directly
+comparable to prior work, but its statistical robustness might prevent an unintentional bias of solutions towards good
+ϵcorr but bad ϵ∗corr.
+
+=== PDF PAGE 32 ===
+32
+(R, B, C) DF-like C = ⌊N/4⌋ C = ⌊N/2⌋ THC-like(M, N,1) (M, ⌊ N2 ⌋, ·) (M, ⌊ 3N4 ⌋, ·) (M, N,·) (M, ⌊ N2 ⌋, ·) (M, ⌊ 3N4 ⌋, ·) (M, N,·) (1, M, M)
+Fe2S2-20o30e
+M|ϵcorr|≤0.3mHa 85 15 14 13 14 11 12 80
+ϵcorr/mHa 0.016 0.938 -0.019 0.253 0.288 0.094 0.187 0.073
+ϵin/mHa 3.0 43.9 22.1 18.7 37.4 20.7 8.5 15.6
+λ/Ha 15.9 19.4 17.5 17.5 19.8 19.5 16.3 16.1
+Egap/Ha 0.988 1.03 1.02 1.028 0.977 0.992 0.984 1.002
+λeff/Ha 5.52 6.24 5.89 5.9 6.15 6.14 5.58 5.58
+(bcoeff, brot) (11, 15) (11, 15) (11, 15) (11, 15) (11, 15) (11, 15) (11, 15) (11, 15)
+Rot Toffolis 6800 600 840 1040 560 660 960 320
+Coeff Toffolis 814 530 622 706 734 786 972 1670
+Select Toffolis 2280 2280 2280 2280 2280 2280 2280 2280
+Total Toffolis 9894 3410 3742 4026 3574 3726 4212 4270
+λ× total Toffolis 1.57 × 105 6.62 × 104 6.55 × 104 7.05 × 104 7.08 × 104 7.27 × 104 6.87 × 104 6.87 × 104
+λeff× total Toffolis 5.46 × 104 2.13 × 104 2.20 × 104 2.38 × 104 2.20 × 104 2.29 × 104 2.35 × 104 2.39 × 104
+Fe4S4-36o54e
+M|ϵcorr|≤0.3mHa 105 23 17 15 9 12 12 175
+ϵcorr/mHa -0.289 0.104 -0.297 -0.276 -0.004 0.198 -0.092 -0.188
+ϵin/mHa 38.8 38.3 33.1 29.4 166.9 43.7 23.9 20.5
+λ/Ha 39.6 45.1 49.6 47.2 49.8 46.2 44.3 40.4
+Egap/Ha 2.119 2.082 1.967 1.977 2.099 1.926 1.902 1.946
+λeff/Ha 12.78 13.55 13.84 13.52 14.31 13.2 12.85 12.39
+(bcoeff, brot) (13, 17) (13, 17) (13, 17) (13, 17) (13, 17) (13, 17) (13, 17) (13, 17)
+Rot Toffolis 15120 1656 1836 2160 648 1296 1728 700
+Coeff Toffolis 1298 1280 1336 1478 1126 1594 1878 4002
+Select Toffolis 4760 4760 4760 4760 4760 4760 4760 4760
+Total Toffolis 21178 7696 7932 8398 6534 7650 8366 9462
+λ× total Toffolis 8.39 × 105 3.47 × 105 3.93 × 105 3.96 × 105 3.25 × 105 3.53 × 105 3.71 × 105 3.82 × 105
+λeff× total Toffolis 2.71 × 105 1.04 × 105 1.10 × 105 1.14 × 105 9.35 × 104 1.01 × 105 1.07 × 105 1.17 × 105
+FeMoCo-54o54e
+M|ϵcorr|≤0.3mHa 190 10 7 13 10 8 6 200
+ϵcorr/mHa 0.192 0.217 0.11 -0.214 -0.014 -0.166 0.219 -0.094
+ϵin/mHa 36.2 279.4 243.7 80.1 238.3 142.3 136.1 121.5
+λ/Ha 57.9 60.7 61.9 65.2 58.3 61.2 65.3 63.6
+Egap/Ha 3.567 3.772 4.789 3.609 3.691 3.617 3.626 3.607
+λeff/Ha 20.01 21.06 23.88 21.39 20.42 20.73 21.46 21.11
+(bcoeff, brot) (9, 16) (9, 16) (9, 16) (9, 16) (9, 16) (9, 16) (9, 16) (9, 16)
+Rot Toffolis 41040 1080 1120 2808 1080 1280 1296 800
+Coeff Toffolis 1962 1116 1162 1848 1620 1804 1810 4074
+Select Toffolis 6784 6784 6784 6784 6784 6784 6784 6784
+Total Toffolis 49786 8980 9066 11440 9484 9868 9890 11658
+λ× total Toffolis 2.88 × 106 5.45 × 105 5.61 × 105 7.46 × 105 5.53 × 105 6.04 × 105 6.46 × 105 7.41 × 105
+λeff× total Toffolis 9.96 × 105 1.89 × 105 2.16 × 105 2.45 × 105 1.94 × 105 2.05 × 105 2.12 × 105 2.46 × 105
+FeMoCo-76o113e
+M|ϵcorr|≤0.3mHa 130 27 15 18 16 18 7 220
+ϵcorr/mHa 0.257 0.063 0.134 0.359 0.152 0.059 -0.132 -0.038
+ϵin/mHa 287.2 65.7 82.5 43.5 131.0 45.3 120.0 234.1
+λ/Ha 140.6 185.6 179.7 181.7 206.0 162.0 197.2 144.7
+Egap/Ha 6.149 4.529 5.037 4.53 4.571 4.526 4.982 5.335
+λeff/Ha 41.13 40.75 42.25 40.32 43.15 38.03 44.05 38.93
+(bcoeff, brot) (9, 15) (9, 15) (9, 15) (9, 15) (9, 15) (9, 15) (9, 15) (9, 15)
+Rot Toffolis 39520 4104 3420 5472 2432 4104 2128 880
+Coeff Toffolis 1970 2726 2476 3214 2970 3852 2830 4484
+Select Toffolis 9000 9000 9000 9000 9000 9000 9000 9000
+Total Toffolis 50490 15830 14896 17686 14402 16956 13958 14364
+λ× total Toffolis 7.10 × 106 2.94 × 106 2.68 × 106 3.21 × 106 2.97 × 106 2.75 × 106 2.75 × 106 2.08 × 106
+λeff× total Toffolis 2.08 × 106 6.45 × 105 6.29 × 105 7.13 × 105 6.22 × 105 6.45 × 105 6.15 × 105 5.59 × 105
+TABLE X. Best solutions found satisfying |ϵcorr| ≤0.3mHa. Highlighted columns (gray) minimize total Toffolis in the last
+row and (red) describes the best solution found if the target ϵcorr was not attained. ORot and OCoeff Toffolis count the cost of
+computing and uncomputing twice. Total Toffolis is the dominant costs in block-encoding Be[HSA/Λ − 1], corresponding to
+the sum of Rot Toffolis, Coeff Toffolis and 8(N − 1)brot from the dominant cost of two select unitaries.
+
+=== PDF PAGE 33 ===
+33
+a)
+24 25 26
+R
+−2
+0
+2
+ϵcorr / mHa
+[R, 15, 5]
+ϵcorr
+24 25 26
+R
+10−1
+100
+101
+Unit of mHa
+R≤0.7mHa≈ 26
+σcorr = 102.27±0.17R−1.72±0.14
+|¯ϵcorr|
+Fe2S2-20o30e
+Λ = 19.0
+(
+R
+R≤ϵth
+)−0.119±0.008
+Ha, E gap = 0.99
+(
+R
+R≤ϵth
+)−0.129±0.023
+Ha, λ eﬀ = 6.1
+(
+R
+R≤ϵth
+)−0.105±0.013
+Ha.
+b)
+23 24 25 26 27
+R
+−2
+0
+2
+ϵcorr / mHa
+[R, 27, 9]
+ϵcorr
+23 24 25 26 27
+R
+10−1
+100
+101
+Unit of mHa
+R≤0.7mHa≈ 49
+σcorr = 103.24±0.26R−2.01±0.23
+|¯ϵcorr|
+Fe4S4-36o54e
+Λ = 44.6
+(
+R
+R≤ϵth
+)−0.081±0.007
+Ha, E gap = 2.19
+(
+R
+R≤ϵth
+)−0.083±0.012
+Ha, λ eﬀ = 13.9
+(
+R
+R≤ϵth
+)−0.067±0.008
+Ha.
+.
+c)
+23 24 25 26
+R
+−2
+0
+2
+ϵcorr / mHa
+[R, 40, 13]
+ϵcorr
+23 24 25 26
+R
+10−1
+100
+101
+Unit of mHa
+R≤0.7mHa≈ 24
+σcorr = 101.87±0.07R−1.47±0.06
+|¯ϵcorr|
+FeMoCo-54o54e
+Λ = 65.3
+(
+R
+R≤ϵth
+)0.033±0.003
+Ha, E gap = 3.52
+(
+R
+R≤ϵth
+)−0.060±0.003
+Ha, λ eﬀ = 21.2
+(
+R
+R≤ϵth
+)−0.007±0.001
+Ha.
+FIG. 5. For molecule a) Fe 2S2, b) Fe 4S4, c) FeMoCo-54, d) FeMoCo-76, e) Cpd1X-58, and f) XVIII-56: (left) CCSD(T)
+correlation energy error vs. rank of DFTHC truncation (small dots). Error bars are the standard deviation of the mean ¯ ϵcorr
+estimated with 64 samples. Dashed lines at ±1.6mHa are at the chemical accuracy threshold. (right) ¯ ϵcorr and estimated
+standard deviation σcorr of ϵcorr. The shaded region is the threshold ϵth = 0.7mHa used to select the rank of good solution.
+(below) Additional fits of other parameters relevant to estimation quantum simulation costs.
+
+=== PDF PAGE 34 ===
+34
+d)
+23 24 25
+R
+−2
+0
+2
+ϵcorr / mHa
+[R, 64, 32]
+ϵcorr
+23 24 25
+R
+10−1
+100
+101
+Unit of mHa
+R≤0.7mHa≈ 15
+σcorr = 101.02±0.54R−1.00±0.45
+|¯ϵcorr|
+FeMoCo-76o113e
+Λ = 207.5
+(
+R
+R≤ϵth
+)−0.106±0.010
+Ha, E gap = 6.20
+(
+R
+R≤ϵth
+)−0.126±0.005
+Ha, λ eﬀ = 50.3
+(
+R
+R≤ϵth
+)−0.116±0.006
+Ha.
+e)
+24 25
+R
+−2
+0
+2
+ϵcorr / mHa
+[R, 43, 14]
+ϵcorr
+24 25
+R
+10−1
+100
+101
+Unit of mHa
+R≤0.7mHa≈ 18
+σcorr = 101.80±0.17R−1.58±0.13
+|¯ϵcorr|
+Cpd1X-58o63e
+Λ = 97.7
+(
+R
+R≤ϵth
+)−0.001±0.003
+Ha, E gap = 5.68
+(
+R
+R≤ϵth
+)−0.010±0.001
+Ha, λ eﬀ = 32.8
+(
+R
+R≤ϵth
+)−0.005±0.002
+Ha.
+f)
+22 23 24
+R
+−2
+0
+2
+ϵcorr / mHa
+[R, 42, 14]
+ϵcorr
+22 23 24
+R
+10−1
+100
+101
+Unit of mHa
+R≤0.7mHa≈ 7
+σcorr = 101.06±0.07R−1.46±0.10
+|¯ϵcorr|
+XVIII-56o64e
+Λ = 62.4
+(
+R
+R≤ϵth
+)0.030±0.004
+Ha, E gap = 2.57
+(
+R
+R≤ϵth
+)−0.229±0.020
+Ha, λ eﬀ = 17.7
+(
+R
+R≤ϵth
+)−0.092±0.010
+Ha.
+FIG. 5. (continued).
+
+=== PDF PAGE 35 ===
+35
+(R, B, C) DF-like C = ⌊N/4⌋ C = ⌊N/2⌋ THC-like(M, N,1) (M, ⌊ N2 ⌋, ·) (M, ⌊ 3N4 ⌋, ·) (M, N,·) (M, ⌊ N2 ⌋, ·) (M, ⌊ 3N4 ⌋, ·) (M, N,·) (1, M, M)
+XVIII-56o64e
+M|ϵcorr|≤0.3mHa 110 8 6 5 5 5 4 120
+ϵcorr/mHa -0.253 0.013 0.121 0.222 0.27 -0.083 -0.109 -0.181
+ϵin/mHa 62.0 284.2 221.0 191.7 418.2 243.3 184.7 237.3
+λ/Ha 58.1 59.2 61.0 65.1 55.5 59.9 62.8 59.7
+Egap/Ha 2.34 2.425 2.58 2.681 2.569 2.299 2.294 2.554
+λeff/Ha 16.33 16.77 17.55 18.48 16.69 16.44 16.82 17.28
+(bcoeff, brot) (7, 12) (7, 12) (7, 12) (7, 12) (7, 12) (7, 12) (7, 12) (7, 12)
+Rot Toffolis 24640 896 1008 1120 560 840 896 480
+Coeff Toffolis 1432 992 1082 1138 1114 1404 1446 2256
+Select Toffolis 5280 5280 5280 5280 5280 5280 5280 5280
+Total Toffolis 31352 7168 7370 7538 6954 7524 7622 8016
+λ× total Toffolis 1.82 × 106 4.24 × 105 4.50 × 105 4.91 × 105 3.86 × 105 4.51 × 105 4.79 × 105 4.79 × 105
+λeff× total Toffolis 5.12 × 105 1.20 × 105 1.29 × 105 1.39 × 105 1.16 × 105 1.24 × 105 1.28 × 105 1.38 × 105
+Cpd1X-58o63e
+M|ϵcorr|≤0.3mHa 200 9 6 5 8 6 4 120
+ϵcorr/mHa -0.214 0.277 -0.19 -0.019 0.098 -0.206 -0.223 -0.183
+ϵin/mHa 16.0 308.3 359.6 412.0 341.6 195.0 218.9 288.1
+λ/Ha 96.2 97.4 101.4 99.5 90.6 99.4 106.0 93.1
+Egap/Ha 4.815 5.243 5.677 6.324 5.467 5.039 5.207 5.559
+λeff/Ha 30.05 31.53 33.44 34.9 30.99 31.25 32.82 31.69
+(bcoeff, brot) (10, 15) (10, 15) (10, 15) (10, 15) (10, 15) (10, 15) (10, 15) (10, 15)
+Rot Toffolis 46400 1044 1032 1160 928 1032 928 480
+Coeff Toffolis 2142 1168 1184 1254 1596 1716 1622 2434
+Select Toffolis 6840 6840 6840 6840 6840 6840 6840 6840
+Total Toffolis 55382 9052 9056 9254 9364 9588 9390 9754
+λ× total Toffolis 5.33 × 106 8.82 × 105 9.18 × 105 9.21 × 105 8.48 × 105 9.53 × 105 9.95 × 105 9.08 × 105
+λeff× total Toffolis 1.66 × 106 2.85 × 105 3.03 × 105 3.23 × 105 2.90 × 105 3.00 × 105 3.08 × 105 3.09 × 105
+TABLE X. (Continued).
+Fe2S2-20 Fe4S4-36 FeMoco-54 FeMoco-76 p450CPD1X-58 CO2[XVIII]-56
+(R, B, C) (26, 15, 5) (49, 27, 9) (24, 40, 13) (15, 64, 32) (18, 43, 14) (7, 42, 14)
+ϵcorr/mHa 0.6809 0.6893 0.6865 0.6966 0.6597 0.6783
+ϵfro/mHa 5.7744 4.3616 42.8963 48.9071 49.6692 181.6920
+(bcoeff, brot) (12, 16) (14, 18) (10, 17) (11, 16) (11, 17) (8, 13)
+Egap/Ha 0.9924 2.1867 3.5156 6.1981 5.6782 2.5696
+λeff/Ha 6.1604 14.0722 21.4486 50.7167 33.3112 17.9276
+Cwalk 4814 11493 12930 17588 12897 8554
+Qubits 499 926 1201 1560 1285 989
+Total Toffoli 3.33×107 1.81×108 3.11×108 1.00×109 4.82×108 1.72×108
+TABLE XI. Improvements in simulating electronic structure to chemical accuracy with DFTHC and spectral amplification
+compared to best prior double-factorization methods and tensor hypercontraction methods. Improvement factors are computed
+as the ratio of the product the LCU 1-norm and the block-encoding cost rounded to the nearest integer. The source for each
+cost is provided as a citation reference in the λ-row. The number of calls to the block-encoding is computed as ⌈ πλeff2σPEA ⌉ [14].
+In line with previous work we take σPEA = 1.4mHa and σtrunc = 0.331mHa.
+Appendix D: T runcation to finite bits-of-precision
+A final source of error σtrunc arises from choosing a finite number of bits-of-precision brot and bcoeff to represent
+the u and w tensors in the block-encoding. Although previous approaches used a deterministic rounding strategy [7],
+exploration over yet more hyperparameters (brot, bcoeff, R, B, C) for each sample would introduce prohibitive cost. We
+instead use an unbiased randomized rounding strategy which allows us to explore hyperparameters independently.
+This randomization induces a distribution on ϵtrunc which allows us to use either of the bound
+σE ≤
+q
+σ2PEA + σ2trunc + |ϵcorr| + |¯ϵtrunc| ≤ϵchem, (D1)
+σE ≤
+q
+σ2PEA + σ2corr + σ2trunc + |¯ϵcorr| + |¯ϵtrunc| ≤ϵchem. (D2)
+
+=== PDF PAGE 36 ===
+36
+−2
+0
+2
+∆ϵcorr/mHa
+(10, 27, 13)
+ (11, 27, 27)
+10 15
+10−1
+100
+101
+σ[∆ϵcorr]/mHa
+27.2−b 214.0−b
+10 15
+27.9−b 214.3−b
+10 15
+27.9−b 214.6−b
+(10, 27, 27)
+FeMoCo-54o54e ∆ϵcorr vs Coeﬃcient bits ∆ϵcorr vs Rotation bits
+bits
+FIG. 6. (top) Change in correlation energy due to randomized rounding of rotation and coefficients to brot and bcoeff bits
+respectively for selected DFTHC solutions with different ( R, B, C). The estimated mean change ∆ϵcorr and the standard
+deviation of the mean are computed with 64 samples for each bit setting. (bottom) Estimated standard deviation of ∆ ϵcorr
+and best fit with respect to b ∈ {brot, bcoeff}. Chemical accuracy at 1 .6 mHa is plotted for reference (dashed line).
+The change in correlation energy between the truncated and original DFTHC solutions by our randomized rounding
+strategy is presented in Fig. 6 for some FeMoCo-54 solution. See Fig. 7 for data on the other molecules. We see that
+σtrunc scales like O(2−brot,−bcoeff ) with bits-of-precision as presented, and |¯ϵtrunc| concentrates to zero rapidly, and so
+we assume it is exactly zero in the following for simplicity. We assume that these solutions are typical for FeMoCo-54
+to determine bits of precision required. The linear error bound Eq. (43) leaves a budget of σtrunc ≤ 0.830mHa, which
+is achieved with ( bcoeff, brot) = (9, 15), and the statistical bound Eq. (C1) leave a budget of σtrunc ≤ 0.331mHa which
+is achieved with ( bcoeff, brot) = (10, 17).
+As discussed in the DFTHC block-encoding Fig. 2 each ⃗ u(r)b is generated by a sequence of N − 1 rotation angles
+⃗θ(r)b ∈ [0, 2π)N −1 that realize the Majorana rotation from γ000 to γ⃗ u00. Discretizing these rotations angles to brot bits
+of precision leads to a Toffoli cost of (N − 1)bbits. For every angle θ ∈ [0, 2π), we use the randomized rounding strategy
+in [56] by choosing the first brot − 1 bits to be the integer x = ⌊(2brot−1)θ/(2π)⌋. The last bit is sampled randomly
+from the Bernouli distribution B(p) with probability p = (2brot−1)θ/(2π) mod 1. Then the rounded θ(brot) is sampled
+from the distribution 2π(x + B(p))/2brot−1. By a triangle inequality, each sampled vector generated by these truncated
+rotations deviates by at most |⃗ u(r)brotb − ⃗ u(r)b | = O(N 2−brot ), but the expectation E[∥⃗ u(r,brot)b − ⃗ u(r)b ∥] = O(N 4−brot ) has
+effectively double the bits of precision. A key difference from [56] is that we sample each DFTHC sample by rounding
+once in the entire phase estimation algorithm instead of for every application of the block-encoding circuit.
+The coefficients w(rc)b are implemented by alias sampling [14] to bcoeff bits of precision. As seen in the block-
+encoding of OSF,rc in Eq. (30), for each component ( r, c), alias sampling prepares an approximation to the quantum
+state 1|w(rc)|1 Pb q|w(rc)b | |b⟩ |garbb⟩. To simplify notation, let us drop the ( r, c) superscript. Then in essence, alias
+sampling on a dimension B +1 state discretizes the distribution w into M = (B +1)2 bcoeff−1 bins, where the subtracted
+bit stores the sign of w. We now describe our randomized rounding strategy that assigns indices b to each bins so that
+the fraction of bins marked with b is |wb||w|1 in expectation. First, for each b, assign Mb = ⌊M |wb|/|w|1⌋ bins. This can
+leave up to K ≤ B unassigned bins. Second, assign the remaining bins by sampling a Hamming weight K bit-string
+according to the probability distribution pb ∝ M |wb|/|w|1 mod 1 on ( B + 1) bins.
+We note that the block-encoding of one-body terms H ′1 = Ppq h(1)′pq Epq can essentially be treated as exact with
+minimal additional cost, which is not included in our later resources estimates. First, observe that the weights
+q
+w(r)±
+of one-body terms ODσ1 ,r, OQσ1 ,r in Eq. (28) are prepared by outer Prep alias sampling on only N + RC elements,
+compared to inner Prep alias sampling for w(rc)b on RC(B +1) elements. Second, the bits of precision in outer Prep can
+be chosen separately from that of inner Prep, and even doubling the bits of precision comes at a very small additive
+cost. Hence, we may treat the coefficients w(r)± and also |w(rc)|1 to be prepared with machine precision. Third, the
+finite bits of precision brot means that we block-encode an approximate one-body term
+H ′(brot)1 = 12 Xs∈{+,1},r sw(r)s Xσ (iγ⃗ u(r)brot± σ0γ⃗ u(r)brot± σ1 + I) = 12 Xpq Xσ h(1)′(brot)pq (iγpσ0γqσ1 + I), (D3)
+
+=== PDF PAGE 37 ===
+37
+with error H ′′1 = H ′1 − H ′(brot)1 = 12 Ppq Pσ h(1)′′(iγpσ0γqσ1 − 1). Fourth, the key idea is that we get a higher accuracy
+block-encoding of H (1)′ by taking a linear combination of H ′(brot)1 and H ′′(brot)1 . This comes at a small additive cost of
+N additional addresses to inner prep and RPrep. Using a triangle inequality and the fact ∥γ⃗ uσ0∥ = 1, we see that
+this residual term is an exponentially small correction in the bits of rotation like
+∥H ′′1 ∥ = 12
+ Xs∈{+,1},r sw(r)s Xσ hγ⃗ u(r)± σ0 − γ⃗ u(r)brot± σ0 γ⃗ u(r)± σ1 + γ⃗ u(r)brot± σ0 γ⃗ u(r)± σ1 − γ⃗ u(r)brot± σ1i
+≤ 2
+X
+s∈{+,1},r
+|w(r)s |∥γ⃗ u(r)± 00 − γ⃗ u(r)brot± 00∥ ≤2 X
+s∈{+,1},r
+|w(r)s ||⃗ u(r)± − ⃗ u(r)brot± | = O(∥h(1)′∥1N 2−brot ). (D4)
+Hence, the change ∥h(1)′′∥1 to block-encoding normalization is also small. This process may be nested multiple times
+if the desired accuracy is still not achieved.
+Appendix E: Estimating E∗gap with DFTHC
+For the large XVIII complexes on 100 and 150 orbitals, we obtain an estimate on the upper bound for the SOS
+gap E∗gap by using the DFTHC ansatz. Instead of choosing the regularization parameter Ereg in the DFTHC cost
+function Eq. (41) to be E∗gap, which is unavailable a priori for these systems, we scan over the range of Ereg presented
+in Table IV. We compute the CCSD(T) energies Egs for DFTHC solutions obtained in this manner to estimate the
+actual gaps Egap as described in Section IV B, and find that all solutions have Egap > E∗gap, including those where
+Ereg was chosen to be smaller than E∗gap, such as for XVIII-56 and FeMoCo-76. As Egap appears to be robust under
+DFTHC optimization and does not attain unphysical values, we estimate E∗gap as the smallest among all the found
+Egap. For this dataset, we chose the DFTHC bases and copies hyperparameters to be B = ⌊ 3N4 ⌋ and C = ⌊ N4 ⌋
+respectively, and tabulate in Table II the solutions found to have the best quantum simulation costs.
+
+=== PDF PAGE 38 ===
+38
+(R, B, C) = (·, ⌊ 3N4 ⌋, ⌊ N4 ⌋) XVIII XVIII XVIII Fe2S2 Fe4S4 FeMoCo FeMoCo Cpd1X56o64e 100o100e 150o150e 20o30e 36o54e 54o54e 76o113e 58o63e
+(·, 42, 14) (·, 75, 25) (·, 112, 37) (·, 15, 5) (·, 27, 9) (·, 40, 13) (·, 57, 19) (·, 43, 14)
+R|ϵcorr|≤0.3mHa 9 8 9 17 16 7 15 6
+ϵcorr/mHa -0.259 -0.042 -0.062 -0.236 0.291 0.11 0.134 -0.19
+ϵin/mHa 137.1 218.7 351.0 12.4 35.8 243.7 82.5 359.6
+Λ/Ha 61.0 155.5 336.1 18.2 46.7 61.9 179.7 101.4
+Egap/Ha 2.222 4.565 6.454 1.066 2.19 4.789 5.037 5.677
+λeff/Ha 16.47 37.68 65.87 6.23 14.3 24.36 42.55 33.92
+(bcoeff, brot) (7, 12) (8, 16) (9, 16) (11, 15) (13, 17) (9, 16) (9, 15) (10, 15)
+Rot Toffolis 1512 3300 4032 1020 1728 1120 3420 1032
+Coeff Toffolis 1330 2788 3846 688 1294 1162 2476 1184
+Select Toffolis 5280 12672 19072 2280 4760 6784 9000 6840
+Total Toffolis 8122 18760 26950 3988 7782 9066 14896 9056
+λ× total Toffolis 4.95 × 105 2.93 × 106 9.06 × 106 7.26 × 104 3.63 × 105 5.61 × 105 2.68 × 106 9.18 × 105
+λeff× total Toffolis 9.46 × 104 4.63 × 105 1.26 × 106 1.76 × 104 7.87 × 104 1.56 × 105 4.48 × 105 2.17 × 105
+0 5
+10−1
+100
+101
+XVIII-56o64e
+0 5
+XVIII-100o100e
+0 5
+XVIII-150o150e
+0 5
+Fe2S2-20o30e
+0 5
+10−1
+100
+101
+Fe4S4-36o54e
+0 5
+FeMoCo-54o54e
+0 5
+FeMoCo-76o113e
+0 5
+Cpd1X-58o63e
+0
+5
+10
+15
+20
+25
+30
+Rank R
+ϵcorr / mHa
+Egap / Ha
+TABLE XII. (top) Best DFTHC solutions found by scanning over Ereg and R and selecting those satisfying |ϵcorr| ≤0.3mHa.
+Three samples are generated for each choice ( Ereg, R). (bottom) Plot of correlation energy error and computed Egap for all
+data in this scan. The dashed line is chemical accuracy 1 .6mHa and the solid line is E∗gap from Table II of the main text. For
+XVIII-100o and XVIII-150o, E∗gap is taken from the solution with the smallest Egap.
+Appendix F: SOS Representation and moment method conversion
+Herein we describe the protocol for constructing the SOS Hamiltonian from the solution of the typical polynomial
+optimization SDP. Given a semidefinite program of the form
+min⟨H, X⟩ (F1)
+s.t. X ∈ (1, w)
+⟨A0, X⟩ = 1
+⟨Ai, X⟩ = 0 i = 1, ..., m
+X ∈ C
+where H is a matrix representing an operator on the same spaces as X, w is the primal variables, Ai are any linear
+constraints, and X ∈ Cindicates that the primal variable is an element in the cone C. In standard form all linear
+constraints equal zero except for the scalar augmenting the primal solutions. The scalar in the primal allows all linear
+
+=== PDF PAGE 39 ===
+39
+constraints to be expressed in standard form. To derive the dual form we first write the Lagrangian
+L(X, y,B) = ⟨H, X⟩ − ⟨B, X⟩ + y0 (⟨A0, X⟩ −1) +
+mX
+i=1
+yi⟨Ai, X⟩ (F2)
+which for any given primal feasible X provides a lower bound to Eq. (F1). Defining the dual function as the infimum
+over the primal variable and inverting the minimax the dual form of the primal problem is
+max −y0 (F3)
+s.t. H = B − y0A0 −
+mX
+i=1
+yiAi
+B ∈ C∗
+where C∗ is the dual cone of C. As a concrete example of both programs consider a k-local Hamiltonian H, the set of
+all k-local marginals C which implies w is a vector of matrices in C2k×2k of length  nk. The dual cone of the set of
+k-local marginals is defined as the set of all orthogonal operators
+C∗ =
+
+B
+⟨Bi, ρi⟩ ≥0 ∀i = 1, ...,nk , ρ ∈ C . (F4)
+Note that B −Pmi=1 yiAi = H −y0A0 and that H −y0A0 7→ ˆH −y0I ⪰ 0 by the fact that y0 is a lower bound to the SDP.
+Here we use the hat ( ˆ.) to denote an operator. The linear constraints under the operator map Pmi=1 yiAi 7→ Pmi=1 yi ˆAi
+evaluate to zero except for linear constraints involving the constant in the primal solution w1 or contraction maps.
+Thus defining ˜B = B − P ˜m˜i=1 y˜iA˜i, where the tilde on the i corresponds to the set of linear constraints involving w1
+and contractions, defines an operator ˆ˜B ⪰ 0 and thus the dual SOS Hamiltonian. Care must be taken to construct
+y˜i ˆA˜i as generically A˜i 7→ ˆA˜i may not be an SOS operator. The Hsqrt is obtained by Cholesky decomposition on ˜B.
+Appendix G: Spin-free formalism
+Here we derive the equality constraints of the semidefinite program to determine the optimal gap and HSOS repre-
+sentation using a spin-free algebra for the sum-of-squares generators. Consider a rank-2 spin-free (SF) particle-hole
+and hole-particle generators of the form
+OSF =
+X
+ij
+ 
+gij
+X
+σ
+a†jσ aiσ + ¯gij X
+σ
+ajσ a†iσ
+!
+. (G1)
+The resulting SOS is not flexible enough to describe the electronic Hamiltonian well, so we also introduce the following
+rank-1 generators
+ODσ =
+X
+i
+diσaiσ, (G2)
+OQσ =
+X
+i
+qiσa†iσ, (G3)
+(G4)
+and the SOS Hamiltonian is
+ˆHSOS = O†SFOSF + X
+σ
+
+O†Dσ ODσ + O†Qσ OQσ
+
+, (G5)
+
+=== PDF PAGE 40 ===
+40
+with
+O†SFOSF = X
+i,j,k,l
+ 
+Giklj X
+σ,τ
+a†iσakσa†jτ alτ + G′ikjl X
+σ,τ
+a†iσakσalτ a†jτ
++ G′′kilj X
+σ,τ
+akσa†iσa†jτ alτ + G′′′kijl X
+σ,τ
+akσa†iσalτ a†jτ
+!
+, (G6)
+O†Dσ ODσ = X
+i,j
+Diσjσ a†iσajσ , (G7)
+O†Qσ OQσ = X
+i,j
+Qjσiσ ajσ a†iσ . (G8)
+The matrix representation of O†SFOSF has four blocks, arranged as
+GSF =
+
+G G ′
+G′′ G′′′
+
+. (G9)
+After bringing the creation and annihilation operators in Eqs. G6 to a common order, we can see that
+ˆH (2)SOS = X
+i,j,k,l
+(Giklj − G′ikjl − G′′kilj + G′′′kijl ) X
+σ,τ
+a†iσakσa†jτ alτ , (G10)
+ˆH (1)SOS = 2 X
+i,j
+X
+σ
+ X
+p
+
+G′ijpp + G′′ppji − G′′′ppij − G′′′jipp + 12 Diσjσ − Qjσiσ ! a†iσajσ , (G11)
+ESOS = 4
+X
+pq
+G′′′ppqq + X
+p
+X
+σ
+Qpσpσ . (G12)
+Note that two-electron terms for a given i, j, k, and l have the same coefficient regardless of the spins associated
+with the labels. The coefficients of ˆH (2)SOS and ˆH (1)SOS are then equated to the one- and two-electron integrals of the
+spin-free chemistry Hamiltonian.
+Appendix H: Correction for divergent derivative
+In this appendix, we address the issue that the error propagation formula would predict an unreasonably large
+improvement arising from the divergent derivative of a function like √x near zero. It is possible to give a more
+accurate estimate of the uncertainty by deriving corrections to the error propagation formula. To illustrate this
+method, we initially consider the estimation of y = f (x) = √x, with a normal distribution for the error in measuring
+y. Then the estimate of x can be taken to be the square of the estimated value of y. If the estimation of y has mean
+y0 and standard error σy, then the mean value of y2 will be y0 + σ2y, assuming the normal distribution. The standard
+error in x will then be
+σx = 2σy
+q
+y20 + σ2y/2 . (H1)
+In contrast, if we were to assume the usual formula for propagation of uncertainty, we would obtain
+σx = σy
+ d fdx y=y0 !−1 =⇒ σx = 2σyy0 . (H2)
+That is, the correction replaces y0 with
+q
+y20 + σ2y/2, which means that the uncertainty in x does not approach zero
+for small y0.
+More generally, an inverse function f −1(y) can be expanded in a quadratic about y0, so that
+x ≈ f −1(y0) + (y − y0)
+ 
+d f−1
+dy
+
+y=y0
+!
++ 12 (y − y0)2
+ 
+d2f −1
+dy2
+
+y=y0
+!
+. (H3)
+
+=== PDF PAGE 41 ===
+41
+Then we have the mean value of x
+x ≈ f −1(y0) + 12 σ2y
+ 
+d2f −1
+dy2
+
+y=y0
+!
+, (H4)
+and the variance is
+⟨(x − x)2⟩ ≈
+*"
+(y − y0)
+ 
+d f−1
+dy
+
+y=y0
+!
++ 12 [(y − y0)2 − σ2y]
+ 
+d2f −1
+dy2
+
+y=y0
+!#2+
+≈ σ2y
+ 
+d f−1
+dy
+
+y=y0
+!2
++ 14 (κ − 1)σ4y
+ 
+d2f −1
+dy2
+
+y=y0
+!2
+(H5)
+where κ is the kurtosis of the distribution (the fourth standardized moment of the distribution).
+In the case where f (x) = √x this gives 4 σ2yy20 + 2σ2y as above, with the 2 coming from κ − 1, so will be larger for
+distributions with excess kurtosis. In Section II the function is ± arccos(h/Λ − 1), which yields
+d f−1
+dy
+
+y=y0
+= − 12 λ sin(y0) = −ph(2Λ − h), d2f −1dy2 y=y0 = − 12 λ cos(y0) = Λ − h. (H6)
+That then gives
+σ2Ek = σ2QPEEmin(2Λ − Emin) + 14 (κ − 1)σ4QPE (2Λ − Emin)2 . (H7)
+Using κ = 3 and approximating small Emin in the last term gives
+σEk = σQPE
+q
+Emin(2Λ − Emin) + Λ2σ2QPE/2. (H8)
+To give an estimate of the parameter range where this correction will be significant, let us solve for σQPE, and
+expand for small σEk , to give
+σQPE ≈ σEkpEmin(2Λ − Emin)
+ 
+1 − σ2Ek Λ2
+4E2min(2Λ − Emin)2
+!
+(H9)
+In the cases we are interested in, Λ ≫ Emin, and the correction will be negligible provided
+Emin ≫ σEk . (H10)
+If we substitute an initial choice for σQPE = σ′Ek /λeff, where λeff = pEmin(2Λ − Emin), then the correction
+σEk = σ′Ek
+s
+1 + Λ2σ′2Ek
+2λ4eff ≈ σ′Ek
+ 
+1 + Λ2σ′2Ek
+4λ4eff
+!
+. (H11)
+For typical parameters we consider like Λ ∼ 100Ha, λeff ∼ 10Ha, σ′Ek ∼ 1mHa, the fractional correction to σEk is
+negligible at ∼ 2.5 × 10−7.
+
+=== PDF PAGE 42 ===
+42
+a)
+−2
+0
+2
+∆ϵcorr/mHa
+(14, 10, 10)
+ (11, 15, 10)
+10 15
+10−1
+100
+101
+σ[∆ϵcorr]/mHa
+211.1−b 215.0−b
+10 15
+28.9−b 211.9−b
+10 15
+29.5−b 214.4−b
+(14, 15, 5)
+Fe2S2-20o30e ∆ϵcorr vs Coeﬃcient bits ∆ϵcorr vs Rotation bits
+bits
+b)
+−2
+0
+2
+∆ϵcorr/mHa
+(9, 18, 18)
+ (12, 27, 18)
+10 15
+10−1
+100
+101
+σ[∆ϵcorr]/mHa
+212.3−b 216.2−b
+10 15
+212.1−b 216.2−b
+10 15
+210.1−b 213.7−b
+(12, 18, 18)
+Fe4S4-36o54e ∆ϵcorr vs Coeﬃcient bits ∆ϵcorr vs Rotation bits
+bits
+c)
+FIG. 7. For molecule a) Fe 2S2, b) Fe4S4, c) FeMoCo-76, d) Cpd1X-58, e) XVIII-56, f) XVIII-100 and XVIII-150: (top) change
+in correlation energy due to randomized rounding of rotation and coefficients to brot and bcoeff bits respectively for selected
+DFTHC solutions with different ( R, B, C). The estimated mean change ∆ϵcorr and the standard deviation of the mean are
+computed with 64 samples for each bit setting. (bottom) Estimated standard deviation of ∆ ϵcorr and best fit with respect to
+b ∈ {brot, bcoeff}. Chemical accuracy at 1 .6 mHa is plotted for reference (dashed line).
+
+=== PDF PAGE 43 ===
+43
+d)
+−2
+0
+2
+∆ϵcorr/mHa
+(9, 29, 14)
+ (6, 43, 14)
+10 15
+10−1
+100
+101
+σ[∆ϵcorr]/mHa
+28.8−b 214.1−b
+10 15
+27.9−b 214.4−b
+10 15
+28.2−b 213.9−b
+(8, 29, 29)
+Cpd1X-58o63e ∆ϵcorr vs Coeﬃcient bits ∆ϵcorr vs Rotation bits
+bits
+e)
+−2
+0
+2
+∆ϵcorr/mHa
+(5, 28, 28)
+ (8, 28, 14)
+10 15
+10−1
+100
+101
+σ[∆ϵcorr]/mHa
+25.4−b 210.8−b
+10 15
+25.7−b 210.8−b
+10 15
+25.0−b 210.7−b
+(3, 28, 28)
+XVIII-56o64e ∆ϵcorr vs Coeﬃcient bits ∆ϵcorr vs Rotation bits
+bits
+f)
+FIG. 7. (continued).

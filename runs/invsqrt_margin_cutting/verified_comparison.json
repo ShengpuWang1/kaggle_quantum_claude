@@ -1,0 +1,48 @@
+{
+  "status": "PASS",
+  "basis": "Full official-default local verifier costs; geometric mean of reference/candidate cost ratios. Not a hosted Kaggle score.",
+  "candidate": "candidates/busyaprime_v10_invsqrt_margin_897q",
+  "archive": "submissions/busyaprime_v10_invsqrt_margin_897q.zip",
+  "manifest": "submissions/busyaprime_v10_invsqrt_margin_897q.manifest.json",
+  "archive_sha256": "7ee8830ef59ed0fdfb4fb174c6d77482c4914217a59756cb98f9988abd34e1d8",
+  "archive_members": 18,
+  "unchanged_payloads": 17,
+  "invsqrt": {
+    "old_cost": 102349.2360480486,
+    "new_cost": 102349.22413169127,
+    "cost_reduction": 0.011916357325,
+    "cost_reduction_percent": 0.000011642840,
+    "old_evidence": "runs/20261029T032923204702Z/invsqrt.json",
+    "new_evidence": "runs/20261029T085614591416Z/invsqrt.json",
+    "new_verified_shots": 200540928,
+    "new_circuit_sha256": "ca92f8b389d0a153979aed06631e4d8a2d3f9e84457f97de160d24cf04e6291a",
+    "old_toffoli_count": 1329.5002244928278,
+    "new_toffoli_count": 1329.5000357682597,
+    "old_min_margin": 58597850,
+    "new_min_margin": 58597853,
+    "old_rotation_eps": 2.434041480874084e-13,
+    "new_rotation_eps": 2.4340416054882884e-13,
+    "rotation_count": 41,
+    "max_toffoli_count": 1397,
+    "num_qubits": 63,
+    "optimization": "Exhaustive full-domain cutting-plane LP over all 3,133,452 official inputs, with all 41 existing rotation angles adjusted continuously."
+  },
+  "unchanged_tasks": {
+    "dqi": {
+      "cost": 412943252615.63153,
+      "evidence": "runs/20261029T033742262025Z/dqi.json",
+      "circuit_sha256": "53d8b2edf251e2a0c54c401a97d1396c7ed309e1cbfaab8d54a2c99a11ed6552"
+    },
+    "dfthcsos": {
+      "cost": 341880855.4426008,
+      "evidence": "runs/20261029T032916049207Z/dfthcsos.json",
+      "submission_sha256": "d240137c59c997dda7f64664bca2963a1e1deecd17dc38497c9e9f680fdb7716"
+    }
+  },
+  "old_local_geometric_mean": 22.757983370388523,
+  "new_local_geometric_mean": 22.757984253613753,
+  "geometric_mean_gain": 0.000000883225230,
+  "geometric_mean_improvement_percent": 0.000003880947,
+  "archive_validation": "Packager member-hash checks and independent unzip -t passed.",
+  "submission": "No Kaggle submission or hosted-score claim was made."
+}

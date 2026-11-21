@@ -1,0 +1,37 @@
+{
+  "title": "ANF-certified shared-quadratic CCX merge in the champion invsqrt circuit",
+  "task": "invsqrt",
+  "evidence": [
+    {
+      "source_type": "paper",
+      "title": "Optimizing Quantum Circuits for Arithmetic",
+      "url": "https://arxiv.org/abs/1805.12445",
+      "local_path": "docs/papers/1805.12445_optimizing_quantum_circuits_for_arithmetic.pdf",
+      "insight": "Häner, Roetteler, and Svore reduce reversible arithmetic by exploiting its algebraic structure: their fixed-point squaring construction uses diagonal terms and each symmetric cross product only once, rather than synthesizing a generic multiplication. The useful mechanism here is to expose and cancel/share quadratic Boolean terms instead of treating a compiled gate sequence as immutable. The paper also distinguishes this structured arithmetic optimization from simply increasing approximation precision."
+    }
+  ],
+  "hypothesis": "The 62-qubit champion may still contain a phase-free window in which two same-target CCX gates have one control related by an intervening CX-only affine transformation. Propagating square-free Boolean polynomials can expose the shared quadratic term: toggling with controls A·B and (A⊕C)·B leaves only C·B, so the pair can be resynthesized with one CCX while retaining the affine updates. Applying the paper's share/cancel-quadratic-terms mechanism to one such exactly proved window should reduce executed Toffoli-like count without changing the inverse-square-root approximation, phase rotations, or qubit count. This is a new, deterministic scan of the actual champion rather than another rebuild of the much larger reference/linear-seed generator.",
+  "implementation_steps": [
+    "Create a deterministic source/build.py that first asserts the parent artifact SHA-256 is 0104d1b44d7394906c9ef1d445efbd8ca0bed8d2df833ce164e1802335f6c137, loads it with the official kickmix reader, and preserves its sole x register and all scratch allocation semantics.",
+    "Partition the instruction stream only at non-X/CX/CCX operations. Consider bounded phase-free windows (at most 26 active wires and 120 operations) containing repeated same-target CCX gates; never cross HMR, measurement, BIT_STORE, Z_POW, allocation/free, or other non-phase-free instructions.",
+    "For each bounded window, symbolically propagate every output wire as a square-free algebraic normal form over arbitrary, potentially dirty boundary bits. Search only the focused shared-target template: two CCX operations on the same target, with one control's ANFs differing by a nonzero affine polynomial and the other control equal, where a CX-only realization of the required affine update is already present or can be retained unchanged. Resynthesize the pair using the single difference-control CCX when wire-distinctness and dependency conditions hold.",
+    "Require the complete original and rewritten windows to have identical ANFs on every wire, which proves equality for all boundary bit strings and hence the same permutation on arbitrary superpositions. Include a negative-control mutation that must fail this comparison. Select exactly one certified rewrite with the greatest CCX reduction, using instruction index as a deterministic tie-break; if none is found, stop without emitting a promoted candidate.",
+    "Serialize the resulting circuit as invsqrt.kmb without touching any instruction outside the selected window. Save the original/replacement gate lists, window boundary proof, selected indices, before/after static Toffoli-like counts, qubit count, and artifact hashes as reproducible source-side reports.",
+    "Run the configured bounded build checks and official invsqrt smoke verification for correctness only, followed by the orchestrator's single terminal full verification. Do not tune precision, rotations, salts, measurements, or other tasks in this experiment."
+  ],
+  "expected_resource_effect": "Each successful shared-target merge removes one CCX from every execution of a deterministic phase-free window; a mirrored compute/uncompute opportunity could remove two. Since invsqrt cost is Q*(mean Toffoli-like + T/4), keeping Q=62 and the rotation stream unchanged should reduce cost by approximately 62 cost units per mean executed CCX removed, with no anticipated qubit or rotation-synthesis overhead.",
+  "risks": [
+    "The already heavily merged champion may contain no remaining instance of this narrow template; that is a clean negative result and must not trigger a broader rewrite.",
+    "Naive symbolic expansion can grow rapidly, so active-wire/window bounds and deterministic search limits are necessary.",
+    "A local algebraic proof is invalid if the window crosses phase, measurement, classical-state, or allocation semantics; all such boundaries must remain hard stops.",
+    "Changing circuit bytes changes hash-seeded HMR randomness, so a smoke pass is not evidence of full-domain success; only the orchestrator's full run decides promotion.",
+    "A static CCX reduction may have a smaller mean benefit if the selected site is not executed on every shot, so the final gate is strict measured cost rather than an assumed improvement."
+  ],
+  "acceptance_criteria": [
+    "The build consumes the exact pinned champion bytes and produces a deterministic invsqrt.kmb plus reproducible proof/resource reports; a second build is byte-identical.",
+    "Exactly one window is changed, its complete boundary ANF is certified equal for every wire on arbitrary dirty inputs, and the negative control is rejected.",
+    "The candidate has 62 qubits, the unchanged 22-qubit little-endian x-only register schema, unchanged non-window instructions and rotations, and at least one fewer static Toffoli-like operation than the champion's 1537.",
+    "The configured official invsqrt smoke check passes; smoke cost is not compared with full cost.",
+    "The unmodified official full invsqrt verifier returns PASS with finite positive score strictly below 97921.60740959947, and the verified candidate bytes remain unchanged for promotion."
+  ]
+}

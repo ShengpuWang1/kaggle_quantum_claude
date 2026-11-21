@@ -1,0 +1,9 @@
+{
+  "removed": 70,
+  "old_toffoli_like": 1397,
+  "new_toffoli_like": 1327,
+  "qubits": 63,
+  "seeds": 16,
+  "shots": 4096,
+  "full_value_phase_equivalence": true
+}

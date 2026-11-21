@@ -1,0 +1,392 @@
+{
+  "domain": "random x in 1..3133452",
+  "seeds": 4,
+  "shots_per_seed": 4096,
+  "nonlinear_gates": 1397,
+  "inert": [
+    {
+      "index": 58,
+      "line": "CCX q32 q10 q33"
+    },
+    {
+      "index": 59,
+      "line": "CCX q33 q9 q34"
+    },
+    {
+      "index": 60,
+      "line": "CCX q34 q8 q35"
+    },
+    {
+      "index": 61,
+      "line": "CCX q35 q7 q36"
+    },
+    {
+      "index": 63,
+      "line": "CCX q36 q6 q37"
+    },
+    {
+      "index": 65,
+      "line": "CCX q37 q5 q38"
+    },
+    {
+      "index": 66,
+      "line": "CCX q38 q4 q39"
+    },
+    {
+      "index": 67,
+      "line": "CCX q39 q3 q40"
+    },
+    {
+      "index": 68,
+      "line": "CCX q40 q2 q41"
+    },
+    {
+      "index": 108,
+      "line": "CCX q41 q1 q47"
+    },
+    {
+      "index": 239,
+      "line": "CSWAP q45 q16 q20"
+    },
+    {
+      "index": 240,
+      "line": "CSWAP q45 q17 q19"
+    },
+    {
+      "index": 16693,
+      "line": "CCX q20 q21 q56"
+    },
+    {
+      "index": 16753,
+      "line": "CCX q21 q36 q59"
+    },
+    {
+      "index": 16762,
+      "line": "CCX q21 q48 q59"
+    },
+    {
+      "index": 16771,
+      "line": "CCX q21 q51 q59"
+    },
+    {
+      "index": 16811,
+      "line": "CCX q21 q40 q59"
+    },
+    {
+      "index": 16837,
+      "line": "CCX q21 q47 q40"
+    },
+    {
+      "index": 16872,
+      "line": "CCX q21 q59 q40"
+    },
+    {
+      "index": 16912,
+      "line": "CCX q21 q35 q40"
+    },
+    {
+      "index": 16913,
+      "line": "CSWAP q20 q40 q2"
+    },
+    {
+      "index": 16953,
+      "line": "CCX q21 q59 q40"
+    },
+    {
+      "index": 16999,
+      "line": "CCX q21 q55 q40"
+    },
+    {
+      "index": 17000,
+      "line": "CSWAP q20 q40 q3"
+    },
+    {
+      "index": 17031,
+      "line": "CCX q21 q59 q40"
+    },
+    {
+      "index": 17067,
+      "line": "CCX q21 q36 q40"
+    },
+    {
+      "index": 17068,
+      "line": "CSWAP q20 q40 q2"
+    },
+    {
+      "index": 17072,
+      "line": "CCX q21 q48 q40"
+    },
+    {
+      "index": 17073,
+      "line": "CSWAP q20 q40 q3"
+    },
+    {
+      "index": 17074,
+      "line": "CSWAP q56 q40 q0"
+    },
+    {
+      "index": 17077,
+      "line": "CCX q21 q51 q40"
+    },
+    {
+      "index": 17078,
+      "line": "CSWAP q20 q40 q2"
+    },
+    {
+      "index": 17079,
+      "line": "CSWAP q56 q40 q0"
+    },
+    {
+      "index": 17083,
+      "line": "CSWAP q20 q40 q3"
+    },
+    {
+      "index": 17084,
+      "line": "CSWAP q56 q40 q0"
+    },
+    {
+      "index": 17197,
+      "line": "CCX q40 q23 q59"
+    },
+    {
+      "index": 17307,
+      "line": "CCX q20 q23 q40"
+    },
+    {
+      "index": 17343,
+      "line": "CCX q56 q21 q40"
+    },
+    {
+      "index": 17379,
+      "line": "CCX q20 q21 q40"
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2"
+    },
+    {
+      "index": 24890,
+      "line": "CCX q40 q38 q46"
+    },
+    {
+      "index": 24891,
+      "line": "CCX q46 q39 q47"
+    },
+    {
+      "index": 27013,
+      "line": "CCX q21 q24 q40"
+    },
+    {
+      "index": 27024,
+      "line": "CCX q21 q41 q40"
+    },
+    {
+      "index": 27035,
+      "line": "CCX q21 q42 q40"
+    },
+    {
+      "index": 27047,
+      "line": "CCX q21 q25 q40"
+    },
+    {
+      "index": 27057,
+      "line": "CCX q21 q15 q40"
+    },
+    {
+      "index": 27068,
+      "line": "CCX q21 q53 q40"
+    },
+    {
+      "index": 27079,
+      "line": "CCX q21 q49 q40"
+    },
+    {
+      "index": 27093,
+      "line": "CCX q21 q22 q40"
+    },
+    {
+      "index": 27106,
+      "line": "CCX q21 q24 q40"
+    },
+    {
+      "index": 27119,
+      "line": "CCX q21 q41 q40"
+    },
+    {
+      "index": 27132,
+      "line": "CCX q21 q42 q40"
+    },
+    {
+      "index": 27146,
+      "line": "CCX q21 q25 q40"
+    },
+    {
+      "index": 27157,
+      "line": "CCX q21 q26 q40"
+    },
+    {
+      "index": 27168,
+      "line": "CCX q21 q57 q40"
+    },
+    {
+      "index": 27179,
+      "line": "CCX q21 q43 q40"
+    },
+    {
+      "index": 27208,
+      "line": "CSWAP q14 q40 q3"
+    },
+    {
+      "index": 27216,
+      "line": "CSWAP q14 q40 q2"
+    },
+    {
+      "index": 27220,
+      "line": "CCX q21 q36 q40"
+    },
+    {
+      "index": 27221,
+      "line": "CSWAP q14 q40 q3"
+    },
+    {
+      "index": 27225,
+      "line": "CCX q21 q17 q40"
+    },
+    {
+      "index": 27226,
+      "line": "CSWAP q14 q40 q2"
+    },
+    {
+      "index": 27227,
+      "line": "CSWAP q56 q40 q0"
+    },
+    {
+      "index": 27230,
+      "line": "CCX q21 q18 q40"
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3"
+    },
+    {
+      "index": 27232,
+      "line": "CSWAP q56 q40 q0"
+    },
+    {
+      "index": 27235,
+      "line": "CSWAP q56 q40 q0"
+    },
+    {
+      "index": 27238,
+      "line": "CSWAP q14 q40 q2"
+    },
+    {
+      "index": 27646,
+      "line": "CCX q40 q23 q46"
+    },
+    {
+      "index": 27884,
+      "line": "CCX q14 q23 q40"
+    },
+    {
+      "index": 27963,
+      "line": "CCX q56 q21 q40"
+    },
+    {
+      "index": 28040,
+      "line": "CCX q14 q21 q40"
+    },
+    {
+      "index": 34309,
+      "line": "CCX q18 q38 q20"
+    },
+    {
+      "index": 45143,
+      "line": "CSWAP q15 q61 q46"
+    },
+    {
+      "index": 45144,
+      "line": "CSWAP q15 q40 q47"
+    },
+    {
+      "index": 45251,
+      "line": "CCX q25 q10 q26"
+    },
+    {
+      "index": 45253,
+      "line": "CCX q26 q9 q27"
+    },
+    {
+      "index": 45255,
+      "line": "CCX q27 q8 q28"
+    },
+    {
+      "index": 45281,
+      "line": "CCZ q56 q3 q2 if b320"
+    },
+    {
+      "index": 45283,
+      "line": "CCZ q15 q5 q4 if b319"
+    },
+    {
+      "index": 45285,
+      "line": "CCZ q28 q7 q6 if b322"
+    },
+    {
+      "index": 45378,
+      "line": "CCX q25 q10 q26"
+    },
+    {
+      "index": 45380,
+      "line": "CCX q26 q9 q27"
+    },
+    {
+      "index": 45382,
+      "line": "CCX q15 q5 q30"
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17"
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2"
+    },
+    {
+      "index": 45401,
+      "line": "CCX q27 q8 q17"
+    },
+    {
+      "index": 45402,
+      "line": "CCZ q17 q7 q6"
+    },
+    {
+      "index": 45481,
+      "line": "CCX q15 q5 q17"
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18"
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2"
+    },
+    {
+      "index": 45506,
+      "line": "CCX q19 q10 q20"
+    },
+    {
+      "index": 45507,
+      "line": "CCX q20 q9 q21"
+    },
+    {
+      "index": 45508,
+      "line": "CCX q21 q8 q22"
+    },
+    {
+      "index": 45509,
+      "line": "CCZ q22 q7 q6"
+    }
+  ]
+}

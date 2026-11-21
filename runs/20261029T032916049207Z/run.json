@@ -1,0 +1,14 @@
+{
+  "mode": "full",
+  "tasks": {
+    "dfthcsos": {
+      "command": [
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/.venv/bin/python",
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/data/official/verifiers/dfthcsos/verify.py",
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/candidates/busyaprime_v9_somejoint_897q/dfthcsos"
+      ],
+      "returncode": 0,
+      "seconds": 7.132885291997809
+    }
+  }
+}

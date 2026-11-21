@@ -1,0 +1,16 @@
+# Implementation cycle 1
+
+Implemented the deterministic invsqrt measurement-erasure build. It snapshots and hash-pins the champion, conservatively scans for eligible clean CCX compute/uncompute pairs, exhaustively certifies boundary values/phases for both HMR outcomes with a no-CZ negative control, rewrites exactly one qualifying second CCX, validates circuit/resource invariants, serializes via official kickmix, and emits a deterministic proof/resource report. Added build/proof documentation.
+
+## Changed files
+
+- `source/build.py`
+- `source/MEASUREMENT_ERASURE.md`
+
+## Build notes
+
+Run `python source/build.py` from the workspace root. The first run snapshots the supplied hash-checked invsqrt.kmb as source/parent_invsqrt.kmb; subsequent runs use only that snapshot. Successful generation writes invsqrt.kmb and source/measurement_erasure_report.json. If no pair is certified, it emits a negative report and removes the output rather than preserving the champion as a candidate.
+
+## Known limitations
+
+The implementer did not execute the build or official smoke/full verification. Candidate generation depends on the champion containing a pair satisfying the approved conservative bounds; otherwise the build intentionally produces a bounded negative result.

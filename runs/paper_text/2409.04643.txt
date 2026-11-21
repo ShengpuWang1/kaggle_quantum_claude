@@ -1,0 +1,2637 @@
+=== PDF PAGE 1 ===
+Expressing and Analyzing Quantum Algorithms with Qualtran
+Matthew P. Harrigan, 1, ∗ Tanuj Khattar,1, † Charles Yuan,1, 2 Anurudh Peduri,1, 3
+Noureldin Yosri,1 Fionn D. Malone, 1 Ryan Babbush, 1 and Nicholas C. Rubin 1, ‡
+1Google Quantum AI, Venice, CA 90291, United States
+2MIT CSAIL, Cambridge, MA 02139, United States
+3Ruhr University Bochum, 44801 Bochum, Germany
+Quantum computing’s transition from theory to reality has spurred the need for novel software
+tools to manage the increasing complexity, sophistication, toil, and fallibility of quantum algorithm
+development. We present Qualtran, an open-source library for representing and analyzing quan-
+tum algorithms. Using appropriate abstractions and data structures, we can simulate and test
+algorithms, automatically generate information-rich diagrams, and tabulate resource requirements.
+Qualtran offers a standard library of algorithmic building blocks that are essential for modern cost-
+minimizing compilations. Its capabilities are showcased through the re-analysis of key algorithms
+in Hamiltonian simulation, chemistry, and cryptography. Architecture-independent resource counts
+output by Qualtran can be forwarded to our implementation of cost models to estimate physi-
+cal costs like wall-clock time and number of physical qubits assuming a surface-code architecture.
+Qualtran provides a foundation for explicit constructions and reproducible analysis, fostering greater
+collaboration within the growing quantum algorithm development community.
+I. INTRODUCTION
+As quantum computing technology develops so too must our ability to leverage it for computational
+advantages. Luckily, we know of many applications for which quantum algorithms can give a meaningful
+asymptotic speedup relative to a classical computer [1–5]. The real-world computational advantage of
+a quantum algorithm, however, depends not only on its idealized asymptotic time complexity, but also
+on constants governed by algorithmic implementation and physical realities of quantum architectures
+such as error correction. Notably, the most competitive forms of quantum error correction known today
+incur large space-time overheads that can jeopardize advantage [6, 7]. Thus, accurately determining
+the advantage of a quantum algorithm running on hardware requires fully compiling the algorithm and
+determining its cost in terms of concrete constants. While resource estimation is not a new activity in
+quantum information [8] the scale and complexity of modern quantum algorithms demands improved
+tools for algorithm analysis and construction.
+To analyze the constant factors of compiling a quantum algorithm to an error-corrected quantum com-
+puter, researchers typically record each operation using a mixture of enumerated lists and tables, math-
+ematical Dirac notation, and English prose in a scientific journal article [9–16]. The challenge is that
+state-of-the-art quantum algorithms exist at the scale of teraquops — 1012 qubits × operations [17].
+At that scale, a manual analysis is tedious, consuming months of researcher time and dozens of pages
+in a publication. For example, the manual resource analysis in Ref. [11] consumes Appendices A–D (16
+pages), in Ref. [17] it consumes Appendices A–F (37 pages), and in Ref. [13] it consumes Appendix VII
+(41 pages). Such analysis is imprecise, requiring a researcher to approximate in an ad hoc way the cost
+of many operations lacking clear references from the literature. It is also inaccessible, yielding numerical
+figures that are hard for a reader to reproduce or extend.
+Researchers have previously developed quantum programming languages, including Quipper [18], Scaf-
+fold [19], QWire [20], Q# [21], Silq [22], Tower [23], and Qrisp [24], that enable the programmer to
+express algorithms in a structured way that respects the abilities and constraints of a theoretical quan-
+tum computer. There are also existing frameworks for programming noisy intermediate-scale quantum
+∗ mpharrigan@google.com; Equal contribution
+† tanujkhattar@google.com; Equal contribution
+‡ nickrubin@google.com
+arXiv:2409.04643v1  [quant-ph]  6 Sep 2024
+
+=== PDF PAGE 2 ===
+2
+FIG. 1: A cartoon overview of a Qualtran workflow. Python code defines quantum subroutines and
+properties. The data structures encode quantum invariants. Routines are composed hierarchically, and
+Qualtran provides a library of useful quantum subroutines. Analysis protocols let the developer make
+meaningful statements about the correctness or cost of a quantum algorithm. Architecture-agnostic
+costs are translated to physical resource requirements like wall-clock time through standard models.
+(NISQ) computers at the circuit level within a Python host language such as Cirq [25], pyQuil [26], and
+Qiskit [27]. Taking inspiration from the useful features of existing languages, we contend that there is
+ample opportunity to experiment with new abstractions, tools, and ideas for quantum programming.
+In this manuscript, we introduce Qualtran, an open-source, Python-based software framework that en-
+ables a researcher to express and analyze quantum algorithms for error-corrected quantum computers
+in an automated, precise, and accessible way. Qualtran offers a) data structures to represent quantum
+programs by hierarchically composing subroutines; b) methods to analyze the performance of quantum
+programs, including hardware resource costs; c) a library of re-usable algorithms and subroutines based
+on recent research on compilation and resource estimation; and d) a set of hardware architecture-aware
+models for estimating physical costs from architecture-agnostic costs.
+We begin with a description of the design of the software tool—its data structures and analysis routines—
+in Section II. We then provide a survey of algorithmic primitives we consider essential for modern com-
+pilation studies in Section III. Next, Sections IV to VI demonstrate how Qualtran can be used on rep-
+resentative problems in quantum algorithms compilation including Hamiltonian simulation, ground state
+chemistry problems, and breaking cryptosystems. We describe the various physical cost models for
+translating the hardware-agnostic logical costs analyzed in the prior sections to physical quantities in
+Section VII, and conclude with closing remarks in Section VIII.
+II. DESIGN OF THE QUAL TRAN FRAMEWORK
+In designing the Qualtran framework, we adopted design principles that we believe distinguishes it from
+prior work. In particular, we have aimed to explicitly address the needs of practicing quantum algorithms
+researchers, who are already publishing studies on compiling large quantum algorithms—often without
+the use of any software tool. We specifically aim to accelerate this work rather than obviate it.
+One principle is that the framework itself should be accessible and predictable. We motivate this by a
+contrast with classical programming languages: the C++ programming language has hundreds of devel-
+opers contributing to the language infrastructure and millions of programmers agnostic to the particulars
+of the compilation infrastructure. Quantum algorithms research is not at this stage of maturity. Instead,
+researchers have to understand the problem domain, quantum algorithms, techniques for compiling quan-
+tum algorithms, and analysis techniques for reasoning about the cost and correctness of a program one
+cannot yet run. We designed Qualtran so that the runtime—in addition to the library of quantum
+algorithms—is readable, documented, extensible Python code. The software tries to be as predictable as
+possible: there is no special syntax, mutable state is avoided or carefully controlled, interfaces and types
+are explicit, and interoperability with the existing ecosystem of scientific computing Python packages is
+straightforward.
+A second principle is that researchers need only annotate as much—or as little—about their algorithms
+and subroutines as is necessary to complete their research objectives. We seek meaningful statements
+
+=== PDF PAGE 3 ===
+3
+about the correctness or cost of a quantum algorithm, not an executable ‘binary’ for a quantum program.
+When authoring a quantum subroutine, the user can either employ a placeholder with literature-based
+cost expressions or provide a full implementation of the subroutine. This flexibility is powerful: the
+system can emit a compiled circuit composed of logical 1- and 2-qubit gates if full implementations of
+each subroutine is provided. Alternatively, a user can quickly tabulate resource costs by outlining the
+expensive part of an algorithm.
+The final principle is that the standard library of quantum algorithm primitives included in the framework
+should prioritize subroutines developed for—and used by—recent resource estimation studies. Section III
+provides additional detail for this principle, and highlights some of the most important primitives available
+in the standard library.
+In the remainder of this section, we give an overview of the design of the Qualtran framework and how
+it enables a developer to express and analyze quantum algorithms. We first introduce the central data
+structures in Qualtran that enable a developer to build quantum programs in a modular way. We then
+present protocols for analyzing quantum programs in Qualtran, including gate counting, qubit counting,
+and simulation.
+A. Bloqs: Building Blocks of Quantum Algorithms
+To enable the developer to express quantum algorithms, Qualtran provides bloqs, which are data struc-
+tures that represent quantum operations, subroutines, and programs. Some examples of bloqs include
+simple unitary quantum logic gates over individual qubits such as Hadamard, phase, and multi-controlled
+NOT gates; complex operations acting on registers of qubits such as multiplication, reflection, and state
+preparation; and select non-unitary operations including qubit allocation and deallocation.
+We introduce a new term for this category of objects to avoid any implied constraints imposed by existing
+labels, and chose the name bloq to highlight these objects’ role as the building blocks of a quantum
+algorithm. A minimal bloq is characterized only by its name and signature—the names and dimensions
+of its input and output quantum registers. All other properties, such as its underlying sequence of
+logic gates or its numerical denotation as a tensor, are optional annotations on a bloq. This optionality
+enables a developer to implement only the properties of a bloq for the analysis they desire to perform.
+For example, annotating the approximate gate count for the most costly subroutine in an algorithm can
+be used for resource estimation. With additional detail, the framework enables compilation of a program
+down to an elementary gate set.
+In contrast to classical programming languages and many quantum languages, Qualtran does not repre-
+sent quantum programs as a sequence of textual keywords and identifiers. Instead, we adopt a model in
+which bloqs are represented explicitly as data structures within the Python host language. This model is
+common in NISQ programming frameworks [25–27], as well as machine learning frameworks such as Ten-
+sorFlow [28]. This approach provides us access to a general-purpose programming language for analyzing,
+visualizing, and testing algorithms, and we believe this combination of a familiar host language with ab-
+stractions for quantum algorithmic building blocks is particularly accessible and useful for researchers in
+quantum algorithms.
+1. Composition of Bloqs
+In Qualtran, the user defines a bloq by its decomposition into simpler bloqs. Qualtran provides atomic
+bloqs, such as individual logic gates, that serve as the base case of this recursive strategy. For any bloq,
+its constituents composed to form a compute graph —a directed acyclic graph (DAG) whose edges, or
+wires, represent the flow of quantum data.
+In Fig. 2, we illustrate the compute graph formed by composing modular multiplication bloqs to define
+a modular exponentiation bloq. We can observe the graph structure and trace the flow of quantum
+information from left to right. Each edge represents the flow of quantum data from the output of
+one bloq to the input of a subsequent bloq. A wire may represent one qubit or a larger (quantum)
+value with a particular quantum data type such as an unsigned integer encoded in multiple qubits. In
+
+=== PDF PAGE 4 ===
+4
+FIG. 2: The compute graph for a modular exponentiation subroutine. This graph is formed by
+composing modular multiplication bloqs and serves as the definition of a modular exponentiation bloq.
+Some notable features of the data structure are annotated.
+the example, the Allocate bloq outputs a 2048-bit quantum integer to accumulate the results of the
+subsequent multiplications. A user that needs fine-grained manipulation of the encoded data can use the
+Split bloq to address individual qubits, as seen in the treatment of the exponent register. Each qubit in
+the exponent is used as a control for a corresponding multiplication operation.
+These two features, hierarchical decomposition of bloqs and quantum data types, improve the classical
+runtime performance of the library. By incrementally lowering one level of the bloq hierarchy at a time,
+each decomposition step need only concern itself with tens or thousands of constituent bloqs. It does not
+need to fully unroll a bloq into e.g. all 10 9 gates that would be needed to represent the bloq as a single
+circuit. Additionally, the classical memory footprint of the Python object for the bloq in Fig. 2 would
+not increase if the bit-width of the arithmetic was increased from 2048 to 4096 bits, since the individual
+bits of a large quantum data type need not be explicitly represented.
+This design also offers correctness guarantees. For example, the no-cloning [29] and no-deletion [30]
+theorems mandate that every piece of quantum data must be used exactly once in any physically realizable
+quantum computation. Qualtran enforces this correctness property automatically and transparently to
+the user via principles of linear logic developed in programming language research [20]. The mechanism is
+that, under the hood, the user does not manage the graph structure directly but rather invokes user-facing
+functions to manipulate the wire connection points. These functions raise a runtime error whenever a
+wire connection point is used twice, or is left unused without being marked as a bloq’s input or output.
+Finally, Qualtran avoids a class of errors due to misidentifying qubits [31] by eschewing the concept of
+an implicit pool of qubits or qubit addresses as found in existing frameworks [25–27]. Allocations and
+de-allocations are explicit bloqs in the compute graph. Also, each register has a string name used during
+composition rather than relying on order or index alone.
+2. Quantum Data Types
+The elementary unit of quantum information is the qubit. We can use a collection of qubits to encode
+data with quantum data types —such as integers and real numbers up to a given precision. As introduced
+in the previous section, Qualtran offers first-class support for quantum data types. The signature of a
+bloq reports not only the arity and names of its inputs and outputs, but also its quantum data type.
+Bloqs can only be composed if their wires have matching data types. Each data type can be queried to
+determine how the data is encoded to and from (qu)bits. The number of qubits for a data type is crucial
+for use in resource estimation.
+Whereas classical programming languages have a fixed collection of primitive types based on the machine
+architecture such as int32 or float64, the quantum data types in Qualtran enable the user to specify
+an arbitrary bit-width for a register. For example, the QInt(8) type specifies an 8-bit signed integer
+and the QFxp(6, 4) type specifies a 6-bit fixed-point number with 4 fractional bits. This flexibility is
+important for estimating resource requirements of quantum algorithms that we anticipate to be limited
+
+=== PDF PAGE 5 ===
+5
+by qubit count, and where using a larger-than-necessary type for a known range of values is too wasteful
+for emerging hardware architectures.
+Qualtran provides data types for unsigned integers, one’s and two’s complement signed integers, integers
+in Montgomery form [32], and fixed-point real numbers. The framework enables the user to define custom
+data types by implementing the appropriate interface. Additionally, it offers special support for fixed-
+size multidimensional arrays of quantum data. For example, a bloq that selects a register from m input
+registers and swaps it into the first position can define its signature as one control register and an array
+of m QInt registers.
+Qualtran does not support quantum sum (union) or product (struct) types, and by extension does not
+support quantum strings or quantum lists [23]. This design accounts for the relative difficulty of estimating
+the resource costs of such data types under constraints of foreseeable quantum architectures, but may be
+revisited in future versions of the library.
+B. Protocols for Analyzing Quantum Programs
+We cannot yet execute the large-scale quantum algorithms expressed in Qualtran that require an error-
+corrected quantum computer. Nevertheless, researchers today labor to prototype, compile, and analyze
+quantum algorithms so that we may accurately predict the practical speedup of a given algorithm and
+obtain the most use out of an emerging hardware device. Qualtran aids researchers in this goal through
+protocols that act on quantum programs built from bloqs to query or derive useful properties, produce
+visualizations and diagrams, and check correctness of algorithms and subroutines.
+1. Call Graphs
+A basic task given a quantum program in bloq form is to compute and visualize the set of bloqs to which
+it decomposes, which in turn empowers downstream analyses such as gate and qubit counting. The data
+structure that Qualtran uses for this analysis is a call graph, a directed acyclic graph that has an edge
+pointing from a caller bloq to a callee bloq whenever the callee is in the collection of bloqs to which
+the caller decomposes. Each edge is annotated with the number of times the callee is called. Qualtran
+represents a call graph as a NetworkX [33] graph obtained by calling a designated method on a bloq.
+A bloq can define its behavior and callees in two ways. The first way is to define a full decomposition that
+specifies the compute graph, including the explicit flow of information between the inputs and outputs of
+callees. In turn, Qualtran recovers a call graph from a compute graph by discarding detail and retaining
+only relationships between callers and callees. A full decomposition is needed for tasks such as simulation,
+but is not always required to accomplish a researcher’s goals when considering the effort.
+As an alternative, the bloq may define a call graph decomposition that simply lists the callees (and their
+number of calls) without accounting for the flow of quantum information. This approach is sufficient for
+certain analyses, such as gate counts, and has three advantages over full decomposition:
+• The user can quickly estimate costs by only providing the unstructured list of callees.
+• Parameters can propagate as symbolic rather than concrete values. For example, consider a bloq
+that applies the X gate on a parametric number of qubitsn. Its full decomposition would instantiate
+n XGate objects, and the Python runtime cannot instantiate a symbolic number of objects. By
+contrast, the call graph decomposition simply states that the bloq uses n X gates, where n is a
+SymPy [34] variable that supports arithmetic.
+• The call graph decomposition can serve as an automated cross-check of correctness against a full
+decomposition of the bloq if the user provides both.
+Given a bloq, we can visualize its compute and call graphs in order to validate constructions and com-
+municate algorithms. Qualtran supports drawing these graphs, complete with annotations on each bloq
+
+=== PDF PAGE 6 ===
+6
+such as qubit and gate counts. The framework can draw the compute graph of a bloq either as a directed
+acyclic graph as in Figure 2 via Graphviz [35], or as a traditional quantum circuit via ⟨q|pic⟩ [36].1
+2. Gate Counting
+The first essential question about a quantum algorithm is how many operations must be performed
+to execute the algorithm. Although the associated physical wall-clock time will depend on details of
+the target hardware architecture and error-correcting code (see Section VII), the quantity and type of
+quantum logic gates serves as a useful architecture-independent proxy for the time cost of an algorithm.
+Qualtran enables a researcher to automatically count the number of gates comprising a quantum algo-
+rithm. For an algorithm expressed as a bloq, the system recursively sums the contributions from the
+callees to which the bloq decomposes. This analysis is simple and is not fundamentally tied to any par-
+ticular target architecture. The analysis is also efficient: by automatically caching the computed costs of
+reoccurring bloqs, Qualtran can compute gate counts for algorithms containing hundreds of millions of
+gates in a matter of seconds.
+There are two specific strategies included for gate counting. The BloqCounts strategy requires researchers
+to explicitly specify the bloqs they wish to count, but affords the user complete control over the target
+gateset or architecture. In contemporary literature on quantum resource estimation, however, researchers
+often map an algorithm onto a quantum architecture that uses the surface code for error correction. To
+account for gate costs, researchers typically count T and Toffoli gates, the quantity (but not specific
+identity) of Clifford gates, arbitrary-angle rotation gates, and measurement operations [37–39]. The
+QECGatesCost strategy that is pre-configured to count the gates most relevant to a surface code error
+corrected architecture.
+In designing this second strategy, it became apparent that there is no strict agreement in the literature
+on specifically which fault tolerant gates to count and when to ‘stop’ decomposing. Some studies will
+continue compiling an algorithm until only Clifford and T gates remain; while others will count other
+basic gates like the Toffoli or Fredkin gate independently of the T count. Indeed, there are some surface
+code architectures that have different costs for directly implementing Toffoli gates compared to compiling
+them to four or seven T gates. In our design of the QECGatesCost gate counting routine, we keep the
+counts factored by their gate type as much as possible and provide methods to aggregate counts for a
+particular choice of gate set.
+The gate counts can be insightful in their own right by comparing the runtime costs of algorithms in an
+architecture-independent way, or they can be fed into the physical cost models detailed in Section VII.
+3. Qubit Counting
+The second essential property of a quantum algorithm is how many qubits it requires. While the number
+of required physical qubits will also depend on the target hardware architecture (see Section VII), the
+number of logical, error-corrected qubits is architecture-independent. Using Qualtran, a researcher can
+automatically estimate the number of logical qubits required by a quantum algorithm.
+Qualtran counts qubits in a hierarchical and recursive way. It assumes that each callee in the decompo-
+sition of a bloq executes sequentially, and computes the number of qubits at each sequence point as the
+number of qubits required by the callee plus the number of idle qubits acting as bystanders. In assuming
+that callees execute sequentially, Qualtran minimizes qubit count potentially at the expense of greater
+circuit depth or execution time. Conversely, by assuming that each callee uses all of its qubits for its
+entire execution, Qualtran potentially overestimates the qubit count. We believe that this Min-Max-style
+estimate can provide a good balance between accuracy and scalability of the accounting.
+1 In Qualtran, we term this style amusical score diagram for disambiguation from other references to circuits.
+
+=== PDF PAGE 7 ===
+7
+We discuss two important considerations for designing a qubit counting algorithm: First, bloqs can
+allocate and free qubits within their decomposition; so we cannot simply look at the input and output
+sizes of a bloq to determine its qubit cost. Second, the qubit count cannot be expressed as the maximum
+over the qubit counts of all the callees: when executing a particular callee, the number of qubits is at least
+the number of qubits required by the callee plus the number of idle, bystander qubits that are output or
+inputs to other callees.
+There are optimizations that are only possible by fully decomposing a bloq to a circuit by flattening
+hierarchical structure and carefully tessellating operations from different components. Such strategies
+are employed for circuits of thousands of gates that run on current generation, NISQ hardware. Indeed,
+one can use the interoperability features of Qualtran to convert a program to a Cirq circuit with such
+optimizations, but this is likely not feasible for large-scale algorithms with billions of gates. It is a future
+direction to investigate more accurate qubit allocations without sacrificing tractability.
+Overall, Qualtran makes simplifying assumptions by default that efficiently estimate the number of qubits
+used by many quantum algorithms, and we have designed the the framework to be sufficiently general
+that a developer can write their own routine for counting qubits if additional precision is necessary.
+4. Tensor Simulation
+In the absence of a hardware quantum computer, researchers often check whether a quantum program
+is correct by simulating it on a classical computer. In general, such simulation requires an exponential
+amount of classical resources. A state vector simulation stores 2n complex numbers to simulate an n-qubit
+system, while a Feynman path integral simulation uses constant space but exponential time to sum over
+an exponential number of paths [40]. Thus, simulation is tractable only for bloqs that use few qubits or
+exhibit special structure. Nevertheless, by testing the numerical simulation of small instances of a bloq,
+we gain confidence that the implementation is correct at problem-relevant scales as well.
+Qualtran can simulate a quantum program by deriving its state vector or unitary (its tensor ) from
+the tensors of its constituent bloqs. We use the tensor network techniques provided by Quimb [41] to
+find good tensor contraction orderings—which interpolate between the state vector and Feynman path
+approaches—that decrease the cost of simulating complex bloqs. As an example, we have successfully
+used Qualtran to test that a 32-bit quantum adder circuit consisting of 64 qubits works correctly on given
+input/output states via a simulation that uses only 6 qubits’ worth of classical memory.
+5. Classical Simulation
+Whereas full tensor simulation has exponentially large cost in general, many common quantum algorith-
+mic primitives merely perform classical reversible logic on data that just happens to exist in superposition.
+We can efficiently simulate such operations as part of testing a complex algorithm on classical inputs and
+outputs. For example, the quantum lookup table primitive of Section III C has semantics identical to a
+table lookup on a classical computer, except that the index register contains a superposition of indices
+so that the operation loads a superposition of the classical data at each index.
+Qualtran has explicit support for simulating and testing bloqs that encode classical logic as above. First,
+a bloq author annotates how the bloq acts over classical data by providing corresponding Python code.
+Qualtran uses this logic to propagate classical values through bloqs and produce a classical output. Then,
+the user can perform an analogue to fuzz testing in classical software engineering by sampling a set of
+classical input/output pairs and comparing to the outputs of the classical simulation. After testing
+enough pairs of classical values, the user can gain confidence that the quantum construction is correct.
+III. ESSENTIAL QUANTUM SUBROUTINES IN THE QUAL TRAN ST ANDARD LIBRAR Y
+In this section, we present a core set of subroutines and techniques to manipulate quantum information
+that underpin the diverse world of quantum algorithms. These techniques are not traditionally taught
+
+=== PDF PAGE 8 ===
+8
+as part of quantum information classes, nor do they appear in standard quantum computing textbooks.
+Instead, they emerge from quantum resource estimation studies from the last decade, painstakingly
+derived again and again in the prose of paper appendices. By collecting these subroutines in the Qualtran
+standard library, we aim to bring these essential tools to the forefront and empower researchers to quickly
+express quantum algorithms at a high level of abstraction without sacrificing the latest advancements
+in performance engineering. However, we view this library as merely the beginning, not the end. Our
+aspiration is to vastly expand it over time as we continue our work on resource estimation. We also hope
+that the open source community will actively contribute to building more primitives for the standard
+library, fostering a collaborative effort to enrich this vital resource for quantum algorithm development.
+In each of the following sections, we highlight the quantum algorithmic primitive as a bloq or set of bloqs
+and demonstrate its construction through code snippets along with error propagation and visualization:
+• In Section III A, we describe Qualtran’s features for performing rotations of quantum states that
+are used by modern fault-tolerant algorithms. Supported rotations include direct synthesis, phase
+kickback on a Fourier state, and probabilistic implementations using generalized state injection.
+• In Section III B, we describe Qualtran’s features for selecting quantum operations via a quantum in-
+dex using iterator circuits that can be reused in a wide variety of tasks. Specifically, in Section III C,
+we show how this tool can be used to load classical data into quantum superposition.
+• In Section III D, we describe Qualtran’s features for preparing arbitrary quantum states and arbi-
+trary purified density matrices. We describe the context in which these two state preparation tasks
+are useful and highlight the strategies supported by Qualtran for dense and sparse versions of these
+tasks.
+• In Section III E, we describe Qualtran’s block encoding library, which enables quantum algorithms
+to load datasets or transformations of states as matrices and to perform arithmetic operations such
+as tensor products, products, and linear combinations on the encoded matrices.
+• In Section III F, we describe Qualtran’s support for quantum signal processing, which enable algo-
+rithms to transform block encodings via arbitrary polynomials.
+• Finally, in Section III G, we present bloq constructions of modern phase estimation techniques using
+window functions.
+A. Rotations
+Rotations are a fundamental class of operations in quantum algorithms with substantial space/time cost
+differences depending on their implementation. The selection of an optimal strategy to perform arbitrary
+rotations can depend on algorithmic context and hardware context—i.e. limiting regimes such as early
+fault-tolerant quantum computers with few logical qubits. Thus, Qualtran provides a number of ways
+to achieve arbitrary rotations to varying precision with different quantum resource overheads. While we
+do not support program analysis to automatically choose the optimal rotation primitive, many bloqs in
+Qualtran default to one of the following strategies which make the most algorithmic sense.
+The lowest level rotation primitives supported by Qualtran are single-qubit Z-axis rotations. We consider
+two standard conventions defining the rotation, Rz and ZPow,
+Rz(θ) = e−iZθ/ 2 =
+
+e−iθ/2 0
+0 eiθ/2
+
+, ZPow(t) =
+
+1 0
+0 eiπt
+
+= eiπt/2Rz(πt)
+which are equivalent up to global phase. The parameterization of each gate has different domains; Rz
+angle θ ∈ [0, 2π) satisfying Rz(π) = −iZ, and for ZPow t ∈ [0, 2), satisfying ZPow(1) = Z. At the time
+of publication, the Qualtran standard library supports three techniques to achieve these rotations which
+are described in Table I along with their resource costs.
+
+=== PDF PAGE 9 ===
+9
+Strategy Bloq Non-Clifford Gate Cost
+Direct synthesis [42] ZPow, Rz
+
+1.149 log
+  1
+ϵ
+
++ 9.2
+
+T-gates
+Programmable ancilla [43] ZPowUsingProgrammedAncilla n = ⌈log2(1/p)⌉ resource states
+n ·
+
+1.149 log
+  n
+ϵ
+
++ 9.2
+
+T-gates
+Phase-gradient [11] ZPowConstViaPhaseGradient (bgrad − 2) Toffoli gates
+TABLE I: Bloqs synthesizing ϵ-approximate single qubit Z-rotations and their resource costs. The direct
+synthesis approach synthesizes Z rotations via a sequence of Clifford+T gates. The programmable ancilla
+strategy consumes single-qubit resource states prepared ahead of time, described in Eq. (2), to apply Z-
+rotations via a stochastic protocol using gate teleportation. The p parameter in the programmable ancilla
+strategy is the desired success probability of stochastic protocol and affects the number of resource statesn
+to be consumed. Prior work [43] used Fowler sequences [44] to prepare the resource states in a chemistry
+context. In Qualtran, we use the direct synthesis approach as the default way to prepare n resource
+states with accuracy ϵ/n. The phase-gradient technique synthesizes Z rotations via addition into a phase
+gradient register of size bgrad = log 2πϵ qubits, as described in Eq. (3). Note that the phase gradient
+register has a one-time preparation cost and can be reused to synthesized multiple rotations.
+For arbitrary axis single-qubit rotations, Qualtran provides the SU2RotationGate which accepts any 2 ×
+2 unitary matrix and a precision ϵ, and decomposes into three Z rotations each with precision ϵ/3.
+Controlled variants of all single-qubit rotations ( Z-axis and arbitrary axis) are also supported using
+circuit identities which reduce controlled Z rotations to uncontrolled Z rotations [43, 45].
+The Qualtran standard library also provides support for a broad class of generalized basis state phasing
+through the Quantum Variable Rotation (QVR) [11, 43] set of bloqs. Two examples are, optimized
+versions of Hamming weight phasing [46] and phasing by an arbitrary cost functions used in recent
+resource estimation studies of combinatorial optimization [11].
+1. Single Qubit Z Rotation
+Here we expand on the single qubit Z-axis rotations described in Table I and provide an example invo-
+cation code block.
+a. Direct Clifford+T Synthesis. Bocharov et al. [42] synthesized Z rotations by the use of repeat-until-
+success circuits which have an expected T-gate cost of
+
+1.149 log 1ϵ + 9.2. (1)
+The bloqs ZPow and Rz accept a precision ϵ, and rotation exponent/angle (t, θ respectively). The rotation
+angle and precision inputs can be invoked as symbolic values or numerical values.
+b. Programmable Ancilla Rotations. Originally presented in Jones et al. [43, Sec. 2.3], this technique
+performs Z rotations using state-injection into a repeat-until-success circuit. Such techniques are often
+useful in situations where expensive resource states can be prepared ahead of time (possibly in parallel),
+reducing overhead during the run of the algorithm. To synthesize an ZPow( t), this method uses a set of
+pre-prepared resource states
+ω(k), called programmed ancillas, defined as
+ω(k)E = ZPow(2kt) |+⟩ = 1√2 |0⟩ + e2kiπt |1⟩. (2)
+The bloq’s instantiation requires three parameters: exponent t, precision ϵ, and the expected number
+of rounds n which defaults to 2. The total rotation cost is computed by adding costs to synthesize n
+resource ancilla in state
+ω(k), each with precision ϵ/n.
+
+=== PDF PAGE 10 ===
+10
+c. Rotation by addition into a phase-gradient state. Rotations can be performed by phase kickback
+when adding a value into a phase-gradient state [11, 46, 47]. The phase-gradient state is a Fourier state
+defined over bgrad qubits
+|ϕgrad⟩ = 1√2bgrad
+2bgrad −1X
+k=0
+e−2πik/2bgrad
+ k2bgrad  = bgradOj=1 |0⟩ + e−2πik/2j |1⟩√2 (3)
+where bgrad sets the precision for the rotation. Qualtran supports construction of this state using the
+bloq PhaseGradientState which can be used as an input wire for the rotation. The phase gradient state
+|ϕgrad⟩ is catalytic in the sense that it can be reused for multiple rotations.
+The rotation bloq ZPowConstViaPhaseGradient accepts an exponent t and the phase-gradient size bgrad,
+and implements a ZPow(t). We provide a utility function ZPowConstViaPhaseGradient.from_precision to
+allow the user to construct the rotation from precision requirements, shown in Fig. 3.
+import sympy
+from qualtran.bloqs.rotations.
+zpow_via_phase_gradient import
+ZPowConstViaPhaseGradient
+t = sympy.Symbol("t")
+bloq = ZPowConstViaPhaseGradient.
+from_precision(t, eps=1e-6)
+q ZPow(t)
+q
+phase_grad
+1
+phase_grad
+23
+q1
+phase_grad
+23
+FIG. 3: Demonstration of a code snippet instantiating a ZPow( t) bloq achieved using a phase-gradient
+resource state specified to a 1 .0 × 10−6 precision. The precision is used to dictate the size of the phase-
+gradient state shown on the right. This bloq has a Tofolli cost of bgrad − 2 [43, 46].
+2. Quantum Variable Rotation
+A Quantum Variable Rotation (QVR) [11, 43] is a unitary which phases each computational basis state
+|x⟩ by e2πix. QVR has been used as a primitive for quantum chemistry simulations [43] and combinatorial
+optimization [11]. An n-qubit QVR unitary can be defined as
+QVRn
+2n−1X
+j=0
+cj |xj⟩ 7→
+2n−1X
+j=0
+e2πixj cj |xj⟩
+Here, the basis xj ∈ [0, 1) are interpreted as n-bit fractional values. In general, we implement an
+approximate QVR, denoted by QVR n,ϵ, which is ϵ-close to the above unitary by the distance measure
+from Ref. [44, Eq. 1].
+Qualtran provides two bloqs to perform QVR. The first is QvrZPow, which accepts an integer n and a
+precision ϵ, and implements QVR n,ϵ by decomposing into n single qubit ZPow rotations applied to the
+n-bit input register, each with accuracy ϵn [43, Fig. 14]. Each single qubit Z rotation can be synthesized
+using any of the techniques in Section III A 1.
+The second bloq for QVR is QvrPhaseGradient, which uses a quantum-quantum addition [46, 48] into
+a phase-gradient state (Eq. (3)) to obtain a phase kickback on the input register. The constructor
+QvrPhaseGradient.from_bitsize accepts an integer n and a precision ϵ and implements QVR n,ϵ.
+For ease of exposition, we considered a simplified definition of QVR above. Qualtran also implements
+bloqs for more general definitions of QVR [11, 43] which have a constant γ programmed into them,
+and phase by a value e2πiγx . It also provides PhasingViaCostFunction, which accepts a bloq computing
+function f (x) and phases by e2πif (x) [11]. For example, the HammingWeightPhasing bloq uses hamming
+weight as the cost function, to apply parallel ZPow( t) gates to n qubits more efficiently [46].
+
+=== PDF PAGE 11 ===
+11
+B. Unary Iteration and Indexed Operations
+The unary iteration primitive is a quantum analogue of a classical for-loop. Specifically, we wish to
+construct a unitary operation U that acts on a selection register of size S and a target register of size T ;
+and its action is described as
+U =
+L−1X
+i=0
+|i⟩ ⟨i| ⊗Vi (4)
+where L = 2S is the number of unitaries Vi to apply on different branches of the superposition. This is
+the equivalent of a classical for-loop with a conditional as follows:
+for i in range( L):
+if selection register S stores integer i:
+Apply Vi on target register T
+This primitive has been extensively used in the quantum algorithms literature, albeit by different names.
+Shende et al. [49] introduced this primitive as a Quantum Multiplexor and used it to develop a theory of
+quantum conditionals and to generalize several known constructions from digital logic, such as Shannon
+decomposition of Boolean functions. Childs et al. [50] introduced this primitive as the Select(V) operation
+and described an implementation via a tree traversal of a balanced binary tree with L = 2S leaf nodes
+using 1.5L − 1 Toffoli gates and S clean ancilla qubits. Babbush et al. [9] improved this construction to
+use L − 1 Toffoli gates using S clean ancilla qubits and coined the term Unary Iteration. Sanders et al.
+[11] describes an optimization for iterating over a sparse set of indices with a Toffoli count that scales as
+min(2S − 1, S× |L|) where |L| is the number of indices to iterate upon (i.e. the sparsity), S is still the
+size of the selection register and now |L| can be ≪ 2S. Khattar and Gidney [51] extends the construction
+of [9, 50] to use skew trees instead of balanced binary trees with either S dirty ancilla qubits and cost
+1.25L + O(
+√
+L) Toffoli or log ∗2 S clean ancilla with 2 .25L Toffoli.
+In Qualtran, the simplest API to use the unary iteration construction from Ref. [9] is via theApplyLthBloq
+class. Given a list of bloqs = [ V0, V1, ..., VL−1] that all act on the same target registers, we can construct
+a bloq U = ApplyLthBloq(bloqs) such that
+U =
+L−1X
+ℓ=0
+|ℓ⟩ ⟨ℓ| ⊗Vℓ
+The ApplyLthBloq class also supports specifying an N -dimensional NumPy [52] array of subbloqs, in
+which case the bloq allocates N selection registers, one for each dimension, and is equivalent to N nested
+for-loops. Figure 4a shows how one can use the ApplyLthBloq to load 1D data in a target register and
+perform classical simulation to verify the decomposition is correct—i.e. the i-th data element is loaded
+in the target register when the selection register stores integer i. Figure 4b shows how the construction
+can be modified to load 2D data using two selection registers.
+The ApplyLthBloq implements the interface defined by the abstract base class UnaryIterationGate, which
+can be used directly by power users who need more control on the tree iteration strategy when constructing
+the unary iteration circuit. For example, one can implement the “variable-spaced QROM” optimization
+presented in [11] by overriding the .break_early method to return True whenever all elements in the
+subtree are identical. Note that this example is purely for illustration and Qualtran provides native bloqs
+for loading classical data via QROM as described in Section III C
+
+=== PDF PAGE 12 ===
+12
+import numpy as np
+from qualtran import QUInt
+from qualtran.drawing import show_bloq
+from qualtran.bloqs.arithmetic.bitwise import XorK
+from qualtran.bloqs.multiplexers.apply_lth_bloq import ApplyLthBloq
+N, d_size = 10, 7
+data = np.random.default_rng(42).integers(0, 2 **d_size, N)
+# XorK bloq is used to load classical data in a target register.
+bloqs = [XorK(QUInt(d_size), d) for d in data]
+# Create a QROM bloq using controlled-multiplexor ApplyLthBloq.
+qrom = ApplyLthBloq(bloqs, control_val=1)
+# Print a latex diagram of the qrom bloq decomposition.
+show_bloq(qrom.decompose_bloq(), ’latex’)
+# Test classical simulation for all indices
+for n in range(N):
+ctrl, n_out, x = qrom.call_classically(control=1, selection=n, x=0)
+assert (ctrl, n_out, x) == (1, n, data[n])
+# Assert decomposition has optimal gate counts.
+assert qrom.t_complexity().t == 4 * (N - 1)
+(a) A coherent for-loop, to load a 1D classical dataset
+in superposition, implemented using the ApplyLthBloq
+multiplexer. The example shows how Qualtran enables
+users to easily implement, test, get resource estimates
+and draw nice diagrams for a custom QROM bloq.
+import numpy as np
+from qualtran import QUInt
+from qualtran.bloqs.arithmetic.bitwise import XorK
+from qualtran.bloqs.multiplexers.apply_lth_bloq import ApplyLthBloq
+N, M, d_size = 3, 4, 7
+data = np.random.default_rng(42).integers(0, 2 **d_size, (N, M))
+# XorK bloq is used to load classical data in a target register.
+bloqs = [[XorK(QUInt(d_size), d) for d in d_row] for d_row in data]
+# Create a QROM bloq using controlled-multiplexor ApplyLthBloq.
+qrom = ApplyLthBloq(bloqs, control_val=1)
+# Test classical simulation for all indices
+for n in range(N):
+for m in range(M):
+ctrl, n_out, m_out, x = qrom.call_classically(control=1,
+selection0=n,
+selection1=m, x=0)
+assert (ctrl, n_out, m_out, x) == (1, n, m, data[n][m])
+# Assert decomposition has optimal gate counts.
+assert qrom.t_complexity().t == 4 * (N * M - 1)
+(b) Nested coherent for-loops can be be expressed by
+passing multi-dimensional NumPy arrays of Bloqs to the
+ApplyLthBloq multiplexer. Example shows a custom
+QROM to load a 2D classical dataset in superposition
+using two selection registers and one target register.
+control
+selection
+x
+QBit()
+BoundedQUInt(4, 10)
+QUInt(7)
+[0]
+[1]
+[2]
+[3]
+∧
+∧
+∧
+∧
+11 99
+∧ ∧
+83 56
+∧
+∧ ∧
+∧
+55 109
+∧ ∧
+11 89
+∧
+∧
+∧ ∧
+25 12
+∧
+∧
+[0]
+[1]
+[2]
+[3]
+QBit()
+BoundedQUInt(4, 10)
+QUInt(7)
+(c) Unary iteration circuit to load a list ofN =10 integers - [11, 99, 83, 56, 55, 109, 11, 89, 25, 12], using ApplyLthBloq
+multiplexer. Latex diagram is auto-generated by executing the Qualtran code block in Figure 4a.
+FIG. 4: Example of using ApplyLthBloq multiplexer to execute one ore more nested coherent for-loops.
+ApplyLthBloq implements the interface defined by UnaryIterationGate and uses the unary iteration circuit
+construction from Babbush et al. [9]. Note that this example is purely for an illustration of how to
+express coherent for-loops and implement multiplexed operations in Qualtran; for implementing QROMs
+see Section III C for a variety of native bloqs that Qualtran provides.
+C. Quantum Lookup T able: Encoding Classical Data as Basis States
+Similar to a classical lookup table that returns classical data xi for a queried index i, a quantum lookup
+table can be defined as a unitary Ox that responds with a superposition of classical data when queried
+with an arbitrary superposition of address bits Pi αi |i⟩
+Ox
+N −1X
+i=0
+αi |i⟩ |0⟩ →
+N −1X
+i=0
+αi |i⟩ |xi⟩ (5)
+A variety of implementations [9, 53, 54] have been proposed in the literature for the quantum lookup
+table oracle defined in Equation 5. We refer the readers to Table I of Zhu et al. [55] for tradeoffs between
+the different proposals. In Qualtran, we provide built in Bloqs for some of the most commonly used
+implementations of a Quantum Lookup Table:
+
+=== PDF PAGE 13 ===
+13
+Bloq Reference Toffoli Cliffords Ancilla
+QROM Babbush et al. [9] N − 2 N · b ⌈log2 N ⌉ clean
+SelectSwapQROM Low et al. [54] 2 ⌈N/2k⌉ + 4b(2k − 1) 2 N b+ O(√N ) 2 kb dirty, ⌈log2(N/2k)⌉ clean
+QROAMClean Berry et al. [56] ⌈N/2k⌉ + b(2k − 1) N b+ O(√N ) (2 k − 1)b + ⌈log2(N/2k)⌉ clean
+QROAMCleanAdjoint Berry et al. [56] ⌈N/2k⌉ + (2k − 1) N + O(√N ) 2 k + ⌈log2(N/2k)⌉ clean
+TABLE II: Bloqs in Qualtran, along with their gate costs and ancilla requirements, that implement
+a Quantum Lookup Table operation. Here k is a configurable parameter that can be used to tradeoff
+between number of ancilla qubits and the Toffoli gate cost. All shown bloqs implement a common interface
+defined by the QROMBase class and can be substituted for one another to explore different tradeoffs when
+analyzing a quantum algorithm. All shown bloqs support loading multiple multi-dimensional classical
+datasets. Here multiple classical datasets imply multiple target registers and multi-dimensional classical
+datasets imply multiple selection registers. All shown bloqs also support protocols like symbolic cost
+analysis, circuit decomposition and classical and quantum simulation to verify correctness.
+The QROM bloq implements the construction from Section III.C of Ref. [9], which is based on using the
+unary iteration construction described in Equation 4, and also implements the variable-spaced QROM
+optimization from Figure 3 of Ref. [11] which reduces gate counts when the data to be loaded is sparse
+in terms of number of unique elements.
+The SelectSwapQROM bloq implements the construction from Figure 1d of Low et al. [54], which uses
+O(
+√
+N ) additional ancillas to reduce the T / Toffoli gate count by a factor ofO(
+√
+N ). In this construction,
+a configurable parameter K = 2k is chosen and b·K dirty ancilla qubits are used as targets to load a N/K
+batches of data, each of size K. The Toffoli cost of the resulting construction is 2 ⌈N/K⌉ + 4b(K − 1).
+The QROAMClean bloq implements the optimized variant of SelectSwapQROM described in Appendix A, B of
+Berry et al. [56], which assumes the target register is always initialized in the|0⟩ state. In this construction,
+b · (K − 1) clean ancilla qubits are used as targets to load the batched data, and measurement based
+uncomputation is used to clean up the clean ancilla registers. The Toffoli cost of the resulting construction
+⌈N/K⌉ + b(K − 1).
+The QROAMCleanAdjoint bloq implements measurement based uncomputation of a table lookup via the
+construction described Appendix C of Berry et al. [56], which assumes the target register should be left
+in the |0⟩ state after uncomputation. This construction reduces a table lookup over N elements, each
+of target bitsize b to a table lookup of N/2 elements, each of target bitsize 2, by first measuring the
+target register in the X-basis and using the measurement outcomes to do a corrective table lookup. The
+corrective table lookup is applied using a construction similar to QROAMClean. Thus, the Toffoli cost of
+the resulting construction is ⌈N/K⌉ + K.
+All of the bloqs for quantum table lookup described above support loading multiple classical datasets,
+where each dataset can be multi-dimensional. For SelectSwapQROM and its variants, the bloq implemen-
+tation incorporates optimizations to choose multiple block sizes, one for each dimension of the classical
+dataset, as described in Appendix G of Lee et al. [17]
+
+=== PDF PAGE 14 ===
+14
+QROM
+Ands
+N - 2
+Cliffords
+N*b + N - 2
+Measurements
+N - 2
+And†
+Cliffords
+1
+Measurements
+1
+N - 2
+CNOT
+Cliffords
+1
+N b
+And
+Ands
+1
+N - 2
+(a) Symbolic call graph for QROM bloq,
+which implements the construction from
+Babbush et al. [9] and incorporates vari-
+able spaced QROM optimization from
+Sanders et al. [11].
+QROAMClean
+Ts
+4*b*(2**k - 1) + 4*ceiling(N/2**k) - 8
+Cliffords
+2**k*b*ceiling(N/2**k) + (2**k - 1)*(22*b - 1) + ceiling(N/2**k) - 2
+QROM
+Ts
+4*ceiling(N/2**k) - 8
+Cliffords
+2**k*b*ceiling(N/2**k) + ceiling(N/2**k) - 2
+1
+SwapWithZero
+Ts
+4*b*(2**k - 1)
+Cliffords
+(2**k - 1)*(22*b - 1)
+1
+(b) Symbolic call graph for QROAMClean bloq, which implements the
+clean ancilla construction from Appendix B of Berry et al. [56]. De-
+composes into a single call of QROM and SwapWithZero bloqs. Supports
+loading multi-dimensional data without constructing a contiguous reg-
+ister following optimization from Appendix G of Lee et al. [17].
+SelectSwapQROM
+Ts
+16*b*(2**k - 1) + 8*ceiling(N/2**k) - 16
+Cliffords
+2*2**k*b*ceiling(N/2**k) + 2*b + 4*(2**k - 1)*(22*b - 1) + 2*ceiling(N/2**k) - 4
+SwapWithZero
+Ts
+4*b*(2**k - 1)
+Cliffords
+(2**k - 1)*(22*b - 1)
+2
+QROM
+Ts
+4*ceiling(N/2**k) - 8
+Cliffords
+2**k*b*ceiling(N/2**k) + ceiling(N/2**k) - 2
+2
+Xor
+Ts
+0
+Cliffords
+b
+2
+SwapWithZero†
+Ts
+4*b*(2**k - 1)
+Cliffords
+(2**k - 1)*(22*b - 1)
+2
+(c) Symbolic call graph for SelectSwapQROM bloq, which implements the original SELECT-SW AP network using dirty ancilla proposed in
+Figure 1D of Low et al. [54]. Decomposes into two calls of QROM and four calls of SwapWithZero bloqs. Supports loading multi-dimensional
+data without constructing a contiguous register following optimization from Appendix G of Lee et al. [17].
+20 22 24 26 28 210 212 214 216 218
+Block size (K)
+211
+213
+215
+217
+219
+221
+223
+225
+Toffoli Counts
+Cost to load the first N = 220 integers, varied with block size K
+QROM
+SelectSwapQROM(dirty ancilla)
+QROAMClean
+QROAMCleanAdjoint
+25 27 29 211 213 215 217 219
+Size of classical dataset to load (N)
+24
+26
+28
+210
+212
+214
+216
+218
+220
+Toffoli Counts
+Cost to load the first N integers, varied with increasing N
+QROM
+SelectSwapQROM(dirty ancilla)
+QROAMClean
+QROAMCleanAdjoint
+(d) Numerical comparison of Toffoli gate counts for bloqs implementing a Quantum Lookup Table to load a 1D classical dataset comprising
+of the first N integers. Here k is a configurable parameter used to tradeoff Toffoli gates using additional ancilla qubits in bloqs implementing
+a variation of the SELECT-SW AP network. In the figure on the right, the block size K is chosen optimally to minimize the Toffoli counts.
+FIG. 5: Examples of using Qualtran to analyze the cost of Quantum Lookup Tables.
+
+=== PDF PAGE 15 ===
+15
+D. Quantum State Preparation: Encoding Classical Data as Amplitudes
+Quantum State Preparation is the task to encode an N -dimensional vector of classical data ⃗ a=
+(a0, a1, . . . , aN −1) as amplitudes of N computational basis states over n = log N qubits. The prob-
+lem has been widely studied in the quantum algorithms literature [49, 54, 57–60] and has applications
+across quantum chemistry [9, 56, 61–63], quantum dynamics [10, 64], and solving systems of linear
+equations [65, 66].
+In this section, we describe two variants of the quantum state preparation problem, both of which assume
+that classical data to be encoded is given as entries of a classical database and no specific structure about
+the data is assumed. For both the variants described below, a sparse version of the problem can be defined
+analogously where the number of non-zero entries in the classical description of the state is specified by a
+sparsity parameter S ≪ N . Note that when specific structure about the state to be prepared is known, one
+can often [60, 67] do better than the arbitrary state preparation routines discussed below. For example,
+PrepareUniformSuperposition bloq in Qualtran can be used to prepare a uniform superposition over the
+first N basis states, where N may not be a power of 2, using a single round of amplitude amplification
+as described in Babbush et al. [9].
+1. Preparation of Arbitrary Quantum States
+The arbitrary quantum state preparation problem seeks to encode classical data described by an N
+dimensional vector of complex numbers ⃗ a= (a0, a1, . . . , aN −1), such that ax = |ax|eiϕ(x), as amplitudes
+of a quantum state with N basis vectors prepared on n = log 2 N qubits such that the prepared state
+|ψ⟩prep is ϵ-close to the desired state |ψ⟩f defined as
+|ψ⟩f = 1∥⃗ a∥2
+N −1X
+x=0
+ax |x⟩ (6)
+where ∥⃗ a∥2 =
+qP
+x |ax|2 is a normalization constant and
+|ψ⟩prep − |ψ⟩f 2 ≤ ϵ
+where ∥.∥2 is the Euclidean norm.
+In Qualtran, the StatePreparationViaRotations bloq implements the technique for arbitrary state prepa-
+ration described in Low et al. [54], which reduces state preparation over n qubits and N = 2n elements to
+n data lookups of length [1, 2, 4, . . . ,2n−1] elements, each loading ab-bit approximation of a rotation angle.
+Each data lookup is followed by b single-qubit controlled rotations. Thus, a total of N = 1 + 2 +· · ·+ 2n−1
+data elements are loaded, each of bitsize b, across n different lookup calls and O(n × b) single qubit
+controlled rotations are applied. Each data lookup step is implemented via techniques described in Sec-
+tion III C and the single qubit rotations are synthesized via techniques described in Section III A. Here
+b = log2(n/ϵ) is chosen such that the prepared state is ϵ-close to the desired state. The n data lookups
+to load N = 2n rotation angles, each of size b = log2(n/ϵ), dominate the overall cost of the algorithm.
+For sparse state preparation, SparseStatePreparationViaRotations can be used which reduces sparse
+state preparation to dense state preparation via techniques described in Ramacciotti et al. [68].
+2. Preparation of Arbitrary Purified Density Matrices
+Arbitrary purified density matrix preparation seeks to encode classical data described by an N -
+dimensional vector of positive real numbers ⃗ w= ( w0, w1, . . . , wN −1), such that wi ≥ 0 ∧ wi ∈ R,
+
+=== PDF PAGE 16 ===
+16
+as probabilities of an ensemble of N basis states represented by a density matrix ρprep which is ϵ-close to
+the desired density matrix ρf defined as
+ρf =
+N −1X
+x=0
+wx
+∥ ⃗ w∥1
+|x⟩ ⟨x| (7)
+where ∥ ⃗ w∥1 = Px wx is a normalization constant and
+∥ρprep − ρf ∥1 ≤ ϵ
+where ∥.∥1 is the trace distance. This is achieved by preparing a purification of ρprep of the form
+|ψ⟩prep =
+s
+fwx
+∥w∥1
+|x⟩ |tempx⟩ (8)
+where the desired number state |x⟩ is allowed to be entangled with a garbage state |tempx⟩ that depends
+only on x. Such a state is often cheaper to prepare than preparation of arbitrary quantum states de-
+scribed in the previous section, and is sufficient for applications like quantum simulation based on linear
+combination of unitaries or qubitization [9, 61, 69].
+In Qualtran, the StatePreparationAliasSampling bloq implements the technique for arbitrary purified
+density matrix preparation described in Babbush et al. [9], which reduces the problem of state preparation
+over n + µ qubits and N = 2n elements to that of a single data lookup to load N elements, each of bitsize
+n + µ, followed by a quantum-quantum comparison and conditional swap. Here µ = ⌈log2 1/ϵ⌉ is chosen
+such that the prepared state is ϵ-close to the desired state. The data lookup step dominates the overall
+cost and is implemented via techniques described in Section III C
+For sparse state preparation, SparseStatePreparationAliasSampling can be used which reduces sparse
+state preparation to dense state preparation via techniques described in Section 5 of Berry et al. [56].
+E. Block Encoding
+Numerous quantum algorithms, including those for Hamiltonian simulation [13, 17], linear algebra [65, 70],
+and portfolio optimization [71], rely on loading a matrix of data or transforming a quantum state via a
+matrix. To do so, they utilize block encoding — a way to represent a matrix as a unitary operator when
+the matrix is not unitary, or is inconvenient or inefficient to directly realize as a unitary operator.
+Let A be an s-qubit linear operator, which is not necessarily unitary. Following Ref. [72], we say that the
+(s + a)-qubit unitary B[A] is a ( α, a, ϵ)-block encoding of A if:
+A − α(⟨0|⊗a ⊗ I)B[A](|0⟩⊗a ⊗ I) ≤ ϵ
+where α is a normalization constant chosen such that ∥A∥/α ≤ 1, and ϵ ≥ 0 is the precision of the
+encoding. In other words, the matrix B[A] contains A/α in its upper-left block:
+B[A] =
+
+A/α ∗
+∗ ∗
+
+Historically, the concept of block encoding emerged from methods to encode matrices as the input to algo-
+rithms for quantum linear algebra [65] and from methods to encode Hamiltonians as a linear combination
+of unitaries [63]. It gained prominence with the development of quantum recommendation systems [73]
+and optimal Hamiltonian simulation by qubitization [61]. It cemented its role at the forefront of interest
+in algorithms research with the development of the quantum singular value transformation [72].
+Qualtran implements techniques to block-encode various matrices important to quantum algorithms.
+First, it provides bloqs to construct block encodings from primitive elements such as unitaries, LCU
+SELECT/PREPARE oracles, and sparse access matrices. Next, it provides bloqs to compose these block
+encodings by arithmetic operations such as products and linear combinations of the encoded matrices.
+
+=== PDF PAGE 17 ===
+17
+Bloq block-encodes normalization α # ancillas a precision ϵ
+Unitary unitary U 1 0 0
+SparseMatrix m-sparse A m dim(A) + 1 user-specified
+TensorProduct
+N
+i Ai
+Q
+i αi
+P
+i ai
+P
+i αiϵi
+Product
+Q
+i Ai
+Q
+i αi n − 1 + maxi ai
+P
+i αiϵi
+Phase exp{iϕ}A1 α1 a1 ϵ1
+LinearCombination
+P
+i λiAi
+P
+i|λi|αi ⌈log2 n⌉ + maxi ai (Pi|λi|) maxi ϵi
+ChebyshevPolynomial Tj(A1) 1, given α1 = 1 a1 ϵ1
+TABLE III: Selection of block encodings implemented in Qualtran alongside their normalization factor
+α, ancilla overhead a, and precision ϵ. Rather than manually reasoning about these performance
+parameters, users can compute them automatically by invoking the bloq implementations.
+1. Primitive Block Encodings from Unitaries and Oracles
+First, in the simplest case, any unitary operator U is a (1 , 0, 0)-block encoding of U . Correspondingly,
+the Unitary bloq in Qualtran wraps a unitary bloq into a block encoding with α = 1.
+Second, any linear combination of unitariesA = Pi λiAi as specified by a pair of SELECT and PREPARE
+oracles defines a block encoding of A, which can be created by Qualtran’s LCUBlockEncoding bloq.
+Third, Qualtran’s SparseMatrix bloq constructs a block encoding for a sparse matrix A with at most m
+non-zero entries in each row or column, given oracles
+Or |i⟩ |k⟩ = |i⟩ |rik⟩
+Oc |j⟩ |ℓ⟩ = |cjℓ⟩ |ℓ⟩
+to compute the index rij or cji of the j-th nonzero entry in the i-th row or column respectively of A, and
+OA |i⟩ |j⟩ |0⟩ = |i⟩ |j⟩ |Aij⟩
+to compute the matrix entry Aij [71].
+Qualtran provides a set of pre-implemented row/column oracles for matrices where the non-zero elements
+are located in the top-left block ( TopLeftRowColumnOracle) or within a band along the main diagonal
+(SymmetricBandedRowColumnOracle). It also provides pre-implemented entry oracles for matrices where all
+elements have equal value (UniformEntryOracle) or are explicitly given by a NumPy array that is loaded
+from QROM (ExplicitEntryOracle). In the more general case, Qualtran gives interfaces and subroutines
+to aid the user in implementing a custom oracle.
+Dense matrices can be encoded as a special case of sparse matrices. In Fig. 6a, we present an exam-
+ple of the encoding of a dense 2 × 2 matrix explicitly given as a NumPy array. The example uses
+TopLeftRowColumnOracle to specify that the top left 2 1 × 21 block, i.e. the entire matrix, is nonzero. It
+uses ExplicitEntryOracle to specify the entries to be loaded from QROM. Though this example block
+encoding incurs larger costs than a sparse matrix given by a more efficient entry access oracle, it shows
+how a developer can quickly prototype the loading of a dataset or transformation in an algorithm.
+2. Composite Block Encodings from Matrix Arithmetic
+The full power of block encodings extends not merely to constructing a matrix within a quantum algorithm
+but also to performing a broad range of arithmetic operations, such as products and linear combinations,
+on the encoded matrices. Such arithmetic can be used, for example, to construct a Taylor series of 1 /A
+in a quantum linear solver [65] or a Jacobi-Anger expansion of sin( At) in Hamiltonian simulation [61].
+Qualtran provides a library of composite block encodings to perform arithmetic operations over the
+primitive forms of block encoding above; we summarize them in Table III. Given a sequence of block
+encodings {B[Ai]}i, Qualtran provides the TensorProduct bloq to compute B[Ni Ai] and Product to
+
+=== PDF PAGE 18 ===
+18
+import numpy as np
+from qualtran.bloqs.block_encoding.sparse_matrix import (
+ExplicitEntryOracle, SparseMatrix, TopLeftRowColumnOracle,
+)
+data = np.array([[0.0, 0.25], [1 / 3, 0.467]])
+row_oracle = col_oracle = TopLeftRowColumnOracle(1)
+entry_oracle = ExplicitEntryOracle(1, data, entry_bitsize=10)
+a = SparseMatrix(row_oracle, col_oracle, entry_oracle, eps=0)
+(a) Explicitly specified matrix A =
+
+0 1 /4
+1/3 0 .467
+
+.
+from qualtran.bloqs.basic_gates import Identity
+from qualtran.bloqs.block_encoding import (
+LinearCombination, Product, Unitary,
+)
+t_2 = LinearCombination.of_terms(
+(2.0, Product.of(a, a)), (-1.0, Unitary(Identity()))
+)
+(b) Chebyshev polynomial T2(A) = 2A2 − I.
+system 1
+ancilla 4
+resource 4
+ExplicitEntry
+ctrl
+q
+i
+j
+Swap
+ctrl
+x
+y
+1
+1
+1
+1
+X
+q
+H
+ctrl
+target
+1
+1
+TopLeftRowColumn†
+ctrl
+l
+i 1
+H†
+ctrl
+target
+1
+1
+3
+CCX
+ctrl
+controls[0]
+controls[1]
+target
+1
+2
+TopLeftRowColumn
+ctrl
+l
+i
+1
+2
+Swap
+ctrl
+x
+y
+1
+1
+1
+1
+1
+CNOT
+ctrl
+target
+1
+1
+1
+1
+3
+system
+1
+2
+2
+1
+4
+H†
+ctrl
+target
+1
+1
+3
+1
+3
+TopLeftRowColumn†
+ctrl
+l
+i
+1
+1
+1
+1
+3
+TopLeftRowColumn
+ctrl
+l
+i
+ExplicitEntry
+ctrl
+q
+i
+j
+1
+1
+1
+X
+q
+Phase
+ctrl
+system
+1
+1
+1
+1
+11
+1
+1
+1
+1
+H
+ctrl
+target
+1
+1
+1
+2 3
+1
+3
+1
+2
+13
+Prep
+selection
+junk
+1
+41
+1
+1
+1
+Prep†
+selection
+junk
+1
+4
+2
+1
+1
+1
+1
+1
+0 ancilla4
+1
+0
+1
+1
+1
+1
+1
+1
+1
+1
+1
+4
+1
+1
+1
+4
+resource
+4
+2
+1
+1
+(c) Bloq decomposition of the combined programs in Figures 6a and 6b. This diagram is intentionally presented
+in its full complexity to contrast with the simplicity of the user-facing abstractions above.
+FIG. 6: Examples of using Qualtran to construct and transform block encodings of matrices.
+compute B[Qi Ai]. It provides the bloqs Phase to compute B[exp{iϕ}A1] and LinearCombination to
+compute B[Pi λiAi] given appropriate 0 ≤ ϕ <2π or λi ∈ R respectively [72].
+In Fig. 6b, we illustrate how a developer uses Qualtran’s block encoding library to perform arithmetic on
+the encoded matrices. Specifically, the example constructs a block encoding of the Chebyshev polynomial
+T2(A) = 2A2 − I given a block encoding of A. It does so by invoking the Unitary bloq to block-encode
+I, invoking the Product bloq on A with itself, and then invoking the LinearCombination bloq to produce
+the final polynomial. In Fig. 6c, we visualize the more complex underlying sequence of bloq operations
+to which the high-level programs in Figs. 6a and 6b compile.
+3. Optimizing and Analyzing Block Encodings
+Qualtran also provides more optimized implementations for certain forms of arithmetic with appropriate
+structure. One example is the ChebyshevPolynomial bloq, described in Section IV A, that can imple-
+ment the transformation of Fig. 6b using fewer ancillas and gates. The user can further improve the
+efficiency of arithmetic by rewriting its algebraic structure. For example, Qualtran provides a function
+collect_like_terms to flatten nested linear combinations and thereby save qubits and gates.
+To the researcher, one useful feature is that Qualtran can automatically analyze the properties—
+normalization factor α, ancilla overhead a, and precision ϵ—that determine the efficiency of a block
+encoding and in turn the resource consumption of the quantum algorithm. Under the hood, Qual-
+tran leverages its support for symbolics to automatically derive values for these parameters from the
+constituents of a composite block encoding, e.g. the terms being added in a LinearCombination.
+F. Quantum Signal Processing
+Quantum Signal Processing (QSP) is a quantum algorithmic primitive to which many standard quan-
+tum algorithms can be reduced. Given a unitary U and a polynomial P , QSP implements a block-
+encoding (Section III E) of P (U ). QSP is a building block for Quantum Singular Value Transformation
+(QSVT) [72], which transforms singular values of a block-encoded matrix. QSVT has been used to design
+algorithms for many problems, including quantum linear systems [70] and Hamiltonian simulation [61].
+See Refs. [72, 74] for an exposition.
+Qualtran provides a GeneralizedQSP bloq [75] which allows applying a complex polynomial P to obtain a
+block-encoding of P (U ). The bloq is parameterized by a pair of complex polynomials P, Q, and a unitary
+
+=== PDF PAGE 19 ===
+19
+bloq U , and implements the unitary
+GQSPP,Q(U ) =
+
+P (U ) ·
+Q(U ) ·
+
+The polynomial P above should satisfy
+P (eiθ) ≤ 1 for all θ ∈ [0, 2π). For a degree d polynomial P , the
+bloq uses d calls to controlled-U , along with d + 1 arbitrary single qubit rotations.
+While the polynomial transformation P is usually defined by the algorithmic designer, it can be chal-
+lenging to compute the complementary polynomial Q. Q should be constructed such that
+P (eiθ)2 + Q(eiθ)2 = 1 for all θ ∈ [0, 2π).
+Qualtran implements three methods to compute the complementary polynomial Q provided an input P :
+1. qsp_complementary_polynomial: By factorizing P [75, Theorem 4] (default).
+2. fast_complementary_polynomial: Convex optimization [75, Theorem 4].
+3. fft_complementary_polynomial: A fast Fourier transform-based method [76, Algorithm 2].
+Figure 7 shows an example GQSP circuit implementing the polynomialP (x) = (x2+1)/2 using Algorithm
+1 of Ref. [75].
+signal
+SU_2(0.79,-2.32,-3.14,0.00)
+q
+1
+system
+C[U]
+ctrl
+system10
+C[U]
+ctrl
+system10
+SU_2(0.00,-0.82,0.00,0.00)
+q11
+SU_2(0.79,0.00,0.00,0.00)
+q signal11
+system
+10
+1
+FIG. 7: Generalized QSP for a degree 2 polynomial P (x) = (x2 + 1)/2. The register named signal is a
+single qubit on which QSP rotations are performed, and U acts on the ten qubit system register. Each
+SU 2 rotation is parameterized by three Euler angles.
+G. Quantum Phase Estimation
+In this section, we detail Qualtran’s support for a variety of phase estimation bloqs, primarily distin-
+guished by their use of different window functions to minimize phase measurement uncertainty - quantified
+by metrics like probability of error outside a confidence interval and Holevo variance. We begin with a
+concise mathematical overview essential for describing the implemented bloqs, followed by their applica-
+tions in quantum metrology and simulation. A summary of supported bloqs can be found in Table IV.
+Given a unitary U with an eigenvector |ψ⟩ and eigenvalue e2πiϕ, such that U |ψ⟩ = e2πiϕ |ψ⟩, Quantum
+Phase Estimation (QPE) aims to output an estimate ofϕ - the eigenphase corresponding to|ψ⟩ [45, 77, 78].
+When (a) the eigenstate state |ψ⟩ is exactly prepared and given as an input and (b) the eigenphase ϕ is
+a dyadic rational (i.e. it can be represented exactly with a finite number of bits - m), then the action of
+QPE can be described as
+QPE |ψ⟩ |0⟩m → |ψ⟩ |ϕ⟩
+In practice, however, both the assumptions (a) and (b) stated above are hard to achieve. In a more
+general setting, given an input unitary U with an eigendecomposition U = Pj e2πiϕj |ψj⟩ ⟨ψj|, an input
+initial state |Ψ⟩ = Pj γj |ψj⟩ and an auxiliary control register |0⟩m, QPE allows us to sample from the
+eigenspectrum of U by applying the map
+QPE |Ψ⟩ |0⟩m → X
+j
+X
+k
+γjτ (j, k) |ψj⟩ ˜|ϕk⟩ (9)
+
+=== PDF PAGE 20 ===
+20
+where τ (x, y) is a kernel function and ˜ϕj is an m-bit approximation to the desired phase ϕj. If ∀j, ϕj can
+be represented exactly using m bits then τ (x, y) = δx,y such that QPE |Ψ⟩ |0⟩m → Pj γj |ψj⟩ |ϕj⟩.
+From Equation (9), one can see that on measuring them-bit auxiliary control register in the computational
+basis, the probability of getting a phase ˜|ϕk⟩ can be written as
+Pr
+h
+ˆϕ = ˜ϕk
+i
+=
+X
+j
+|γj|2|τ (j, k)|2 (10)
+Here ˆϕ is a random variable that corresponds to the phase estimate, and can be decomposed as
+ˆϕ = ϕ + ∆ϕ (11)
+where ϕ is a random variable satisfying Pr[ ϕ = ϕj] = |γj|2 and ∆ ϕ is a random variable satisfying
+conditional distribution Pr
+h
+∆ϕ = ˆϕk − ϕk|ϕk
+i
+= |τ (j, k)|2. Here ϕ represents the likelihood of projecting
+the initial state |Ψ⟩ into the desired eigenstate |ψj⟩, which depends solely on the initial overlap γj, and
+∆ϕ represents a phase error introduced due to spectral leakage [79, 80], a phenomenon where probability
+spreads across multiple peaks due to misalignment between the true phase ϕj and the discrete values ˜ϕk
+used to approximate ϕj using a finite number of bits m.
+Window functions are tools borrowed from classical signal processing that can be used to smooth out the
+sharp transitions at the edges of a probability distribution and concentrate probability mass around the
+true phase [81]. In QPE, the state preparation unitary used to construct an initial state on the auxiliary
+control register of size m, is referred to as a window state. In Qualtran, QPEWindowStateBase class defines
+an interface for bloqs that can be used to prepare window states for QPE.
+TextbookQPE bloq in Qualtran accepts any unitary bloqU , an instance of QPEWindowStateBase for preparing
+an initial window state on the control register of bitsize m and applies m controlled unitaries, C-U 2i in
+the i’th step, followed by an inverse QFT.
+QubitizationQPE bloq in Qualtran accepts an instance of QubitizationWalkOperator W [61], an instance
+of QPEWindowStateBase for preparing an initial window state on the control register of bitsize m, and
+implements the optimization from Figure 2 of Babbush et al. [9] to double the phase difference and apply
+powers of controlled walk operator by only controlling the reflection operator.
+In Qualtran, for both the QPE bloqs desribed above, the cost of QPE on m control qubits is reported as
+a sum of costs for
+1. CtrlStatePrep: Cost to prepare the window state on m control qubits, typically scales as O(m).
+For the textbook version of QPE [45], the window state is a Rectangular window - prepared by
+simply applying a Hadamard gate on all m control qubits.
+2. Controlled-U’s: There are two cases:
+• If the unitary is fast forwardable; i.e. cost of C-U n scales sublinearly with n, the cost of this
+step is at least m × cost(C-U)
+• If the unitary is not fast forwardable; i.e. cost of C-U n is n × cost(C-U), the cost of this step
+is 2m × cost(C-U).
+3. QFT †: The textbook version of inverse QFT uses O(m2) rotations [45] but this can be improved
+to O(m log m) using approximate QFT constructions [82, 83].
+From the enumeration above one can see that in general, when the unitary U is not fast forwardable, the
+number of queries made by the Quantum Phase Estimation (QPE) procedure to the controlled unitary
+C-U scales exponentially with the number of control qubits m. Qualtran provides bloqs to prepare a
+variety of different initial window states, summarized in Table IV, which can be used to determine the
+minimum of number of control qubits m required to keep the uncertainty in the measured phase below
+a certain threshold ϵ.
+Below, we describe the two most commonly used measures of uncertainty in the estimated phase and
+corresponding Qualtran bloqs to prepare window states which are optimal for minimizing the uncertainty.
+
+=== PDF PAGE 21 ===
+21
+Window Function Confidence Interval (ϵ, δ) Holevo Variance (ϵ2)
+Bloq Name State Bitsize-m Query Cost Bitsize-m Query Cost
+RectangularWindowState
+(Rectangular Window [45])
+2m−1P
+x=0
+1√
+2m |x⟩ log2( 1ϵ ) + log2(2+ 2δ )[45, 84] O( 1ϵδ ) 2 log2( πϵ ) [45, 85] O  π2ϵ2 
+LPResourceState
+(Sine Window [86])
+2m−1P
+x=0
+sin
+
+π(x+1)
+2m+1
+
+|x⟩ log2( 1ϵ ) + log2( π2/3481/3δ1/3 +2)
+[87]
+O( 1ϵ 1δ1/3 ) log2( πϵ ) [9] O   πϵ 
+KaiserWindowState
+(Kaiser Window [88])
+MP
+x=−M
+1
+2M
+I0
+
+πα
+√
+1−(x/M)2
+
+I0(πα) |x⟩ log2( 1ϵ ln 1δ ) + O(log2 ( ln ln1δϵ ))[79, 89] O( 1ϵ ln 1δ )
+TABLE IV: Comparison of window functions used in Quantum Phase Estimation (QPE). In Qualtran,TextbookQPE bloq can be used
+to perform phase estimation on an input unitary U . When the unitary is a qubitized walk operator, one can use QubitizationQPE
+blow which incorporates optimizations from Babbush et al. [9]. Both the QPE bloqs accept an instance of QPEWindowStateBase to
+prepare a window state on the control register. The table shows bloqs implementing three commonly used window states in the
+literature along with their impact on the two commonly used measures of uncertainty in the estimated phase. LPResourceState are
+optimal to minimize the Holevo variance ( VH = ϵ2) [86] and KaiserWindowState are optimal to minimize probability of error ( δ)
+outside a given confidence interval ( ϵ) given as Pr [∆ϕ > ϵ] ≤ δ. [90].
+1. Minimizing Probability of Error Outside a Confidence Interval
+One way to characterize the uncertainty ∆ ϕ is to bound the probability with which the measured phase
+˜ϕ is outside of a confidence interval around the true phase ϕ of half-width ϵ, defined as [ϕ − ϵ, ϕ+ ϵ]. This
+version is also known as high-confidence QPE
+Pr [∆ϕ > ϵ] ≤ δ
+It is known that a phase estimation protocol with precisionϵ and error probability δ has cost Ω(1ϵ log 1δ )[91]
+and this can be achieved by using Kaiser window based control states [79, 89] or Discrete Prolate
+Spheroidal Sequence (DPSS) [90, 92, 93] based control states. In Qualtran, the KaiserWindowState bloq
+can be used to initialize the control register in the Kaiser window state, given a specific choice of param-
+eter α, and uses bloqs for arbitrary state preparation described in Section III D.
+Minimizing the probability of error outside a confidence interval is a useful measure of uncertainty in
+applications where
+• The relationship between the desired quantity and estimated phase is nonlinear and the application
+is highly sensitive to errors outside the confidence interval. For example - amplitude estimation
+in [89], variable time amplitude amplification in [94] or ground state energy estimation by taking
+minimum of sampled values.
+• When the choice of parameter δ is well motivated, the high confidence version leads to optimal
+constant factors.
+2. Minimizing Holevo Variance
+The Holevo variance, defined as VH = ⟨cos ∆ϕ⟩−2 − 1, is a convenient measure of variance for phase
+because it enables simple analytic results and is close to the mean-square error for narrowly peaked
+distributions [95, 96]. Specifically, it can be shown [9, 97] that there exists a phase estimation protocol
+which uses m control qubits and 2m applications of Controlled-U to yield an estimate of the phase ˜ϕ such
+
+=== PDF PAGE 22 ===
+22
+that
+E(∆ϕ) = 0 and VH (∆ϕ) = tan2
+ π
+2m + 1
+
+≈
+ π
+2m
+2
+In Qualtran, LPResourceState bloq can be used to initialize the control register in Sine state, which are
+optimal control states [86] to minimize the Holevo variance, using a single round of amplitude amplification
+via the procedure described in [9].
+Holevo variance is a useful measure of uncertainty in applications where
+• The estimated phase is treated as a continuous quantity and the magnitude of the error is also
+important. For example in quantum metrology [96].
+• The relationship between the desired quantity and estimated phase is linear, so one can take advan-
+tage of variance bounds on the estimated phase to obtain variance bounds on the desired quantity.
+For example - finite difference estimation of forces from [15].
+• The variance version is easy to get rough resource estimates since its parameter free. The confidence
+interval version requires a choice of probability outside the confidence intervalδ. If the precise value
+for choosing δ is not well motivated, optimal variance-minimizing phase estimation version is more
+convenient to use [9].
+IV. CASE STUDY 1: HAMIL TONIAN SIMULA TION
+Hamiltonian simulation implements a unitarye−iHt given access to a Hamiltonian H [61]. This case study
+discusses two methods of simulating block-encoded hamiltonians: by constructing block-encodings of
+cos H and sin H using Chebyshev polynomials, and by using GQSP to directly implement approximations
+for e−iHt . Both these methods use qubitization to convert the input block-encoding of H into a special
+block-encoding with useful properties. We first describe qubitization, and then proceed to show Qualtran
+implementations of the two hamiltonian simulation techniques stated above.
+A. Qubitization
+Qubitization [61] is a technique to transform an arbitrary block encoding B[A], to an equivalent block
+encoding W[A] whose eigenvalues correspond to the eigenvalues of A. This enables performing operations
+on the block encoding W[A] to transform the eigenvalues of A. This operator W[A] is usually called a
+qubitized quantum walk operator . More generally, qubitization can be combined with QSP/GQSP (Sec-
+tion III F) to implement arbitrary polynomials of block-encoded matrices, called the Quantum Singular
+Value Transformation [72]. See Ref. [98], Sec. 10.4 for a detailed pedagogical exposition.
+Qualtran provides QubitizationWalkOperator that implements W[A] given a BlockEncoding B[A]. It
+assumes that the input block-encoding B[A] is a reflection (i.e. B[A]2 = I), and implements W[A] using
+one call to B[A] [61, Corollary 9]. Figure 8 shows an example qubitized walk operator for the Hubbard
+Hamiltonian [9, Sec. 5], using the block-encoding of the Hubbard model.
+
+=== PDF PAGE 23 ===
+23
+U
+SelectBlockEncoding
+U
+V
+p_x
+p_y
+alpha
+q_x
+q_y
+beta
+target
+1V
+1
+p_x
+2
+p_y
+2
+alpha 1
+q_x
+2
+q_y
+2
+beta
+1
+target
+32
+ReﬂectionUsingPrepare
+U
+V
+p_x
+p_y
+alpha
+q_x
+q_y
+beta
+1
+1
+2
+2
+1
+2
+2
+1
+target
+32
+U
+1 V
+1
+p_x
+2
+p_y
+2
+alpha1
+q_x
+2
+q_y
+2
+beta
+1
+QubitizationWalkOperator
+Qubits
+58
+CSwaps
+28
+Ands
+100
+Cliffords
+527
+Rotations
+8
+Measurements
+100
+ReflectionUsingPrepare
+Qubits
+26
+CSwaps
+18
+Ands
+25
+Cliffords
+162
+Rotations
+8
+Measurements
+25
+1
+SelectBlockEncoding
+Qubits
+49
+CSwaps
+10
+Ands
+75
+Cliffords
+365
+Measurements
+75
+1
+XGate
+Qubits
+1
+Cliffords
+1
+2
+MultiControlZ
+Qubits
+24
+Ands
+11
+Cliffords
+60
+Measurements
+11
+1
+Adjoint(subbloq=PrepareHubbard)
+Qubits
+16
+CSwaps
+9
+Ands
+7
+Cliffords
+50
+Rotations
+4
+Measurements
+7
+1
+PrepareHubbard
+Qubits
+16
+CSwaps
+9
+Ands
+7
+Cliffords
+50
+Rotations
+4
+Measurements
+7
+1
+GPhase((-1+1.2246467991473532e-16j))
+Qubits
+0
+1
+SelectHubbard(4, 4)
+Qubits
+49
+CSwaps
+10
+Ands
+75
+Cliffords
+365
+Measurements
+75
+1
+FIG. 8: Qubitized walk operator for 2D Hubbard model following construction of Babbush et al. [9].
+B. Hamiltonian simulation using Chebyshev Polynomials
+The ChebyshevPolynomial bloq uses qubitization to efficiently compute B[Tj(A/α)], where Tj(x) is the
+j-th Chebyshev polynomial of the first kind. This uses j calls to the corresponding walk operator W[A].
+The ScaledChebyshevPolynomial bloq implements an appropriately scaled B[Tj(A)], by combining the
+above ChebyshevPolynomial with a LinearCombination.
+Using the above bloqs, Fig. 9 shows an implementation of Hamiltonian simulation of a block-encoded H
+by computing the block-encoding of cos( Ht) and sin( Ht) using Chebyshev polynomials.
+from qualtran.bloqs.block_encoding import (
+BlockEncoding,
+LinearCombination,
+ScaledChebyshevPolynomial,
+)
+from qualtran.linalg.polynomial.jacobi_anger_approximations import degree_jacobi_anger_approximation
+def chebyshev(n: int, x: BlockEncoding) -> BlockEncoding:
+return ScaledChebyshevPolynomial(x, n).linear_combination
+def jacobi_anger_cosine(t: float, H: BlockEncoding, K: int) -> BlockEncoding:
+return LinearCombination(
+(identity(H),) + tuple(chebyshev(2 * k, H) for k in range(1, K)),
+(jv(0, t),) + tuple(2 * (-1) ** k * jv(2 * k, t) for k in range(1, K)),
+lambd_bits=9,
+)
+def jacobi_anger_sine(t: float, H: BlockEncoding, K: int) -> BlockEncoding:
+return LinearCombination(
+tuple(chebyshev(2 * k + 1, H) for k in range(K)),
+tuple(2 * (-1) ** k * jv(2 * k + 1, t) for k in range(K)),
+lambd_bits=9,
+)
+def hamiltonian_simulation(t: float, H: BlockEncoding, eps: float) -> BlockEncoding:
+K = degree_jacobi_anger_approximation(t * H.alpha, precision=eps)
+cosH = jacobi_anger_cosine(t * H.alpha, H, K)
+isinH = Phase(jacobi_anger_sine(t * H.alpha, H, K), phi=1 / 2, eps=1e-11)
+return LinearCombination.of_terms((1.0, cosH), (-1.0, isinH))
+FIG. 9: Hamiltonian simulation using Chebyshev Polynomials
+
+=== PDF PAGE 24 ===
+24
+C. Hamiltonian Simulation using GQSP
+Low and Chuang [61] describe an efficient Hamiltionian simulation by combining quantum signal pro-
+cessing (QSP) with qubitization. Qualtran provides the HamiltonianSimulationByGQSP bloq, which takes
+in a BlockEncoding B[H] which is an ( α, a,0)-block-encoding of H, a time parameter t, and a precision ϵ
+and implements a (1, a+ 1, ϵ)-block-encoding of e−iHt . It does this by computing a GQSP polynomial P
+that is ϵ-close to f (eiθ) = e−iαt cos(θ), using the Jacobi-Anger expansion. This GQSP bloq is applied to
+the qubitized walk operator of the input block-encoding. The degree of this polynomial approximation
+scales as
+O
+
+αt + log(1/ϵ)log log(1/ϵ) 
+The polynomial approximations can be found in qualtran.linalg.polynomial. Figure 10 shows an exam-
+ple snippet for simulating the 2D Hubbard Hamiltonian [9, Sec. 5] using HamiltonianSimulationByGQSP.
+from qualtran.bloqs.chemistry.hubbard_model.qubitization.
+prepare_hubbard import (
+PrepareHubbard,
+)
+from qualtran.bloqs.chemistry.hubbard_model.qubitization.
+select_hubbard import (
+SelectHubbard,
+)
+from qualtran.bloqs.block_encoding.lcu_block_encoding import
+LCUBlockEncoding
+from qualtran.bloqs.qubitization import QubitizationWalkOperator
+from qualtran.bloqs.hamiltonian_simulation.
+hamiltonian_simulation_by_gqsp import (
+HamiltonianSimulationByGQSP,
+)
+n, t_hubbard, u_hubbard = 4, 1, 4
+select = SelectHubbard(n, n)
+prepare = PrepareHubbard(n, n, t_hubbard, u_hubbard)
+block_enc = LCUBlockEncoding(select=select, prepare=prepare)
+walk_op = QubitizationWalkOperator(block_enc)
+t, eps = 5, 1e-5
+hamsim_H = HamiltonianSimulationByGQSP(walk_op, t=t, precision=eps)
+HamiltonianSimulationByGQSP
+Qubits
+60
+CSwaps
+37930
+Ands
+139476
+Cliffords
+715012
+Rotations
+14905
+Measurements
+139476
+Adjoint(subbloq=PrepareHubbard)
+Qubits
+16
+CSwaps
+9
+Ands
+7
+Cliffords
+50
+Rotations
+4
+Measurements
+7
+1
+PrepareHubbard
+Qubits
+16
+CSwaps
+9
+Ands
+7
+Cliffords
+50
+Rotations
+4
+Measurements
+7
+1
+GeneralizedQSP
+Qubits
+58
+CSwaps
+37912
+Ands
+139462
+Cliffords
+714912
+Rotations
+14897
+Measurements
+139462
+1
+SU_2(_theta0,_phi0,_lambda0,_alpha0)
+Rotations
+3
+1355
+Adjoint(QubitizationWalkOperator)
+Qubits
+58
+CSwaps
+28
+Ands
+103
+Cliffords
+528
+Rotations
+8
+Measurements
+103
+677
+QubitizationWalkOperator
+Qubits
+58
+CSwaps
+28
+Ands
+103
+Cliffords
+528
+Rotations
+8
+Measurements
+103
+677
+FIG. 10: Hamiltonian simulation of 2D Hubbard using GQSP for time t = 5 and precision 1 .0 × 10−5,
+and its corresponding gate costs.
+V. CASE STUDY 2: COMPUTING GROUND ST A TES IN QUANTUM CHEMISTR Y
+Simulating chemical systems is one of the most cited use cases of fault tolerant quantum computers. In
+particular, computing the ground state or the low lying excited states of challenging molecules is seen as
+a good task for quantum phase estimation. Over the years, the cost of performing phase estimation has
+reduced by 6 orders of magnitude, from 10 16 to 1010 Toffoli gates [17]. Most of these improvements have
+been driven by the adoption of modern factorizations [13, 17, 56] of the two electron integrals necessary to
+specify the Hamiltonian, and also through the use of different representations (i.e. first quantization [12].)
+These algorithms can be built up from the extensive library of primitives that qualtran provides (see
+Section III), thus avoiding the toil of parsing 100 page papers. Qualtran provides block encodings for
+all four variants of the second quantized Hamiltonian (sparse, single-factorized, double-factorized, and
+tensor hypercontraction (THC)), as well as for the first quantized algorithm with and without a quantum
+projectile [10, 12]. Many of these algorithms are implemented in a top down fashion, without being
+compiled all the way down to primitive gates, while some (THC, and the sparse representation) have
+more detailed implementations.
+
+=== PDF PAGE 25 ===
+25
+A. Resource Estimation and Algorithm Analysis
+A common task for researchers is computing the costs for performing phase estimation for a specific
+molecule of interest. Traditionally this has been done by manually enumerating costs in standalone note-
+books which may or may not be published, or using open source tools like OpenFermion. While Open-
+Fermion does provide tools for resource estimation of second quantized hamiltonians, the implemention
+is simply a hardcoded list of formulae with no real way to modify the values or attribute individual
+costs do different quantum subroutines or primitives. Qualtran, in contrast, builds up the algorithms
+in a structured way, allowing for cost analysis along the call graph of the algorithm as well as enabling
+algorithm modification and the reuse of subcomponents. Fig. 11a demonstrates how Qualtran provides
+an intuitive way to compute resource estimates and categorize the costs for a particular form of chemical
+Hamiltonian.
+Fig. 11b shows the utility of writing algorithms in a structured way, as qualtran can easily classify costs by
+the type of primitive. Finally, Table V shows that the block encoding costs are consistent with reported
+literature values (recomputed with OpenFermion for comparison) for the FeMoco model system.
+Qualtran also provides block encodings for the first quantized representation [12], which are not available
+in OpenFermion. Again, the structured way of writing algorithms in qualtran allows for additional insight
+into the algorithms as shown in Fig. 12, which demonstrates that in this algorithm SELECT (dominated
+by controlled swaps) is the dominant cost as the number of electrons ( η) grows.
+num_spin_orb = 8
+# build 8-fold symmetric integrals
+tpq, eris = build_random_test_integrals(num_spin_orb // 2)
+# Build SELECT and PREPARE
+select = SelectSparse(num_spin_orb)
+prepare = PrepareSparse.from_hamiltonian_coeffs(
+num_spin_orb,
+tpq,
+eris,
+num_bits_state_prep=16,
+)
+# Build the block encoding of H
+block_encoding = SelectBlockEncoding(
+select=select, prepare=prepare, alpha=0.0, epsilon=0.0
+)
+# Compute the total T counts of the block encoding
+costs = get_cost_value(
+block_encoding, QECGatesCost(), generalizer=generalize_cswap_approx
+)
+print(costs)
+# Classify the bloq counts
+bloq_classification = classify_t_count_by_bloq_type(block_encoding)
+for k, v in bloq_classification.items():
+print(f"{k:>17} = {v:>4}")
+# ... generate diagrams
+(a) Code for computing and classifying T counts for the block
+encoding of the sparse chemistry Hamiltonian.
+multiplexers
+arithmetic
+swaps
+uniform prep
+QROM
+(b) Cost breakdown of the sparse block
+encoding (from Fig. 11a) in terms of
+different classes of primitives. Here
+data loading implies QROM while
+state preparation is a uniform state
+preparation.
+FIG. 11: Example of how to generate and analyze the costs of block encodings in qualtran.
+Block Encoding QPE Cost
+Method Qualtran OpenFermion Qualtran OpenFermion
+Sparse 18175 18011 4 .45 × 1010 4.41 × 1010
+SF 25679 24349 1 .24 × 1011 1.18 × 1011
+DF 34982 34979 6 .44 × 1010 6.44 × 1010
+THC 17150 16891 3 .24 × 1010 3.19 × 1010
+TABLE V: Block encoding and QPE Toffoli costs for the FeMoco model [62] computed with Qualtran
+compared to the reference values from [17] recomputed with OpenFermion [99] . The slight
+discrepancies arise due to some small implementation differences for some basic primitives. For
+example, comparators and swaps currently do not exploit measurement based uncomputation in
+qualtran while this optimization was used in the reference.
+
+=== PDF PAGE 26 ===
+26
+= 10
+ = 20
+ = 40
+ = 60
+ = 80
+ SELECT
+PREPARE
+PREPARE
+FIG. 12: Breakdown in cost for the block encoding of the chemistry Hamiltonian in the first quantized
+representation as a function of the number of electrons η. We see that SELECT dominates which in
+turn is dominated by controlled swaps. PREPARE † benefits from measurement based uncomputation
+[46] to reduce the dominant arithmetic cost necessary for preparing the Coulomb potential
+PREPν ∝ 1∥ν∥2 . [12]
+B. Symbolic Analysis
+Quantum algorithms typically only allow us to estimate properties to within some additive error ϵ, which
+often is a combination of different sources of errors arising from different parts of the algorithm. An
+example of this is Trotterized phase estimation which introduces three sources of controllable error: 1)
+the Suzuki-Trotter error ∆ T S, 2) the phase estimation error ∆ P E, and, 3) the rotation synthesis error
+∆HT [100, 101]. A common task is to optimize the costs such that ϵ ≤ ∆T S+ ∆HT + ∆P E. The rotation
+synthesis cost is a parameter of all rotation bloqs in qualtran, while the trotter error and phase estimation
+error are incorporated in higher level TrotterizedUnitary, and PhaseEstimation bloqs. By propagating
+these symbolic costs, Qualtran can automatically produce mathematical expressions for the algorithm’s
+cost. Fig. 13 provides a code-snippet for generating the Trotterized phase estimation costs for the 2D
+Hubbard model [100, 101] while Eq. (12) is the resulting output.
+# ... construct Sympy symbols
+s_timestep = (s_delta_ts / s_xi) ** (1 / s_p)
+s_eps_r = (s_delta_ht * s_timestep) / s_n_rot
+s_n_pe = 0.76 * sympy.pi / (s_delta_pe * s_timestep)
+s_trotter_step = build_plaq_unitary_second_order_suzuki(
+s_length, s_hubb_u, s_timestep, eps=s_eps_r, hubb_t=s_tau
+)
+t_counts = s_n_pe * t_counts_from_sigma(
+s_trotter_step.call_graph(generalizer=catch_rotations)[1]
+)
+sympy.print_latex(t_counts)
+FIG. 13: Code snippet for generating symbolic Trotter costs.
+Tcost =
+0.76π
+
+∆T S
+ξ
+− 1p
+ 
+2L2 + 6 j L22 k &1.149 log2  1.0NR ∆T Sξ − 1p∆HT ! + 9.2’ + 24 j L22 k!
+∆P E
+(12)
+Here, NR is the number of single qubit rotations in a single Trotter step which depends on the order of
+the Trotter expansion p. The user can numerically optimize this expression (see Fig. 14) to arrive at the
+lowest cost algorithm subject to the constraint on ϵ.
+VI. CASE STUDY 3: CR YPTOGRAPHY
+One of the earliest pieces of evidence for the power of quantum computation was Shor’s introduction
+of algorithms for factoring and the discrete logarithm [2]. With sufficiently powerful hardware, these
+
+=== PDF PAGE 27 ===
+27
+0.1 0.2 0.3
+TS
+0.05
+0.10
+0.15
+0.20
+0.25
+0.30PE
+0.06
+0.12
+0.18
+0.24
+0.30
+0.36
+0.42
+0.48
+0.54
+0.60
+0.3264
+6.6
+6.9
+7.2
+7.5
+7.8
+8.1
+8.4
+8.7
+9.0
+log(T)
+FIG. 14: Contours of constant cost (Eq. (12)) as a function of ∆ T Sand ∆P E, solid black lines are
+values of ϵ with the target error budget given by ϵ = 0.0051L2 ≈ 0.3264 for L = 8 [101].
+algorithms could be used to break commonly used cryptosystems including RSA and elliptic curve cryp-
+tography (ECC). As such, it is particularly essential to accurately estimate the quantum resource re-
+quirements and costs. These estimates can already impact contemporary decisions about the urgency of
+the move to post-quantum cryptography e.g. for data that remains sensitive as long as the timeframes
+under consideration.
+Given the impact of these algorithms, a number of compilation and resource estimation studies have been
+applied to optimizing the primitives used for factoring and breaking RSA and ECC [102–109]. Some
+studies [105, 107] have even published explicit code in the Q# programming language with complete
+implementations. We summarize some of the leading constructions for RSA and ECC and show how
+Qualtran can be used for these algorithms. We use automated routines to highlight expensive parts of
+the algorithm, show how the classical simulation protocol can aid in testing of classical reversible logic,
+and automatically propagate symbolic costs for an important subroutine.
+The setting for both RSA factoring and elliptic curve cryptography starts with a finite field. The quantum
+algorithm uses phase estimation of the field’s group multiplication operation to extract the hidden prop-
+erty of interest. The field and group operation differ between the two schemes, but the group operation is
+always a classical operation that we must execute on a quantum superposition of inputs. Optimization of
+these constructions, therefore, need not be performed by experts in quantum information. The structure
+and organization of a library such as Qualtran can help solicit contributions from classical computer
+scientists as well as traditional quantum algorithms researchers.
+TABLE VI: Comparison of RSA and ECC cryptographic schemes
+RSA ECC
+Problem
+N = pq
+private primes p, q
+public key N .
+Q = [k]P mod p
+public key Q, private key k,
+specified base point P and
+modulus p
+Discrete log
+[r]g = 1 mod N
+Randomly selected g, find
+order r
+Q = [k]P mod p
+Find private key k
+Group operation Modular multiplication Elliptic curve point addition
+Group operation bloq ModMulK ECAddR
+Typical n = ⌈log2 N ⌉ 2048 256
+Qubit cost, approx. 3n 9n
+T offoli cost, approx. 0.4n3 [108] 43n3 [106]
+
+=== PDF PAGE 28 ===
+28
+For factoring large primes to break RSA encryption, the public key N is the product of two hidden,
+large prime numbers, N = pq. Using standard number theory, it suffices to find the order r of the
+group operation on a randomly selected element g ∈ ZN . Specifically, we seek the order r such that
+[r]g = 1 mod N where the notation [ r]g indicates repeating the group operation r times. The operation
+in question, and the operation on which we perform phase estimation, is modular multiplication by
+the constant g, or, in Qualtran: ModMulK(k=g, mod=N) . In traditional mathematical notation, we would
+seek to find the order gr = 1 mod N . Phase estimation takes powers of the operator, which can be
+classically-fast forwarded. In fact, the phase estimation circuit is equivalent to performing the modular
+exponentiation operation.
+In elliptic curve cryptography, the public key Q is an unknown multiple k of a shared base point P within
+a finite field of elliptic curve points with modulus p such that Q = [k]P . The group operation is elliptic
+curve point addition and the notation [ k]P once again indicates repeating the group operation k times.
+The operation on which we perform phase estimation is addition of a constant elliptic curve point, or, in
+Qualtran: ECAddR(R=..., mod=p) . In the first phase estimation, we set the constant to the base point P
+to project into an eigenbasis of the addition operation; then we phase estimate with the constant set to
+the public key Q to extract the hidden key. We highlight the key differences between the two encryption
+schemes in Table VI, but stress that compilation of both algorithms hinges on efficient construction of
+classical reversible gates.
+2
+n 1
+FindECCPrivateKey
+ECPhaseEstimateR
+ECAddR MeasureQFT
+(a) Naively, the algorithm consists of two
+phase estimations of elliptic curve point addi-
+tion ECAddR for two different, classical elliptic
+curve points R.
+2
+n
+16 1
+1 1 1
+FindECCPrivateKey
+ECPhaseEstimateR
+ECWindowAddR MeasureQFT
+QROM ECAdd QROM†
+(b) In practice, we use a windowing technique
+to reduce the number of elliptic curve point
+additions at the cost of additional classical
+data lookup QROM operations.
+FIG. 15: The high-level call graph of the algorithm for finding elliptic curve cryptography private keys.
+A. Implementation in Qualtran
+For the remainder of this section, we will focus on using Qualtran to sketch out a high-level construction
+of an algorithm for breaking elliptic curve cryptography following the derivation in Litinski (2023) [109].
+We find the most expensive subroutines, use the classical simulation protocol, and automatically tabulate
+contributions to the cost down to basic arithmetic operations.
+The high-level call graph for the algorithm is shown in Fig. 15. The algorithm consists of two phase
+estimation routines. Each phase estimation ends by fourier transforming and measuring the control
+register. The bulk of the computation is spent performing the n applications of the group operation.
+Naively, we would call theECAddR operation n times for with addition constantR = [2j]P for j = 0 . . . n−1.
+
+=== PDF PAGE 29 ===
+29
+This call graph is diagrammed in Fig. 15a, and the salient code for composing the point addition operation
+in this way is shown in Fig. 16a. To reduce the cost, we can use the technique of windowed arithmetic.
+In this case, we choose a window size (for example: 16 bits) and pre-compute 2 16 elliptic curve points.
+Each group of 16 ECAddR can be replaced by a lookup operation to retrieve the pre-computed point, a
+quantum-quantum ECAdd operation, and an un-lookup. The call graph for this optimized scheme is shown
+in Fig. 15b.
+ctrl = [bb.add(PlusState())
+for _ in range(self.n)]
+for i in range(self.n):
+ctrl[i], x, y = bb.add(
+ECAddR(n=self.n,
+R=2**i * self.point),
+ctrl=ctrl[i], x=x, y=y
+)
+bb.add(MeasureQFT(n=self.n), x=ctrl)
+return {’x’: x, ’y’: y}
+(a) Qualtran code for defining ECPhaseEstimateR
+as n applications of ECAddR with the appropriate R.
+P = ECPoint(15, 13, mod=17, curve_a=0)
+for j in range(1, 4 + 1):
+bloq = ECAddR(n=5, R=j * P)
+ctrl, x, y = bloq.call_classically(
+ctrl=1, x=P.x, y=P.y
+)
+print(f’+[{j}] P -> ({x}, {y})’)
++[ 1] P -> ( 2, 10)
++[ 2] P -> ( 8, 3)
++[ 3] P -> (12, 1)
++[ 4] P -> ( 6, 6)
+(b) With the classical simulation protocol, we can
+demonstrate and test elliptic curve point addition
+on classical values.
+FIG. 16: Code snippets for composing bloqs and calling them classically.
+As described in Section II B 5, we can annotate bloqs with their classical action. For many arithmetic
+bloqs, this can be as simple as adding two integers. But, the protocols supports arbitrary Python code.
+For our point addition bloq, we introduce a Python class for encoding elliptic curve points, define point
+addition and multiplication, and annotate ECAddR with that classical action. In Fig. 16b, we call the bloq
+with classical values: both the bloq attribute R—which is always classical for this bloq—and also the x
+and y registers that ordinarily would contain a superposition of elliptic curve point coordinates, but here
+take a classical value of P = (15, 3) in this example 5-bit field. You can see the first few multiples [ j]P
+added to the base point P produced from classically calling the ECAddR bloq.
+B. Resource Analysis
+Sub-Operation T offoli Count
+ModInv 6.30 × 106
+ModMul 1.50 × 106
+CModSub 7.17 × 103
+MultiCToffoli 4.59 × 103
+ModSub 3.07 × 103
+ModAdd 3.07 × 103
+CModAdd 2.56 × 103
+ModNeg 1.53 × 103
+ModDbl 1.02 × 103
+CModNeg 1.02 × 103
+TABLE VII: Toffoli Count for the constituent operations of ECAdd(n=256). This bloq, which adds two
+elliptic curve points is called repeatedly as part of the phase estimation for doing the discrete log. Modular
+inversion and modular multiplication are the most expensive subroutines.
+
+=== PDF PAGE 30 ===
+30
+ModInv
+Toffolis 8*n**2 + 2*n*(2*n - 2) + 2*n*(6*n + 3) + 2*n - 2
+AddK
+Toffolis n - 1
+1
+Negate
+Toffolis n - 1
+1
+Swap
+Toffolis 0
+1
+_ModInvInner
+Toffolis 12*n + 1
+2*n
+Add
+Toffolis n - 1
+1
+AddK
+Toffolis n - 1
+1
+BitwiseNot
+Toffolis 0
+1
+Lt
+Toffolis n
+1
+MultiCToffoli
+Toffolis n
+1
+ModDbl
+Toffolis 2*n
+1
+MultiCToffoli
+Toffolis 2
+1
+CHalf
+Toffolis 2*n
+1
+Subtract
+Toffolis n - 1
+1
+CSwap
+Toffolis n
+4
+1
+1 1
+FIG. 17: Symbolic gate costs for the modular inversion bloq. This call graph is based on the construction
+in Ref. [109].
+As we make our way down the call graph of Fig. 15, we can use Qualtran to tabulate the resource
+requirements for the elliptic curve point addition subroutine that powers the algorithm. Table VII shows
+the Toffoli gate count contributions from each of the direct callees of ECAdd(n=256) using the construction
+in Ref. [109]. Modular multiplication and modular inversion are both O(n2) operations, so it is perhaps
+not surprising to see that they comprise the majority of the gate cost. For the relevant choice of n = 256,
+we can determine that the ModInv operation is the most costly.
+Computing a modular inverse using a reversible quantum circuit is a complicated endeavor. The circuit
+implements Kaliski’s algorithm [110], which uses 2 n iterations of a routine composed of comparison and
+arithmetic operations. The scheme’s call graph is diagrammed in Fig. 17. Helpfully, Qualtran tracks the
+gate costs of the subroutines—here using symbolic expressions—and propagates them through the call
+graph. Since the software is handling the details, the final expression includes the linear and constant
+terms as well as the leading order term. We can use explicit values for n to get precise counts, or simplify
+the expressions to recover the leading order modular inversion complexity of approximately 24 n2.
+VII. ANAL YZING ARCHITECTURE-DEPENDENT PHYSICAL COSTS
+While Qualtran provides tooling for expressing and reasoning about quantum algorithms broadly, a
+particularly compelling use case for such a software tool is to provide estimates of resource requirements
+for quantum algorithms that could be executed on a future quantum computer. In particular, we’re
+interested in resource estimates compatible with the hardware roadmaps of quantum hardware providers.
+A complete quantum computing system will be built with layers of abstraction [111]. Algorithms ex-
+pressed as Qualtran bloqs are encoded at the architecture-agnostic level application and logical levels of
+abstraction. We anticipate that future tools or interoperability software will consume the output of a full
+decomposition of a Qualtran program and explicitly compile it to a specific error-corrected architecture
+or platform. In the future, Qualtran may gain support for additional, optional annotations on bloqs
+to aid in architecture-specific compilation. In the meantime, we accelerate current research practices
+by providing code implementations of common literature models for converting logical costs to physical
+costs. We define these terms: logical costs are hardware architecture-agnostic properties of an algorithm
+that we desire to minimize. Common logical costs are the number of (logical) qubits or the number of
+(logical) gates. Physical costs are those that matter in the physical world, such as the number of physical
+qubits (e.g. individual transmons or trapped ions) and the wall-clock time required to physically execute
+an algorithm.
+
+=== PDF PAGE 31 ===
+31
+A physical cost model is encapsulated in thePhysicalCostModel class and takes logical counts as inputs and
+outputs physical costs. The model is parameterized by properties of the target hardware architecture and
+execution protocol design choices. The architecture properties are contained in the PhysicalParameters
+data class. The execution protocol’s description is further factored into the data block design for storing
+algorithm qubits, the magic state factory construction for executing gates, and the error suppression
+ability of the code. For a given model, the inputs are the number of algorithm qubits and the number of
+algorithm gates. The output quantities include the wall-clock time, the number of physical qubits, and
+the probability of failure due to the physical realization of the algorithm.
+In Qualtran, we provide leading physical cost models for surface code architectures. The surface code has
+been widely studied and is favored for only requiring 2D planar connectivity and strong error suppression
+(at the expense of relatively high physical qubit costs). In particular, we provide the gidney_fowler
+model based on Gidney and Fowler (2019) [38] and related works [112, 113]; as well as the beverland
+model based on Beverland et. al. (2023) [39], which takes heavy inspiration from Litinksi (2019) [114].
+Although we have implemented models based on the surface code, we welcome open-source contribution
+of models for alternative error correction architectures.
+A. Data Storage
+The physical cost model depends not only on architecture properties, but also on execution protocol
+design choices. The first important design decision we consider is how to lay out the physical qubits
+to support the number of logical qubits used by the algorithm. When counting qubits, we distinguish
+between three distinct concepts: physical qubits, algorithmic qubits, and tiles. At the highest level,
+we define an algorithm qubit as a qubit used in the routing of algorithm-relevant quantum data in a
+subroutine or application. A physical qubit is a physical system that can encode one qubit, albeit noisily.
+Specifically for the surface code, we define a tile to be the minimal area of physical qubits necessary to
+encode one logical qubit to a particular code distance d. A tile can store an algorithm qubit, can be used
+for ancillary purposes like routing, or can be left idle. In the rotated surface code, it takes 2 d2 physical
+qubits arranged in a grid to construct one tile.
+The number of algorithm qubits is reported by Qualtran as a cost one can query on any particular
+bloq. The surface code is a rate-1 code, so each bit of data needs at least one surface code tile. Due to
+locality constraints imposed by the 2D surface code combined with the need to interact qubits that are
+not necessarily local, additional tiles are needed to actually execute a program. This is modeled by the
+DataBlock abstract interface. Each data block is responsible for reporting the number of tiles required
+to store a certain number of algorithm qubits; the expected error associated with storing a number of
+algorithm qubits for a given number of cycles and a logical error model, and (optionally) the number of
+cycles required to consume enough magic states to enact a given number of logical gates.
+Different data block models exist in the literature. In Qualtran we provide the data blocks present in
+Gidney and Fowler [38] and Litinski [114]. The Gidney data block model—which we termSimpleDataBlock
+—assumes a constant 50% overhead due to routing and unbounded magic state consumption speed. The
+Litinski models provide an explicit (but not optimal) construction for routing magic states and offers three
+data block designs that trade off space (i.e. number of tiles) and time (i.e. number of cycles required to
+consume magic states). Each data block uses 2 d2 physical qubits per tile and has a data error that scales
+with the number of tiles times the number of error correction cycles.
+B. Executing Gates
+The second execution protocol component that we consider is how to execute arbitrary gates to run the
+desired algorithm. The surface code can execute Clifford gates in a fault-tolerant manner. Non-Clifford
+gates like the T gate, Toffoli or CCZ gate, or non-Clifford rotation gates require more expensive gadgets
+to implement [37]. Executing a T or CCZ gate requires first using the technique of state distillation in
+an area of the computation called a magic state factory to distill a noisy T or CCZ state into a magic
+state of sufficiently low error. For example, a noisy T-state |T ⟩ = T |+⟩ may be created via a physical
+T-gate with associated physical error (e.g. pphys = 10 −3), and then distilled down to a |T ⟩-state with
+
+=== PDF PAGE 32 ===
+32
+lower error, suppressed cubically pdistil ∝ p3phys. Such quantum states can be used to enact the non-
+Clifford quantum gate through gate teleportation. Magic state production is thought to be an important
+runtime and qubit-count bottleneck in foreseeable fault-tolerant quantum computers. With one factory
+per computation, the rate of magic state production is the bottleneck. Increasing the number of magic
+state factories to speed the computation trades off with the number of qubits available to form the data
+block, limiting the size of problems the quantum computer can solve.
+The MagicStateFactory abstract interface specifies that each magic state factory must report its required
+number of physical qubits, the number of error correction cycles to produce enough magic states to enact
+a given number of logical gates and an error model, and the expected error associated with generating
+those magic states.
+There are a handful of carefully designed magic state factories in the literature [38, 112, 115]. Magic
+state factories are usually defined as circuits which themselves expect to be run on a surface code. Note
+that the code distance d of the tiles used in magic state factories need not be the same as that of the
+data block. A given factory construction has a prescribed physical qubit footprint and number of cycles
+to produce magic states. The error associated with magic state production has two sources: data errors
+can occur while executing the state distillation circuit, and distillation errors can fail to reject bad magic
+states from entering the computation.
+C. Error Correction Procedure
+Error correcting codes suppress error but do not eliminate it. The construction of the surface code takes
+a parameter d that scales the amount of error suppression by using more physical qubits per tile. The
+exact relationship between d and the resulting logical error rate will likely be experimentally determined
+when sufficiently large quantum computers are available, but in the interim we can model the relationship
+with an equation of the form
+pl(d) = A
+ pp
+p∗
+ d+1
+2
+(13)
+relating the logical error rate pl to the physical error rate pp for a code distance d. The coefficients A and
+p∗ can be fit to numerical simulations of a surface code, but common resource estimates in the literature
+use ‘back of the envelope’ values. p∗ is sometimes identified with the error threshold of the surface code.
+Sometimes p∗/pp = Λ is treated as the fit parameter.
+In Qualtran, the properties of the error correction procedure are contained within the QECScheme data
+class, and we provide presets for Fowler and Gidney parameters A = 0.1, p∗ = 0.01 [113] and Beverland
+parameters A = 0.03, p∗ = 0.01 [39]
+D. Architecture Properties
+The final set of inputs for getting physical costs are the physical properties of the hardware. The
+physical error rate of unprotected (physical) operations depends on the qubit modality, calibration quality,
+and myriad other real-world considerations. We assume the physical error processes can be sufficiently
+represented by an aggregate error rate pphys. The ratio of the physical error rate to the p∗ value of the
+QEC scheme sets the error suppression rate and informs the choice of the code distance d.
+The cycle time of the hardware—i.e. how long it takes to execute one cycle of measuring the stabilizers of
+the code— sets the effective clock speed of the computation. This time parameter is the second hardware
+parameter. Both the physical error rate and the cycle time are encapsulated in the PhysicalParameters
+data class, and we provide pre-configured choices of parameters to match values encountered in the liter-
+ature [38, 39] under realistic or optimistic hardware assumptions for superconducting, ion, or Majorana
+qubit modalities.
+
+=== PDF PAGE 33 ===
+33
+E. Physical Cost Models
+By combining the DataBlock, MagicStateFactory, QECScheme, and PhysicalParameters specifications, we
+construct a PhysicalCostModel object that can produce physical qubit counts and timing information.
+In addition to pre-configured models that match complete models from the literature, we have designed
+the code interfaces so each of the components can be mixed-and-matched to choose the most relevant or
+compelling model, as well as highlighting the considerable variability in physical cost estimates based on
+highly speculative architecture-aware assumptions.
+The complete physical cost models take logical costs—the number of algorithm qubits and logical gate
+counts—and return the number of cycles of computation required, the wall-clock time required to perform
+that many cycles, the number of physical qubits required to store the complete computation including
+space for routing and magic state production, and the final probability of an error occurring during the
+computation including contributions from data storage errors and unheralded magic state distillation
+failures.
+Often times, we would like to solve the design problem of figuring out the QEC scheme (in particular:
+the code distance d) or choice of factory based on a final error budget. This problem is not invertible in
+general, and there are different strategies in the literature. We provide code for two particular strategies
+that work with specific classes of factories and data blocks. One approach is to perform a grid search
+over the data block code distance and code distances used to implement the magic state factories to
+exhaustively minimize the computational volume, as in Ref. [38]. An alternative is to apportion the
+error budget in a prescribed way: One third of the total error budget each to rotation synthesis, magic
+state distillation, and algorithm qubit data storage; and solve for code distances independently for each
+portion, as in Ref. [39]. Users are encouraged to use PhysicalCostModel as a foundation on which other
+heuristics can be developed to allocate an error budget.
+VIII. CLOSING REMARKS
+The pursuit of quantum computational advantage remains a driving force in quantum information sci-
+ence and quantum computation. Most computational advantages in quantum computing are articulated
+in terms of asymptotic costs parameterized by a problem size and error tolerance. But in order to
+quantify the true magnitude of a computational advantage, overheads of quantum error correction and
+constant factors associated with the algorithms themselves must be rigorously counted. Prior work gener-
+ically accounting for the overhead of modern quantum error correction determined that super-quadratic
+asymptotic speedups would likely be required for a quantum runtime advantage [6] further enhancing
+prior work that the overheads of quantum error correction can be severe [8].
+We presented Qualtran, a software framework for developing and analyzing quantum algorithms. We
+demonstrated how Qualtran’s features for expressing and analyzing quantum programs can be applied to
+problems in Hamiltonian simulation, chemistry, and cryptography. The implementations of those algo-
+rithms were expressed as bloqs—our foundational data structure. The bloqs are hierarchically composed,
+and the case studies were built on top of the standard library of quantum subroutines included in the
+package. Features for bloq construction, handling of quantum data types, graph traversal resource es-
+timation routines, tensor simulation of bloqs, and physical resource estimation can accelerate algorithm
+analysis.
+A driving philosophy of Qualtran is that the benefits of software-based tooling can complement and ac-
+celerate researchers’ existing or forthcoming resource estimation projects. Those benefits include making
+constructions explicit, shareable, reproducible, tested, and reusable. The key idea of the framework is
+that quantum algorithms can be composed in a structured compute graph where edges represent flow
+of quantum data. A minimal specification of each node is required, which offers maximum flexibility
+when exploring algorithmic ideas. In other words, various levels of abstraction can be used to specify
+an algorithmic idea without the burden of a full compilation. This is especially useful for the type of
+constant factor analysis that has recently been performed in modern quantum algorithms papers for chem-
+istry [13, 56] where constant factor analysis and algorithmic improvements are presented in enumerated
+lists of English prose.
+
+=== PDF PAGE 34 ===
+34
+Strong network effects are unlocked by using open, structured representations of quantum programs.
+Qualtran provides a standard library of primitives necessary to construct many modern quantum algo-
+rithms, and we aim to enable developers to quickly express new algorithms as a high-level idea with
+defaults for each primitive selected appropriately and updated whenever improvements are discovered. A
+particularly illustrative example is the unary iteration bloqs that can be used to construct a wide variety
+of other more complicated primitives such as block encodings, QROM, QROAM, variable-spaced QROM,
+and programmable gate arrays. As more bloqs are published, algorithms can use them in their own im-
+plementation. We anticipate continued growth of the library of bloqs both hosted in the main Qualtran
+repository and published by users. These libraries can grow not only in the quantity of subroutines, but
+also in precision: a placeholder bloq annotated with a cost expression or its classical-reversible action can
+have its full decomposition filled in by independent contributors. We know that we have only scratched
+the surface with our current implementations of quantum programs and subroutines, and look forward
+to continued development of the library of algorithms.
+While we have made judicious selections in the design of the framework, we anticipate that this is only
+the beginning of the story of tooling for compiling quantum algorithms. We are clear on the current
+limitations; the set of features in the present version of Qualtran is not comprehensive. We anticipate
+extensions to represent classical data as part of the compute graph (e.g. as the result of a measurement
+operation) and support for open systems simulation. We currently leverage SymPy for symbolic algebra
+manipulations, but look to augment it with custom operations common in quantum information. For
+example, the bitsize operation of ⌈log2 x⌉ ought to be made particularly easy to express and manipulate
+symbolically. Re-write rules to manipulate and optimize compute graphs would provide more flexibility
+and utility from a given library of bloqs. We have protocols for automatically constructing the adjoint
+or controlled version of a bloq, but we imagine that additional meta-bloqs are possible. For example, a
+Conjugate bloq that encapsulates an A†BA operation would likely be useful. More visualization tools and
+interactive, graphical representations would make the tool more accessible. To further boost the network
+effects inherent in quantum programming, greater interoperability and interchange with other tools and
+representations is desired. The development of these features must be prioritized by the needs of the
+algorithms research community.
+The proliferation of long resource estimation studies that manually (re-)compile quantum subroutines and
+provide lossy references to previous manuscripts is not sustainable. For research to flourish, open, repro-
+ducible constructions should be published. We call on the community to provide explicit and structured
+representations of their subroutines alongside resource estimates; potentially via Qualtran. Quantum al-
+gorithms research is still in its early stages: novel asymptotic speedups and constant factor improvements
+remain to be discovered. By providing precise resource requirements, we can guide hardware development
+roadmaps and investment decisions in the field. We hope Qualtran can play a part in this journey and
+accelerate the vibrant field of finding computational advantage.
+IX. CODE A V AILABILITY
+The Qualtran code is available at github.com/quantumlib/Qualtran.
+X. ACKNOWLEDGEMENTS
+We thank Arren Bustamante, Frankie Papa, Samuel Kushnir and Victor Carballo Araruna for their
+contributions to the Qualtran standard library. We thank Doug Strain and Pavol Juhas for their con-
+tributions to enhance the code quality and maintainability. The up-to-date list of contributors can be
+found on GitHub. We thank Kevin M.Obenland and the pyLIQTR team for providing valuable feedback
+as early adopters of the library. We thank the Google Quantum AI team for providing an environment
+
+=== PDF PAGE 35 ===
+35
+where this work was possible.
+[1] L. K. Grover, A fast quantum mechanical algorithm for database search, in Proceedings of the twenty-eighth
+annual ACM symposium on Theory of computing (1996) pp. 212–219.
+[2] P. Shor, Algorithms for quantum computation: discrete logarithms and factoring, inProceedings 35th Annual
+Symposium on Foundations of Computer Science (1994) pp. 124–134.
+[3] D. S. Abrams and S. Lloyd, Quantum algorithm providing exponential speed increase for finding eigenvalues
+and eigenvectors, Phys. Rev. Lett. 83, 5162 (1999).
+[4] A. Ambainis, Quantum walk algorithm for element distinctness, SIAM Journal on Computing 37, 210
+(2007).
+[5] Quantum algorithm zoo, https://quantumalgorithmzoo.org/, accessed: 2024-08-15.
+[6] R. Babbush, J. R. McClean, M. Newman, C. Gidney, S. Boixo, and H. Neven, Focus beyond quadratic
+speedups for error-corrected quantum advantage, PRX Quantum 2, 10.1103/prxquantum.2.010103 (2021).
+[7] T. Hoefler, T. Haener, and M. Troyer, Disentangling hype from practicality: On realistically achieving
+quantum advantage (2023), arXiv:2307.00523 [quant-ph].
+[8] C. R. Clark, T. S. Metodi, S. D. Gasster, and K. R. Brown, Resource requirements for fault-tolerant quantum
+simulation: The ground state of the transverse ising model, Phys. Rev. A 79, 062314 (2009).
+[9] R. Babbush, C. Gidney, D. W. Berry, N. Wiebe, J. McClean, A. Paler, A. Fowler, and H. Neven, Encoding
+electronic spectra in quantum circuits with linear t complexity, Phys. Rev. X 8, 041015 (2018).
+[10] N. C. Rubin, D. W. Berry, A. Kononov, F. D. Malone, T. Khattar, A. White, J. Lee, H. Neven, R. Babbush,
+and A. D. Baczewski, Quantum computation of stopping power for inertial fusion target design, Proceedings
+of the National Academy of Sciences 121, e2317772121 (2024).
+[11] Y. R. Sanders, D. W. Berry, P. C. Costa, L. W. Tessler, N. Wiebe, C. Gidney, H. Neven, and R. Bab-
+bush, Compilation of fault-tolerant quantum heuristics for combinatorial optimization, PRX Quantum 1,
+10.1103/prxquantum.1.020312 (2020).
+[12] Y. Su, D. W. Berry, N. Wiebe, N. Rubin, and R. Babbush, Fault-tolerant quantum simulations of chemistry
+in first quantization, PRX Quantum 2, 040332 (2021).
+[13] V. von Burg, G. H. Low, T. H¨ aner, D. S. Steiger, M. Reiher, M. Roetteler, and M. Troyer, Quantum
+computing enhanced computational catalysis, Phys. Rev. Res. 3, 033055 (2021).
+[14] M. S. Zini, A. Delgado, R. dos Reis, P. A. M. Casares, J. E. Mueller, A.-C. Voigt, and J. M. Arrazola,
+Quantum simulation of battery materials using ionic pseudopotentials, Quantum 7, 1049 (2023).
+[15] T. E. O’Brien, M. Streif, N. C. Rubin, R. Santagati, Y. Su, W. J. Huggins, J. J. Goings, N. Moll, E. Kyo-
+seva, M. Degroote, C. S. Tautermann, J. Lee, D. W. Berry, N. Wiebe, and R. Babbush, Efficient quantum
+computation of molecular forces and other energy gradients, Physical Review Research 4, 10.1103/phys-
+revresearch.4.043210 (2022).
+[16] D. W. Berry, N. C. Rubin, A. O. Elnabawy, G. Ahlers, A. E. DePrince III, J. Lee, C. Gogolin, and R. Bab-
+bush, Quantum simulation of realistic materials in first quantization using non-local pseudopotentials, arXiv
+preprint arXiv:2312.07654 (2023).
+[17] J. Lee, D. W. Berry, C. Gidney, W. J. Huggins, J. R. McClean, N. Wiebe, and R. Babbush, Even
+more efficient quantum computations of chemistry through tensor hypercontraction, PRX Quantum 2,
+10.1103/prxquantum.2.030305 (2021).
+[18] A. S. Green, P. L. Lumsdaine, N. J. Ross, P. Selinger, and B. Valiron, Quipper: a scalable quantum
+programming language, in Proceedings of the 34th ACM SIGPLAN conference on Programming language
+design and implementation (2013) pp. 333–342.
+[19] A. JavadiAbhari, S. Patil, D. Kudrow, J. Heckey, A. Lvov, F. T. Chong, and M. Martonosi, Scaffcc: Scalable
+compilation and analysis of quantum programs, Parallel Computing 45, 2 (2015).
+[20] J. Paykin, R. Rand, and S. Zdancewic, Qwire: a core language for quantum circuits, in ACM SIGPLAN
+Symposium on Principles of Programming Languages , Vol. 52 (Association for Computing Machinery, New
+York, NY, USA, 2017) p. 846–858.
+[21] K. Svore, A. Geller, M. Troyer, J. Azariah, C. Granade, B. Heim, V. Kliuchnikov, M. Mykhailova, A. Paz,
+and M. Roetteler, Q# enabling scalable quantum computing and development with a high-level dsl, in
+Proceedings of the real world domain specific languages workshop 2018 (2018) pp. 1–10.
+[22] B. Bichsel, M. Baader, T. Gehr, and M. Vechev, Silq: a high-level quantum language with safe uncom-
+putation and intuitive semantics, in ACM SIGPLAN Conference on Programming Language Design and
+Implementation, PLDI 2020 (Association for Computing Machinery, New York, NY, USA, 2020) p. 286–300.
+[23] C. Yuan and M. Carbin, Tower: Data structures in quantum superposition, Proceedings of the ACM on
+Programming Languages 6, 10.1145/3563297 (2022).
+
+=== PDF PAGE 36 ===
+36
+[24] R. Seidel, S. Bock, R. Zander, M. Petriˇ c, N. Steinmann, N. Tcholtchev, and M. Hauswirth, Qrisp: A frame-
+work for compilable high-level programming of gate-based quantum computers (2024), arXiv:2406.14792
+[quant-ph].
+[25] Cirq Developers, Cirq (2023).
+[26] R. S. Smith, M. J. Curtis, and W. J. Zeng, A practical quantum instruction set architecture (2016),
+arXiv:1608.03355 [quant-ph].
+[27] Qiskit contributors, Qiskit: An open-source framework for quantum computing (2023).
+[28] T. Developers, TensorFlow: Large-scale machine learning on heterogeneous systems (2015), software avail-
+able from tensorflow.org.
+[29] W. K. Wootters, W. K. Wootters, and W. H. Zurek, A single quantum cannot be cloned, Nature 299, 802
+(1982).
+[30] A. Pati and S. Braunstein, Impossibility of deleting an unknown quantum state, Nature 404, 164 (2000).
+[31] M. Paltenghi and M. Pradel, Bugs in quantum computing platforms: an empirical study, Proc. ACM
+Program. Lang. 6, 10.1145/3527330 (2022).
+[32] P. L. Montgomery, Modular multiplication without trial division, Mathematics of Computation 44, 519
+(1985).
+[33] A. Hagberg, P. Swart, and D. S Chult, Exploring network structure, dynamics, and function using NetworkX ,
+Tech. Rep. (Los Alamos National Lab.(LANL), Los Alamos, NM (United States), 2008).
+[34] S. Developers, Sympy: symbolic computing in python, PeerJ Computer Science 3, e103 (2017).
+[35] J. Ellson, E. Gansner, L. Koutsofios, S. C. North, and G. Woodhull, Graphviz— open source graph drawing
+tools, in Graph Drawing, edited by P. Mutzel, M. J¨ unger, and S. Leipert (Springer Berlin Heidelberg, Berlin,
+Heidelberg, 2002) pp. 483–484.
+[36] T. G. Draper and S. A. Kutin, qpic: Quantum circuit diagrams in latex, https://github.com/qpic/
+qpic (2016).
+[37] C. Horsman, A. G. Fowler, S. J. Devitt, and R. V. Meter, Surface code quantum computing by lattice
+surgery, New Journal of Physics 14 (2011).
+[38] C. Gidney and A. G. Fowler, Efficient magic state factories with a catalyzed |CCZ ⟩ to 2|T ⟩ transformation,
+Quantum 3, 135 (2019).
+[39] M. E. Beverland, P. Murali, M. Troyer, K. M. Svore, T. Hoefler, V. Kliuchnikov, G. H. Low, M. Soeken,
+A. Sundaram, and A. Vaschillo, Assessing requirements to scale to practical quantum advantage (2022),
+arXiv:2211.07629 [quant-ph].
+[40] E. Bernstein and U. Vazirani, Quantum complexity theory, SIAM Journal on Computing 26, 1411 (1997),
+https://doi.org/10.1137/S0097539796300921.
+[41] J. Gray, quimb: A python package for quantum information and many-body calculations, Journal of Open
+Source Software 3, 819 (2018).
+[42] A. Bocharov, M. Roetteler, and K. M. Svore, Efficient synthesis of universal repeat-until-success quantum
+circuits, Physical Review Letters 114, 10.1103/physrevlett.114.080502 (2015).
+[43] C. N. Jones, J. D. Whitfield, P. L. McMahon, M.-H. Yung, R. V. Meter, A. Aspuru-Guzik, and Y. Yamamoto,
+Faster quantum chemistry simulation on fault-tolerant quantum computers, New Journal of Physics 14,
+115023 (2012).
+[44] A. G. Fowler, Constructing arbitrary steane code single logical qubit fault-tolerant gates (2010), arXiv:quant-
+ph/0411206 [quant-ph].
+[45] M. A. Nielsen and I. L. Chuang, Quantum Computation and Quantum Information (Cambridge University
+Press, Cambridge, 2010).
+[46] C. Gidney, Halving the cost of quantum addition, Quantum 2, 74 (2018).
+[47] A. Y. Kitaev, A. H. Shen, and M. N. Vyalyi, Classical and quantum computation, in Graduate Studies in
+Mathematics (2002).
+[48] Y. R. Sanders, D. W. Berry, P. C. Costa, L. W. Tessler, N. Wiebe, C. Gidney, H. Neven, and R. Babbush,
+Compilation of fault-tolerant quantum heuristics for combinatorial optimization, PRX Quantum 1, 020312
+(2020).
+[49] V. Shende, S. Bullock, and I. Markov, Synthesis of quantum-logic circuits, IEEE Transactions on Computer-
+Aided Design of Integrated Circuits and Systems 25, 1000–1010 (2006).
+[50] A. M. Childs, D. Maslov, Y. Nam, N. J. Ross, and Y. Su, Toward the first quantum simulation with quantum
+speedup, Proceedings of the National Academy of Sciences 115, 9456–9461 (2018).
+[51] T. Khattar and C. Gidney, Rise of conditionally clean ancillae for optimizing quantum circuits (2024),
+arXiv:2407.17966 [quant-ph].
+[52] C. R. Harris, K. J. Millman, S. J. van der Walt, R. Gommers, P. Virtanen, D. Cournapeau, E. Wieser,
+J. Taylor, S. Berg, N. J. Smith, R. Kern, M. Picus, S. Hoyer, M. H. van Kerkwijk, M. Brett, A. Haldane,
+J. F. del R ´ ıo, M. Wiebe, P. Peterson, P. G´ erard-Marchant, K. Sheppard, T. Reddy, W. Weckesser, H. Abbasi,
+C. Gohlke, and T. E. Oliphant, Array programming with NumPy, Nature 585, 357 (2020).
+
+=== PDF PAGE 37 ===
+37
+[53] V. Giovannetti, S. Lloyd, and L. Maccone, Architectures for a quantum random access memory, Physical
+Review A 78, 10.1103/physreva.78.052310 (2008).
+[54] G. H. Low, V. Kliuchnikov, and L. Schaeffer, Trading t gates for dirty qubits in state preparation and
+unitary synthesis, Quantum 8, 1375 (2024).
+[55] S. Zhu, A. Sundaram, and G. H. Low, Unified architecture for a quantum lookup table (2024),
+arXiv:2406.18030 [quant-ph].
+[56] D. W. Berry, C. Gidney, M. Motta, J. R. McClean, and R. Babbush, Qubitization of arbitrary basis quantum
+chemistry leveraging sparsity and low rank factorization, Quantum 3, 208 (2019).
+[57] L. Grover and T. Rudolph, Creating superpositions that correspond to efficiently integrable probability
+distributions (2002), arXiv:quant-ph/0208112 [quant-ph].
+[58] M. Mottonen, J. J. Vartiainen, V. Bergholm, and M. M. Salomaa, Transformation of quantum states using
+uniformly controlled rotations (2004), arXiv:quant-ph/0407010 [quant-ph].
+[59] S. Aaronson, The complexity of quantum states and transformations: From quantum money to black holes
+(2016), arXiv:1607.05256 [quant-ph].
+[60] J. Lemieux, M. Lostaglio, S. Pallister, W. Pol, K. Seetharam, S. Sim, and B. S ¸ahino˘ glu, Quantum sampling
+algorithms for quantum state preparation and matrix block-encoding (2024), arXiv:2405.11436 [quant-ph].
+[61] G. H. Low and I. L. Chuang, Hamiltonian simulation by qubitization, Quantum 3, 163 (2019).
+[62] M. Reiher, N. Wiebe, K. M. Svore, D. Wecker, and M. Troyer, Elucidating reaction mechanisms on quantum
+computers, Proceedings of the national academy of sciences 114, 7555 (2017).
+[63] A. M. Childs and N. Wiebe, Hamiltonian simulation using linear combinations of unitary operations, arXiv
+preprint arXiv:1202.5822 (2012).
+[64] A. A. Agrawal, T. L. Wilson, S. Saadatmand, M. J. Hodson, J. Y. Mutus, A. Caesura, P. D. Johnson, and
+A. F. Kemper, Quantifying fault tolerant simulation of strongly correlated systems using the fermi-hubbard
+model, arXiv preprint arXiv:2406.06511 (2024).
+[65] A. W. Harrow, A. Hassidim, and S. Lloyd, Quantum algorithm for linear systems of equations, Physical
+Review Letters 103, 10.1103/physrevlett.103.150502 (2009).
+[66] P. C. Costa, D. An, Y. R. Sanders, Y. Su, R. Babbush, and D. W. Berry, Optimal scaling quantum linear-
+systems solver via discrete adiabatic theorem, PRX Quantum 3, 040303 (2022).
+[67] W. J. Huggins, O. Leimkuhler, T. F. Stetina, and K. B. Whaley, Efficient state preparation for the quantum
+simulation of molecules in first quantization (2024), arXiv:2407.00249 [quant-ph].
+[68] D. Ramacciotti, A.-I. Lefterovici, and A. F. Rotundo, A simple quantum algorithm to efficiently prepare
+sparse states (2023), arXiv:2310.19309 [quant-ph].
+[69] D. W. Berry, A. M. Childs, R. Cleve, R. Kothari, and R. D. Somma, Simulating hamiltonian dynamics with
+a truncated taylor series, Physical Review Letters 114, 10.1103/physrevlett.114.090502 (2015).
+[70] S. Chakraborty, A. Gily´ en, and S. Jeffery, The power of block-encoded matrix powers: Improved regres-
+sion techniques via faster hamiltonian simulation, in Proceedings of the 46th International Colloquium on
+Automata, Languages, and Programming (Schloss Dagstuhl – Leibniz-Zentrum f¨ ur Informatik, 2019).
+[71] A. M. Dalzell, B. D. Clader, G. Salton, M. Berta, C. Y.-Y. Lin, D. A. Bader, N. Stamatopoulos, M. J. A.
+Schuetz, F. G. S. L. Brand˜ ao, H. G. Katzgraber, and W. J. Zeng, End-to-end resource analysis for quantum
+interior-point methods and portfolio optimization, PRX Quantum 4, 10.1103/prxquantum.4.040325 (2023).
+[72] A. Gily´ en, Y. Su, G. H. Low, and N. Wiebe, Quantum singular value transformation and beyond: exponential
+improvements for quantum matrix arithmetics, inProceedings of the 51st Annual ACM SIGACT Symposium
+on Theory of Computing (2019) pp. 193–204.
+[73] I. Kerenidis and A. Prakash, Quantum recommendation systems (2016), arXiv:1603.08675 [quant-ph].
+[74] J. M. Martyn, Z. M. Rossi, A. K. Tan, and I. L. Chuang, Grand unification of quantum algorithms, PRX
+Quantum 2, 040203 (2021).
+[75] D. Motlagh and N. Wiebe, Generalized quantum signal processing (2024), arXiv:2308.01501 [quant-ph].
+[76] B. K. Berntson and C. S¨ underhauf, Complementary polynomials in quantum signal processing (2024),
+arXiv:2406.04246 [quant-ph].
+[77] A. Y. Kitaev, Quantum measurements and the abelian stabilizer problem (1995), arXiv:quant-ph/9511026
+[quant-ph].
+[78] D. S. Abrams and S. Lloyd, Quantum algorithm providing exponential speed increase for finding eigenvalues
+and eigenvectors, Physical Review Letters 83, 5162–5165 (1999).
+[79] S. Greenaway, W. Pol, and S. Sim, A case study against qsvt: assessment of quantum phase estimation
+improved by signal processing techniques (2024), arXiv:2404.01396 [quant-ph].
+[80] Y. Xiong, S. X. Ng, G.-L. Long, and L. Hanzo, Dual-frequency quantum phase estimation mitigates the
+spectral leakage of quantum algorithms, IEEE Signal Processing Letters 29, 1222–1226 (2022).
+[81] F. Harris, On the use of windows for harmonic analysis with the discrete fourier transform, Proceedings of
+the IEEE 66, 51–83 (1978).
+[82] Y. Nam, Y. Su, and D. Maslov, Approximate quantum fourier transform with o(n log(n)) t gates, npj
+Quantum Information 6, 10.1038/s41534-020-0257-5 (2020).
+
+=== PDF PAGE 38 ===
+38
+[83] A. Barenco, A. Ekert, K.-A. Suominen, and P. T¨ orm¨ a, Approximate quantum fourier transform and deco-
+herence, Physical Review A 54, 139–146 (1996).
+[84] R. Cleve, A. Ekert, C. Macchiavello, and M. Mosca, Quantum algorithms revisited, Proceedings of the Royal
+Society of London. Series A: Mathematical, Physical and Engineering Sciences 454, 339–354 (1998).
+[85] B. L. Higgins, D. W. Berry, S. D. Bartlett, H. M. Wiseman, and G. J. Pryde, Entanglement-free heisenberg-
+limited phase estimation, Nature 450, 393–396 (2007).
+[86] A. Luis and J. Peˇ rina, Optimum phase-shift estimation and the quantum description of the phase difference,
+Physical Review A 54, 4564–4570 (1996).
+[87] G. Rendon, T. Izubuchi, and Y. Kikuchi, Effects of cosine tapering window on quantum phase estimation,
+Physical Review D 106, 10.1103/physrevd.106.034503 (2022).
+[88] J. Kaiser and R. Schafer, On the use of the i0-sinh window for spectrum analysis, IEEE Transactions on
+Acoustics, Speech, and Signal Processing 28, 105–107 (1980).
+[89] D. W. Berry, Y. Su, C. Gyurik, R. King, J. Basso, A. D. T. Barba, A. Rajput, N. Wiebe, V. Dunjko, and
+R. Babbush, Analyzing prospects for quantum advantage in topological data analysis, PRX Quantum 5,
+10.1103/prxquantum.5.010319 (2024).
+[90] D. Patel, S. J. S. Tan, Y. Subasi, and A. T. Sornborger, Optimal coherent quantum phase estimation via
+tapering (2024), arXiv:2403.18927 [quant-ph].
+[91] N. S. Mande and R. de Wolf, Tight bounds for quantum phase estimation and related problems (2023),
+arXiv:2305.04908 [quant-ph].
+[92] D. Slepian and H. O. Pollak, Prolate spheroidal wave functions, fourier analysis and uncertainty — i, The
+Bell System Technical Journal 40, 43 (1961).
+[93] H. Imai and M. Hayashi, Fourier analytic approach to phase estimation in quantum systems, New Journal
+of Physics 11, 043034 (2009).
+[94] A. M. Childs, R. Kothari, and R. D. Somma, Quantum algorithm for systems of linear equations with
+exponentially improved dependence on precision, SIAM Journal on Computing 46, 1920–1950 (2017).
+[95] A. S. Holevo and L. E. Ballentine, Probabilistic and statistical aspects of quantum theory, Physics Today
+37, 64–64 (1984).
+[96] D. W. Berry, B. L. Higgins, S. D. Bartlett, M. W. Mitchell, G. J. Pryde, and H. M. Wiseman, How to perform
+the most accurate possible phase measurements, Physical Review A 80, 10.1103/physreva.80.052114 (2009).
+[97] P. Najafi, P. C. S. Costa, and D. W. Berry, Optimum phase estimation with two control qubits (2023),
+arXiv:2303.12503 [quant-ph].
+[98] A. M. Dalzell, S. McArdle, M. Berta, P. Bienias, C.-F. Chen, A. Gily´ en, C. T. Hann, M. J. Kastoryano,
+E. T. Khabiboulline, A. Kubica, G. Salton, S. Wang, and F. G. S. L. Brand˜ ao, Quantum algorithms: A
+survey of applications and end-to-end complexities (2023), arXiv:2310.03011 [quant-ph].
+[99] J. R. McClean, N. C. Rubin, K. J. Sung, I. D. Kivlichan, X. Bonet-Monroig, Y. Cao, C. Dai, E. S. Fried,
+C. Gidney, B. Gimby, et al. , Openfermion: the electronic structure package for quantum computers, Quan-
+tum Science and Technology 5, 034014 (2020).
+[100] I. D. Kivlichan, C. Gidney, D. W. Berry, N. Wiebe, J. McClean, W. Sun, Z. Jiang, N. Rubin, A. Fowler,
+A. Aspuru-Guzik, et al., Improved fault-tolerant quantum simulation of condensed-phase correlated electrons
+via trotterization, Quantum 4, 296 (2020).
+[101] E. T. Campbell, Early fault-tolerant simulations of the hubbard model, Quantum Science and Technology
+7, 015007 (2021).
+[102] J. Proos and C. Zalka, Shor’s discrete logarithm quantum algorithm for elliptic curves, Quantum Inf. Com-
+put. 3, 317 (2003).
+[103] C. Zalka, Fast versions of shor’s quantum factoring algorithm, arXiv: Quantum Physics (1998).
+[104] M. Eker ˚ a and J. H ˚ astad, Quantum algorithms for computing short discrete logarithms and factoring rsa
+integers, IACR Cryptol. ePrint Arch. 2017, 77 (2017).
+[105] M. R¨ otteler, M. Naehrig, K. M. Svore, and K. E. Lauter, Quantum resource estimates for computing elliptic
+curve discrete logarithms, in International Conference on the Theory and Application of Cryptology and
+Information Security (2017).
+[106] ´E. Gouzien, D. Ruiz, F.-M. L. R´ egent, J. Guillaud, and N. Sangouard, Performance analysis of a repetition
+cat code architecture: Computing 256-bit elliptic curve logarithm in 9 hours with 126133 cat qubits., Physical
+review letters 131 4, 040602 (2023).
+[107] T. H¨ aner, S. Jaques, M. Naehrig, M. R¨ otteler, and M. Soeken, Improved quantum circuits for elliptic curve
+discrete logarithms, in IACR Cryptology ePrint Archive (2020).
+[108] C. Gidney and M. Eker ˚ a, How to factor 2048 bit RSA integers in 8 hours using 20 million noisy qubits,
+Quantum 5, 433 (2021).
+[109] D. Litinski, How to compute a 256-bit elliptic curve private key with only 50 million toffoli gates (2023),
+arXiv:2306.08585 [quant-ph].
+[110] B. S. Kaliski, The montgomery inverse and its applications, IEEE Trans. Computers 44, 1064 (1995).
+
+=== PDF PAGE 39 ===
+39
+[111] N. C. Jones, R. Van Meter, A. G. Fowler, P. L. McMahon, J. Kim, T. D. Ladd, and Y. Yamamoto, Layered
+architecture for quantum computing, Physical Review X 2, 031007 (2012).
+[112] C. Gidney and A. G. Fowler, Flexible layout of surface code computations using autoccz states (2019),
+arXiv:1905.08916 [quant-ph].
+[113] A. G. Fowler and C. Gidney, Low overhead quantum computation using lattice surgery (2019),
+arXiv:1808.06709 [quant-ph].
+[114] D. Litinski, A Game of Surface Codes: Large-Scale Quantum Computing with Lattice Surgery, Quantum
+3, 128 (2019).
+[115] D. Litinski, Magic State Distillation: Not as Costly as You Think, Quantum 3, 205 (2019).

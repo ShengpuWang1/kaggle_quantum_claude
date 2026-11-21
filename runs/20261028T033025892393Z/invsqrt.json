@@ -1,0 +1,4 @@
+{
+  "status": "FAIL",
+  "error": "Scratch qubit q32 did not return to |0>."
+}

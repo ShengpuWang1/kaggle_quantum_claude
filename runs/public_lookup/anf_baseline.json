@@ -1,0 +1,22 @@
+{
+  "seconds": 5.420006345957518e-07,
+  "seed": 913,
+  "steps": 0,
+  "share_odd": false,
+  "plateau": false,
+  "best": {
+    "ands": 269,
+    "products": 247,
+    "cache_monomials": 22,
+    "low_bits": 4
+  },
+  "runs": [
+    {
+      "restart": "baseline",
+      "ands": 269,
+      "products": 247,
+      "cache_monomials": 22,
+      "low_bits": 4
+    }
+  ]
+}

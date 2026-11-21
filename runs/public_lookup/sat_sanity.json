@@ -1,0 +1,9 @@
+{
+  "status": "unknown",
+  "seconds": 0.653533791002701,
+  "variables": 53843,
+  "clauses": 212876,
+  "block": 66,
+  "target": "q24",
+  "and_count": 4
+}

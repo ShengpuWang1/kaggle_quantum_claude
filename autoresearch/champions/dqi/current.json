@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "champion_id": "IMPORT-kirilltym-v9-365594383",
+  "task": "dqi",
+  "parent_id": "baseline",
+  "created_at": "2026-11-04T13:59:21.355038+00:00",
+  "cost": 375375269142.2681,
+  "reference_cost": 24439473606856.586,
+  "artifacts": {
+    "task": "dqi",
+    "files": [
+      {
+        "path": "dqi.kmb",
+        "bytes": 529710545,
+        "sha256": "06aa8ca205096f5305d89318a3f335516686726377950143ce232e4beb3c7374"
+      }
+    ],
+    "digest": "e119ff7c0d8f375e7ddc5a8e2389099090fdc8fb6db81ed918eee4f8a27b03ad"
+  },
+  "source": {
+    "files": [
+      {
+        "path": "CREDITS.md",
+        "bytes": 7597,
+        "sha256": "f96bc07cc7bead77e38c4e653829b01e324816d7953e6c47374f2a36646c8f7e"
+      },
+      {
+        "path": "LICENSE_SCOPES.txt",
+        "bytes": 137,
+        "sha256": "b6d8d1ac81f03d14230fe151e9901ea69f11b2e4848307e2caed0ca91b296e47"
+      },
+      {
+        "path": "STARTING_POINT.md",
+        "bytes": 1581,
+        "sha256": "266cb81544caeeeac0d9a60df265ac6c40a58f8a3ca93646cd6ba71f43215aad"
+      },
+      {
+        "path": "full_dfthcsos_report.json",
+        "bytes": 1547,
+        "sha256": "8ead54f788d271bcf00fd7f160997d7795d405905209192ce48541083b19a53e"
+      },
+      {
+        "path": "full_dqi_report.json",
+        "bytes": 1094,
+        "sha256": "6692951137805169820d309ab9b644611e6d4dc5af13886df4cc65ef78d51014"
+      },
+      {
+        "path": "full_invsqrt_report.json",
+        "bytes": 556,
+        "sha256": "59bd1d49a7bc324c602af5239c6c6f2d801ccc95ea937e26222d0689bfd8df32"
+      },
+      {
+        "path": "notebook.ipynb",
+        "bytes": 316084,
+        "sha256": "beaedcca0dca57909a9382e607cfb17f1ebf3e6d440554bb07c0b617c44abc69"
+      },
+      {
+        "path": "output_manifest.json",
+        "bytes": 1920,
+        "sha256": "55e187d9589f9ba4c9ffa6908fd51524b9b8d657c336500d31d734205ae1d472"
+      },
+      {
+        "path": "source_pins.json",
+        "bytes": 6445,
+        "sha256": "41f7d655c1ba96b9e94332d73abafea5a58723d4e2ba205a9711c5e06b0211d1"
+      },
+      {
+        "path": "verification_conditions.json",
+        "bytes": 56288,
+        "sha256": "712bd6bb9545009ccfa1d474a7ae5feddecd143fce45bc50a4d4170bc57f1f64"
+      },
+      {
+        "path": "verification_receipt.json",
+        "bytes": 122925,
+        "sha256": "483f5e636190be2924cc9591da14aefc773e0c20e7e6d2fb41e3ce9e8fcdc291"
+      }
+    ],
+    "digest": "c660e8785f1c9531c80defe1eec615a1bb818df1c2ff823846260cd106d9eaf8"
+  },
+  "verification": {
+    "mode": "full",
+    "result": "runs/kirilltym-v9-365594383-full/dqi.json",
+    "result_sha256": "fbfb3cd27c3871d8a2db6e2d9620519788bfb5dfdfc5f5d1aa5253afe83feaff"
+  },
+  "provenance": "Published Kaggle notebook kirilltym/quantum-circuits-four-loaders-eight-toffolis v9 (script 365594383); independently verified locally at full settings",
+  "external_source": {
+    "notebook": "https://www.kaggle.com/code/kirilltym/quantum-circuits-four-loaders-eight-toffolis?scriptVersionId=365594383",
+    "version": 9,
+    "script_version_id": 365594383,
+    "archive_sha256": "e02ac3c0401c68618c154b84dab25a9cf3dce337985f8a9e680d301603b1ce15"
+  }
+}

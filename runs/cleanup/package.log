@@ -1,0 +1,7 @@
+{
+  "status": "PASS",
+  "files": 13,
+  "zip_sha256": "e676230cc9bfd88ed996920f31bad8b600dc334b870b405f2bd67105d329f09e",
+  "invsqrt_sha256": "616925627dd17ce3f7d6816d5b32a8b4c88c842bf3f40dd1d7d373a7a5be464b",
+  "baseline_unchanged": true
+}

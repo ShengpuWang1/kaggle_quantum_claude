@@ -1,0 +1,9 @@
+{
+  "status": "unknown",
+  "seconds": 216.46366620899062,
+  "variables": 42130,
+  "clauses": 166724,
+  "block": 32,
+  "target_wire": 53,
+  "last_basis": true
+}

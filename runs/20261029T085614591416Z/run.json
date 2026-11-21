@@ -1,0 +1,16 @@
+{
+  "mode": "full",
+  "tasks": {
+    "invsqrt": {
+      "command": [
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/.venv/bin/python",
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/data/official/verifiers/invsqrt/verify_submission_invsqrt.py",
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/runs/invsqrt_margin_cutting/invsqrt.kmb",
+        "--max-workers",
+        "1"
+      ],
+      "returncode": 0,
+      "seconds": 412.88335041698883
+    }
+  }
+}

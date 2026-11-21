@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "experiment_id": "EXP-20261104T141142Z-516e72",
+  "created_at": "2026-11-04T14:11:42.465054+00:00",
+  "status": "failed",
+  "task": null,
+  "parent_id": null,
+  "config": {
+    "version": 1,
+    "agents": {
+      "director": {
+        "provider": "anthropic",
+        "model": "kimi-k3.1-pro",
+        "api_key": "<redacted>",
+        "api_key_env": null,
+        "auth_token": "<redacted>",
+        "auth_token_env": "AUTORESEARCH_DIRECTOR_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/plan",
+        "effort": "high",
+        "max_tokens": 16000,
+        "max_turns": 12,
+        "timeout_seconds": 600,
+        "max_retries": 2,
+        "max_tool_output_chars": 30000,
+        "stream": true,
+        "prompt": null,
+        "options": {}
+      },
+      "implementer": {
+        "provider": "anthropic",
+        "model": "kimi-k3.1-pro",
+        "api_key": "<redacted>",
+        "api_key_env": null,
+        "auth_token": "<redacted>",
+        "auth_token_env": "AUTORESEARCH_IMPLEMENTER_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/plan",
+        "effort": "high",
+        "max_tokens": 16000,
+        "max_turns": 40,
+        "timeout_seconds": 900,
+        "max_retries": 2,
+        "max_tool_output_chars": 30000,
+        "stream": true,
+        "prompt": null,
+        "options": {}
+      },
+      "reviewer": {
+        "provider": "anthropic",
+        "model": "kimi-k3.1-pro",
+        "api_key": "<redacted>",
+        "api_key_env": null,
+        "auth_token": "<redacted>",
+        "auth_token_env": "AUTORESEARCH_REVIEWER_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/plan",
+        "effort": "high",
+        "max_tokens": 12000,
+        "max_turns": 16,
+        "timeout_seconds": 600,
+        "max_retries": 2,
+        "max_tool_output_chars": 30000,
+        "stream": true,
+        "prompt": null,
+        "options": {}
+      }
+    },
+    "settings": {
+      "workers": 1,
+      "smoke_timeout_seconds": 1800,
+      "full_timeout_seconds": 7200,
+      "max_repair_cycles": 2,
+      "command_timeout_seconds": 300,
+      "command_output_chars": 30000
+    },
+    "tasks": {
+      "invsqrt": {
+        "build": [
+          "{python}",
+          "source/build.py"
+        ],
+        "tests": []
+      },
+      "dqi": {
+        "build": [
+          "{python}",
+          "source/build.py"
+        ],
+        "tests": []
+      },
+      "dfthcsos": {
+        "build": [
+          "{python}",
+          "source/build.py"
+        ],
+        "tests": []
+      }
+    }
+  },
+  "cycles": [],
+  "updated_at": "2026-11-04T14:14:08.248563+00:00"
+}

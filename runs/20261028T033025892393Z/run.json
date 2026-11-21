@@ -1,0 +1,18 @@
+{
+  "mode": "smoke (dfthcsos uses full defaults)",
+  "tasks": {
+    "invsqrt": {
+      "command": [
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/.venv/bin/python",
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/data/official/verifiers/invsqrt/verify_submission_invsqrt.py",
+        "/Users/spwang/Documents/Quant/kaggle_quantum_claude/candidates/quadratic_direct_a7_r28/invsqrt.kmb",
+        "--max-workers",
+        "2",
+        "--max-x",
+        "4096"
+      ],
+      "returncode": 1,
+      "seconds": 0.07018245800281875
+    }
+  }
+}

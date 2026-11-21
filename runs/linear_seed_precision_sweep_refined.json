@@ -1,0 +1,189 @@
+[
+  {
+    "max_x": 3133452,
+    "worst_relative_error": 3.155946537436449e-08,
+    "worst_x": 2686945,
+    "error_over_tolerance": 0.529479967430234,
+    "precision": {
+      "delta_bits": 13,
+      "coef_bits": 17,
+      "square_bits": 28,
+      "product_bits": 28,
+      "result_bits": 28
+    },
+    "address_bits": 5,
+    "qubits": 222,
+    "toffolis": 6068,
+    "qt": 1347096
+  },
+  {
+    "max_x": 3133452,
+    "worst_relative_error": 3.155946537436449e-08,
+    "worst_x": 2686945,
+    "error_over_tolerance": 0.529479967430234,
+    "precision": {
+      "delta_bits": 14,
+      "coef_bits": 17,
+      "square_bits": 28,
+      "product_bits": 28,
+      "result_bits": 28
+    },
+    "address_bits": 5,
+    "qubits": 222,
+    "toffolis": 6106,
+    "qt": 1355532
+  },
+  {
+    "max_x": 3133452,
+    "worst_relative_error": 4.305281420258211e-08,
+    "worst_x": 274430,
+    "error_over_tolerance": 0.7223063632845879,
+    "precision": {
+      "delta_bits": 12,
+      "coef_bits": 17,
+      "square_bits": 28,
+      "product_bits": 28,
+      "result_bits": 29
+    },
+    "address_bits": 5,
+    "qubits": 223,
+    "toffolis": 6116,
+    "qt": 1363868
+  },
+  {
+    "max_x": 3133452,
+    "worst_relative_error": 4.479705639770515e-08,
+    "worst_x": 1122286,
+    "error_over_tolerance": 0.7515698913484812,
+    "precision": {
+      "delta_bits": 12,
+      "coef_bits": 17,
+      "square_bits": 28,
+      "product_bits": 28,
+      "result_bits": 28
+    },
+    "address_bits": 6,
+    "qubits": 222,
+    "toffolis": 6166,
+    "qt": 1368852
+  },
+  {
+    "max_x": 3133452,
+    "worst_relative_error": 2.7125709678443855e-08,
+    "worst_x": 1040463,
+    "error_over_tolerance": 0.4550938904285431,
+    "precision": {
+      "delta_bits": 13,
+      "coef_bits": 17,
+      "square_bits": 28,
+      "product_bits": 28,
+      "result_bits": 29
+    },
+    "address_bits": 5,
+    "qubits": 223,
+    "toffolis": 6156,
+    "qt": 1372788
+  },
+  {
+    "max_x": 3133452,
+    "worst_relative_error": 2.9802322387695312e-08,
+    "worst_x": 1,
+    "error_over_tolerance": 0.5,
+    "precision": {
+      "delta_bits": 13,
+      "coef_bits": 17,
+      "square_bits": 28,
+      "product_bits": 28,
+      "result_bits": 28
+    },
+    "address_bits": 6,
+    "qubits": 222,
+    "toffolis": 6206,
+    "qt": 1377732
+  },
+  {
+    "max_x": 3133452,
+    "worst_relative_error": 2.7125709678443855e-08,
+    "worst_x": 1040463,
+    "error_over_tolerance": 0.4550938904285431,
+    "precision": {
+      "delta_bits": 14,
+      "coef_bits": 17,
+      "square_bits": 28,
+      "product_bits": 28,
+      "result_bits": 29
+    },
+    "address_bits": 5,
+    "qubits": 223,
+    "toffolis": 6194,
+    "qt": 1381262
+  },
+  {
+    "max_x": 3133452,
+    "worst_relative_error": 2.9802322387695312e-08,
+    "worst_x": 1,
+    "error_over_tolerance": 0.5,
+    "precision": {
+      "delta_bits": 14,
+      "coef_bits": 17,
+      "square_bits": 28,
+      "product_bits": 28,
+      "result_bits": 28
+    },
+    "address_bits": 6,
+    "qubits": 222,
+    "toffolis": 6244,
+    "qt": 1386168
+  },
+  {
+    "max_x": 3133452,
+    "worst_relative_error": 3.4198550880049083e-08,
+    "worst_x": 1122286,
+    "error_over_tolerance": 0.5737564750015736,
+    "precision": {
+      "delta_bits": 12,
+      "coef_bits": 17,
+      "square_bits": 28,
+      "product_bits": 28,
+      "result_bits": 29
+    },
+    "address_bits": 6,
+    "qubits": 223,
+    "toffolis": 6254,
+    "qt": 1394642
+  },
+  {
+    "max_x": 3133452,
+    "worst_relative_error": 2.7125709678443855e-08,
+    "worst_x": 1040463,
+    "error_over_tolerance": 0.4550938904285431,
+    "precision": {
+      "delta_bits": 13,
+      "coef_bits": 17,
+      "square_bits": 28,
+      "product_bits": 28,
+      "result_bits": 29
+    },
+    "address_bits": 6,
+    "qubits": 223,
+    "toffolis": 6294,
+    "qt": 1403562
+  },
+  {
+    "max_x": 3133452,
+    "worst_relative_error": 2.8642500815578842e-08,
+    "worst_x": 2588653,
+    "error_over_tolerance": 0.4805414229631424,
+    "precision": {
+      "delta_bits": 14,
+      "coef_bits": 17,
+      "square_bits": 28,
+      "product_bits": 28,
+      "result_bits": 29
+    },
+    "address_bits": 6,
+    "qubits": 223,
+    "toffolis": 6332,
+    "qt": 1412036
+  }
+]

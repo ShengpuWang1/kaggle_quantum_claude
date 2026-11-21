@@ -1,0 +1,323 @@
+{
+  "schema_version": 1,
+  "experiment_id": "EXP-20261104T150202Z-19a9bc",
+  "created_at": "2026-11-04T15:02:02.995890+00:00",
+  "status": "rejected",
+  "task": "invsqrt",
+  "parent_id": "IMPORT-kirilltym-v9-365594383",
+  "config": {
+    "version": 1,
+    "agents": {
+      "director": {
+        "provider": "anthropic",
+        "model": "kimi-k3.1-pro",
+        "api_key": "<redacted>",
+        "api_key_env": null,
+        "auth_token": "<redacted>",
+        "auth_token_env": "AUTORESEARCH_DIRECTOR_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/plan",
+        "effort": "high",
+        "max_tokens": 16000,
+        "max_turns": 24,
+        "timeout_seconds": 600,
+        "max_retries": 2,
+        "max_tool_output_chars": 30000,
+        "stream": true,
+        "prompt": null,
+        "options": {}
+      },
+      "implementer": {
+        "provider": "anthropic",
+        "model": "kimi-k3.1-pro",
+        "api_key": "<redacted>",
+        "api_key_env": null,
+        "auth_token": "<redacted>",
+        "auth_token_env": "AUTORESEARCH_IMPLEMENTER_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/plan",
+        "effort": "high",
+        "max_tokens": 16000,
+        "max_turns": 40,
+        "timeout_seconds": 900,
+        "max_retries": 2,
+        "max_tool_output_chars": 30000,
+        "stream": true,
+        "prompt": null,
+        "options": {}
+      },
+      "reviewer": {
+        "provider": "anthropic",
+        "model": "kimi-k3.1-pro",
+        "api_key": "<redacted>",
+        "api_key_env": null,
+        "auth_token": "<redacted>",
+        "auth_token_env": "AUTORESEARCH_REVIEWER_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/plan",
+        "effort": "high",
+        "max_tokens": 12000,
+        "max_turns": 16,
+        "timeout_seconds": 600,
+        "max_retries": 2,
+        "max_tool_output_chars": 30000,
+        "stream": true,
+        "prompt": null,
+        "options": {}
+      }
+    },
+    "settings": {
+      "workers": 1,
+      "smoke_timeout_seconds": 1800,
+      "full_timeout_seconds": 7200,
+      "max_repair_cycles": 2,
+      "command_timeout_seconds": 300,
+      "command_output_chars": 30000
+    },
+    "tasks": {
+      "invsqrt": {
+        "build": [
+          "{python}",
+          "source/build.py"
+        ],
+        "tests": []
+      },
+      "dqi": {
+        "build": [
+          "{python}",
+          "source/build.py"
+        ],
+        "tests": []
+      },
+      "dfthcsos": {
+        "build": [
+          "{python}",
+          "source/build.py"
+        ],
+        "tests": []
+      }
+    }
+  },
+  "cycles": [
+    {
+      "number": 1,
+      "started_at": "2026-11-04T15:06:33.185982+00:00",
+      "implementation": {
+        "summary": "Implemented a deterministic Kickmix-based invsqrt generator that scans bounded phase-free windows for shared-target CCX pairs with equal shared-control ANFs and nonzero affine difference controls. It can use an existing affine wire or a restored X/CX realization, proves the complete original/replacement boundary maps equal on arbitrary dirty inputs, requires a negative-control mismatch, changes exactly one selected window, and checks the 62-qubit x-only schema, non-window instructions, and 1537-to-1536 static Toffoli-like reduction. Added reproducible proof/resource reporting and first-build parent snapshotting for repeatable regeneration.",
+        "changed_files": [
+          "source/build.py",
+          "source/anf_merge.py",
+          "source/README_ANF_MERGE.md"
+        ],
+        "build_notes": "Run `python source/build.py` from the workspace root. The first run asserts and snapshots the supplied parent as `source/parent_invsqrt.kmb`; subsequent runs use that pinned snapshot. A successful run writes `invsqrt.kmb` and `source/anf_merge_report.json`. Small deterministic ANF positive/negative self-tests run inside the build. I did not execute the build or official verification, per the orchestrator division of responsibilities.",
+        "known_limitations": "The actual champion scan has not been executed here, so discovery of an eligible site and all orchestrator checks remain unconfirmed. The search is intentionally restricted to the next same-target CCX with no intervening target dependency, at most 120 original operations and 26 active wires; if no certified pair exists, the build writes a negative report and stops rather than emitting a copied champion. Smoke/full correctness and measured cost are for the orchestrator to determine."
+      },
+      "checks": {
+        "ok": false,
+        "commands": [
+          {
+            "kind": "build",
+            "command": [
+              "/Users/spwang/Documents/Quant/kaggle_quantum/.venv/bin/python",
+              "source/build.py"
+            ],
+            "returncode": 1,
+            "seconds": 0.15557566692586988,
+            "timed_out": false,
+            "log": "00-build.log"
+          }
+        ],
+        "log_directory": "/Users/spwang/Documents/Quant/kaggle_quantum/autoresearch/experiments/EXP-20261104T150202Z-19a9bc/cycle-01-commands"
+      }
+    },
+    {
+      "number": 2,
+      "started_at": "2026-11-04T15:21:47.806715+00:00",
+      "implementation": {
+        "summary": "Repaired the failed no-candidate scan without changing the experiment’s shared-quadratic hypothesis. The deterministic ANF scanner now examines every dependency-safe same-target CCX pair in each bounded phase-free window rather than only the immediately next pair, retains and propagates intervening same-target CCXs, and can place the certified merged CCX at either pair site when the affine difference is realizable there. Complete-window ANF equality and negative-control rejection remain mandatory. Added a regression self-test proving that an incompatible intervening same-target CCX cannot hide a later compatible pair, and updated the build/report documentation accordingly.",
+        "changed_files": [
+          "source/anf_merge.py",
+          "source/build.py",
+          "source/README_ANF_MERGE.md"
+        ],
+        "build_notes": "The orchestrator should run `python source/build.py` from the workspace root. The existing pinned `source/parent_invsqrt.kmb` snapshot remains the input, with its required SHA-256 asserted before scanning. A successful build deterministically writes `invsqrt.kmb` and `source/anf_merge_report.json`; if no focused certified pair exists, it writes a negative report and stops rather than copying the champion. I did not execute the build or any verifier.",
+        "known_limitations": "Whether the widened bounded scan finds an eligible champion site remains unconfirmed until the orchestrator runs the build. The search still enforces at most 120 operations and 26 active wires, hard-stops at every non-X/CX/CCX instruction, and stops a pair search at target dependencies other than retained same-target CCXs. Smoke correctness, full-domain correctness, and measured cost remain entirely for orchestrator verification."
+      },
+      "checks": {
+        "ok": false,
+        "commands": [
+          {
+            "kind": "build",
+            "command": [
+              "/Users/spwang/Documents/Quant/kaggle_quantum/.venv/bin/python",
+              "source/build.py"
+            ],
+            "returncode": 1,
+            "seconds": 0.14470429194625467,
+            "timed_out": false,
+            "log": "00-build.log"
+          }
+        ],
+        "log_directory": "/Users/spwang/Documents/Quant/kaggle_quantum/autoresearch/experiments/EXP-20261104T150202Z-19a9bc/cycle-02-commands"
+      }
+    },
+    {
+      "number": 3,
+      "started_at": "2026-11-04T15:28:25.913452+00:00",
+      "implementation": {
+        "summary": "Repaired the no-candidate scan by removing the premature stop at intervening uses of the CCX pair’s target. The bounded scanner now examines every same-target CCX pair within each phase-free 120-operation/26-wire window, propagates all intervening operations, and relies on complete original/replacement ANF equality to certify dependency safety. Added scan statistics for target-dependency-crossing pairs and a regression self-test where two cancelling target-controlled CCXs previously hid a valid shared-quadratic merge. Updated the negative-report scope and source documentation. The pinned-parent, single-window, negative-control, register, qubit, non-window, and static-count checks remain unchanged.",
+        "changed_files": [
+          "source/anf_merge.py",
+          "source/build.py",
+          "source/README_ANF_MERGE.md"
+        ],
+        "build_notes": "Run `python source/build.py` from the workspace root. It reads the pinned workspace-local `source/parent_invsqrt.kmb`, asserts SHA-256 `0104d1b44d7394906c9ef1d445efbd8ca0bed8d2df833ce164e1802335f6c137`, runs the deterministic self-tests and widened focused scan, and writes `invsqrt.kmb` plus `source/anf_merge_report.json` only if a certified one-CCX reduction is found. If none is found, it still writes a negative report and stops without copying the champion. I did not execute the build, smoke check, or full verifier.",
+        "known_limitations": "Whether the champion contains a certifiable pair across an intervening target dependency remains unconfirmed until the orchestrator runs the build. The search remains restricted to unconditional X/CX/CCX runs, at most 120 operations and 26 active wires, and the focused equal-shared-control/nonzero-affine-difference template. Smoke correctness, full-domain correctness, measured cost, and promotion are left entirely to orchestrator verification."
+      },
+      "checks": {
+        "ok": false,
+        "commands": [
+          {
+            "kind": "build",
+            "command": [
+              "/Users/spwang/Documents/Quant/kaggle_quantum/.venv/bin/python",
+              "source/build.py"
+            ],
+            "returncode": 1,
+            "seconds": 0.33318008307833225,
+            "timed_out": false,
+            "log": "00-build.log"
+          }
+        ],
+        "log_directory": "/Users/spwang/Documents/Quant/kaggle_quantum/autoresearch/experiments/EXP-20261104T150202Z-19a9bc/cycle-03-commands"
+      }
+    }
+  ],
+  "updated_at": "2026-11-04T15:34:23.918367+00:00",
+  "parent": {
+    "schema_version": 1,
+    "champion_id": "IMPORT-kirilltym-v9-365594383",
+    "task": "invsqrt",
+    "parent_id": "baseline",
+    "created_at": "2026-11-04T13:59:20.768513+00:00",
+    "cost": 97921.60740959947,
+    "reference_cost": 2076774.233715282,
+    "artifacts": {
+      "task": "invsqrt",
+      "files": [
+        {
+          "path": "invsqrt.kmb",
+          "bytes": 479046,
+          "sha256": "0104d1b44d7394906c9ef1d445efbd8ca0bed8d2df833ce164e1802335f6c137"
+        }
+      ],
+      "digest": "f2596325f171a818fa3ad1bab22ebe30090a39dcaaa003745d12cc3ca71e55e4"
+    },
+    "source": {
+      "files": [
+        {
+          "path": "CREDITS.md",
+          "bytes": 7597,
+          "sha256": "f96bc07cc7bead77e38c4e653829b01e324816d7953e6c47374f2a36646c8f7e"
+        },
+        {
+          "path": "LICENSE_SCOPES.txt",
+          "bytes": 137,
+          "sha256": "b6d8d1ac81f03d14230fe151e9901ea69f11b2e4848307e2caed0ca91b296e47"
+        },
+        {
+          "path": "STARTING_POINT.md",
+          "bytes": 1581,
+          "sha256": "266cb81544caeeeac0d9a60df265ac6c40a58f8a3ca93646cd6ba71f43215aad"
+        },
+        {
+          "path": "full_dfthcsos_report.json",
+          "bytes": 1547,
+          "sha256": "8ead54f788d271bcf00fd7f160997d7795d405905209192ce48541083b19a53e"
+        },
+        {
+          "path": "full_dqi_report.json",
+          "bytes": 1094,
+          "sha256": "6692951137805169820d309ab9b644611e6d4dc5af13886df4cc65ef78d51014"
+        },
+        {
+          "path": "full_invsqrt_report.json",
+          "bytes": 556,
+          "sha256": "59bd1d49a7bc324c602af5239c6c6f2d801ccc95ea937e26222d0689bfd8df32"
+        },
+        {
+          "path": "notebook.ipynb",
+          "bytes": 316084,
+          "sha256": "beaedcca0dca57909a9382e607cfb17f1ebf3e6d440554bb07c0b617c44abc69"
+        },
+        {
+          "path": "output_manifest.json",
+          "bytes": 1920,
+          "sha256": "55e187d9589f9ba4c9ffa6908fd51524b9b8d657c336500d31d734205ae1d472"
+        },
+        {
+          "path": "source_pins.json",
+          "bytes": 6445,
+          "sha256": "41f7d655c1ba96b9e94332d73abafea5a58723d4e2ba205a9711c5e06b0211d1"
+        },
+        {
+          "path": "verification_conditions.json",
+          "bytes": 56288,
+          "sha256": "712bd6bb9545009ccfa1d474a7ae5feddecd143fce45bc50a4d4170bc57f1f64"
+        },
+        {
+          "path": "verification_receipt.json",
+          "bytes": 122925,
+          "sha256": "483f5e636190be2924cc9591da14aefc773e0c20e7e6d2fb41e3ce9e8fcdc291"
+        }
+      ],
+      "digest": "c660e8785f1c9531c80defe1eec615a1bb818df1c2ff823846260cd106d9eaf8"
+    },
+    "verification": {
+      "mode": "full",
+      "result": "runs/kirilltym-v9-365594383-full/invsqrt.json",
+      "result_sha256": "7481ffb3ee21ab2d3eacff924f71c7d17add2553a625035d31941bcf320ef7d5"
+    },
+    "provenance": "Published Kaggle notebook kirilltym/quantum-circuits-four-loaders-eight-toffolis v9 (script 365594383); independently verified locally at full settings",
+    "external_source": {
+      "notebook": "https://www.kaggle.com/code/kirilltym/quantum-circuits-four-loaders-eight-toffolis?scriptVersionId=365594383",
+      "version": 9,
+      "script_version_id": 365594383,
+      "archive_sha256": "e02ac3c0401c68618c154b84dab25a9cf3dce337985f8a9e680d301603b1ce15"
+    }
+  },
+  "plan": {
+    "title": "ANF-certified shared-quadratic CCX merge in the champion invsqrt circuit",
+    "task": "invsqrt",
+    "evidence": [
+      {
+        "source_type": "paper",
+        "title": "Optimizing Quantum Circuits for Arithmetic",
+        "url": "https://arxiv.org/abs/1805.12445",
+        "local_path": "docs/papers/1805.12445_optimizing_quantum_circuits_for_arithmetic.pdf",
+        "insight": "Häner, Roetteler, and Svore reduce reversible arithmetic by exploiting its algebraic structure: their fixed-point squaring construction uses diagonal terms and each symmetric cross product only once, rather than synthesizing a generic multiplication. The useful mechanism here is to expose and cancel/share quadratic Boolean terms instead of treating a compiled gate sequence as immutable. The paper also distinguishes this structured arithmetic optimization from simply increasing approximation precision."
+      }
+    ],
+    "hypothesis": "The 62-qubit champion may still contain a phase-free window in which two same-target CCX gates have one control related by an intervening CX-only affine transformation. Propagating square-free Boolean polynomials can expose the shared quadratic term: toggling with controls A·B and (A⊕C)·B leaves only C·B, so the pair can be resynthesized with one CCX while retaining the affine updates. Applying the paper's share/cancel-quadratic-terms mechanism to one such exactly proved window should reduce executed Toffoli-like count without changing the inverse-square-root approximation, phase rotations, or qubit count. This is a new, deterministic scan of the actual champion rather than another rebuild of the much larger reference/linear-seed generator.",
+    "implementation_steps": [
+      "Create a deterministic source/build.py that first asserts the parent artifact SHA-256 is 0104d1b44d7394906c9ef1d445efbd8ca0bed8d2df833ce164e1802335f6c137, loads it with the official kickmix reader, and preserves its sole x register and all scratch allocation semantics.",
+      "Partition the instruction stream only at non-X/CX/CCX operations. Consider bounded phase-free windows (at most 26 active wires and 120 operations) containing repeated same-target CCX gates; never cross HMR, measurement, BIT_STORE, Z_POW, allocation/free, or other non-phase-free instructions.",
+      "For each bounded window, symbolically propagate every output wire as a square-free algebraic normal form over arbitrary, potentially dirty boundary bits. Search only the focused shared-target template: two CCX operations on the same target, with one control's ANFs differing by a nonzero affine polynomial and the other control equal, where a CX-only realization of the required affine update is already present or can be retained unchanged. Resynthesize the pair using the single difference-control CCX when wire-distinctness and dependency conditions hold.",
+      "Require the complete original and rewritten windows to have identical ANFs on every wire, which proves equality for all boundary bit strings and hence the same permutation on arbitrary superpositions. Include a negative-control mutation that must fail this comparison. Select exactly one certified rewrite with the greatest CCX reduction, using instruction index as a deterministic tie-break; if none is found, stop without emitting a promoted candidate.",
+      "Serialize the resulting circuit as invsqrt.kmb without touching any instruction outside the selected window. Save the original/replacement gate lists, window boundary proof, selected indices, before/after static Toffoli-like counts, qubit count, and artifact hashes as reproducible source-side reports.",
+      "Run the configured bounded build checks and official invsqrt smoke verification for correctness only, followed by the orchestrator's single terminal full verification. Do not tune precision, rotations, salts, measurements, or other tasks in this experiment."
+    ],
+    "expected_resource_effect": "Each successful shared-target merge removes one CCX from every execution of a deterministic phase-free window; a mirrored compute/uncompute opportunity could remove two. Since invsqrt cost is Q*(mean Toffoli-like + T/4), keeping Q=62 and the rotation stream unchanged should reduce cost by approximately 62 cost units per mean executed CCX removed, with no anticipated qubit or rotation-synthesis overhead.",
+    "risks": [
+      "The already heavily merged champion may contain no remaining instance of this narrow template; that is a clean negative result and must not trigger a broader rewrite.",
+      "Naive symbolic expansion can grow rapidly, so active-wire/window bounds and deterministic search limits are necessary.",
+      "A local algebraic proof is invalid if the window crosses phase, measurement, classical-state, or allocation semantics; all such boundaries must remain hard stops.",
+      "Changing circuit bytes changes hash-seeded HMR randomness, so a smoke pass is not evidence of full-domain success; only the orchestrator's full run decides promotion.",
+      "A static CCX reduction may have a smaller mean benefit if the selected site is not executed on every shot, so the final gate is strict measured cost rather than an assumed improvement."
+    ],
+    "acceptance_criteria": [
+      "The build consumes the exact pinned champion bytes and produces a deterministic invsqrt.kmb plus reproducible proof/resource reports; a second build is byte-identical.",
+      "Exactly one window is changed, its complete boundary ANF is certified equal for every wire on arbitrary dirty inputs, and the negative control is rejected.",
+      "The candidate has 62 qubits, the unchanged 22-qubit little-endian x-only register schema, unchanged non-window instructions and rotations, and at least one fewer static Toffoli-like operation than the champion's 1537.",
+      "The configured official invsqrt smoke check passes; smoke cost is not compared with full cost.",
+      "The unmodified official full invsqrt verifier returns PASS with finite positive score strictly below 97921.60740959947, and the verified candidate bytes remain unchanged for promotion."
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+numpy
+scipy
+pandas
+matplotlib
+sympy
+networkx
+jupyterlab
+ipykernel
+nbformat
+kaggle
+requests
+anthropic
+openai
+pyyaml
+jsonschema
+python-dotenv
+pypdf
+pytest
+ruff
+# Native kickmix is built separately from vendor/Qualtran/kickmix.

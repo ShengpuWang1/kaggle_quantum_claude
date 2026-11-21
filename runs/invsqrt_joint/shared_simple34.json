@@ -1,0 +1,72 @@
+{
+  "first_block": 34,
+  "second_block": 35,
+  "seconds": 23.331142917013494,
+  "attempts": [
+    {
+      "status": "unknown",
+      "seconds": 3.4665378750069067,
+      "variables": 26268,
+      "clauses": 103339,
+      "kind": "first",
+      "existing_product": 0,
+      "residual_side": "second"
+    },
+    {
+      "status": "unknown",
+      "seconds": 4.014000583003508,
+      "variables": 26268,
+      "clauses": 103339,
+      "kind": "first",
+      "existing_product": 1,
+      "residual_side": "second"
+    },
+    {
+      "status": "unknown",
+      "seconds": 3.7386604589992203,
+      "variables": 26268,
+      "clauses": 103339,
+      "kind": "first",
+      "existing_product": 2,
+      "residual_side": "second"
+    },
+    {
+      "status": "unknown",
+      "seconds": 4.101933875004761,
+      "variables": 26268,
+      "clauses": 103339,
+      "kind": "first",
+      "existing_product": 3,
+      "residual_side": "second"
+    },
+    {
+      "kind": "second",
+      "existing_product": 0,
+      "status": "outside_first_basis"
+    },
+    {
+      "kind": "second",
+      "existing_product": 1,
+      "status": "outside_first_basis"
+    },
+    {
+      "status": "unknown",
+      "seconds": 3.745530874992255,
+      "variables": 25383,
+      "clauses": 99827,
+      "kind": "second",
+      "existing_product": 2,
+      "residual_side": "first"
+    },
+    {
+      "status": "unknown",
+      "seconds": 4.00933979198453,
+      "variables": 25383,
+      "clauses": 99827,
+      "kind": "second",
+      "existing_product": 3,
+      "residual_side": "first"
+    }
+  ],
+  "status": "unknown"
+}

@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "experiment_id": "EXP-20261120T074048Z-e403b3",
+  "created_at": "2026-11-20T07:40:48.891108+00:00",
+  "status": "failed",
+  "task": "invsqrt",
+  "parent_id": "IMPORT-kirilltym-v9-365594383",
+  "config": {
+    "version": 1,
+    "agents": {
+      "director": {
+        "provider": "anthropic",
+        "model": "kimi-k3.1-pro",
+        "api_key": "<redacted>",
+        "api_key_env": null,
+        "auth_token": "<redacted>",
+        "auth_token_env": "AUTORESEARCH_DIRECTOR_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/plan",
+        "effort": "high",
+        "max_tokens": 16000,
+        "max_turns": 24,
+        "timeout_seconds": 600,
+        "max_retries": 2,
+        "max_tool_output_chars": 30000,
+        "stream": true,
+        "prompt": null,
+        "options": {}
+      },
+      "implementer": {
+        "provider": "anthropic",
+        "model": "kimi-k3.1-pro",
+        "api_key": "<redacted>",
+        "api_key_env": null,
+        "auth_token": "<redacted>",
+        "auth_token_env": "AUTORESEARCH_IMPLEMENTER_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/plan",
+        "effort": "high",
+        "max_tokens": 16000,
+        "max_turns": 40,
+        "timeout_seconds": 900,
+        "max_retries": 2,
+        "max_tool_output_chars": 30000,
+        "stream": true,
+        "prompt": null,
+        "options": {}
+      },
+      "reviewer": {
+        "provider": "anthropic",
+        "model": "kimi-k3.1-pro",
+        "api_key": "<redacted>",
+        "api_key_env": null,
+        "auth_token": "<redacted>",
+        "auth_token_env": "AUTORESEARCH_REVIEWER_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/plan",
+        "effort": "high",
+        "max_tokens": 12000,
+        "max_turns": 16,
+        "timeout_seconds": 600,
+        "max_retries": 2,
+        "max_tool_output_chars": 30000,
+        "stream": true,
+        "prompt": null,
+        "options": {}
+      }
+    },
+    "settings": {
+      "workers": 1,
+      "smoke_timeout_seconds": 1800,
+      "full_timeout_seconds": 7200,
+      "max_repair_cycles": 2,
+      "command_timeout_seconds": 300,
+      "command_output_chars": 30000
+    },
+    "tasks": {
+      "invsqrt": {
+        "build": [
+          "{python}",
+          "source/build.py"
+        ],
+        "tests": []
+      },
+      "dqi": {
+        "build": [
+          "{python}",
+          "source/build.py"
+        ],
+        "tests": []
+      },
+      "dfthcsos": {
+        "build": [
+          "{python}",
+          "source/build.py"
+        ],
+        "tests": []
+      }
+    }
+  },
+  "cycles": [
+    {
+      "number": 1,
+      "started_at": "2026-11-20T07:48:44.206136+00:00",
+      "implementation": {
+        "summary": "Implemented the deterministic invsqrt measurement-erasure build. It snapshots and hash-pins the champion, conservatively scans for eligible clean CCX compute/uncompute pairs, exhaustively certifies boundary values/phases for both HMR outcomes with a no-CZ negative control, rewrites exactly one qualifying second CCX, validates circuit/resource invariants, serializes via official kickmix, and emits a deterministic proof/resource report. Added build/proof documentation.",
+        "changed_files": [
+          "source/build.py",
+          "source/MEASUREMENT_ERASURE.md"
+        ],
+        "build_notes": "Run `python source/build.py` from the workspace root. The first run snapshots the supplied hash-checked invsqrt.kmb as source/parent_invsqrt.kmb; subsequent runs use only that snapshot. Successful generation writes invsqrt.kmb and source/measurement_erasure_report.json. If no pair is certified, it emits a negative report and removes the output rather than preserving the champion as a candidate.",
+        "known_limitations": "The implementer did not execute the build or official smoke/full verification. Candidate generation depends on the champion containing a pair satisfying the approved conservative bounds; otherwise the build intentionally produces a bounded negative result."
+      },
+      "checks": {
+        "ok": true,
+        "commands": [
+          {
+            "kind": "build",
+            "command": [
+              "/Users/spwang/Documents/Quant/kaggle_quantum_claude/.venv/bin/python",
+              "source/build.py"
+            ],
+            "returncode": 0,
+            "seconds": 0.15422941697761416,
+            "timed_out": false,
+            "log": "00-build.log"
+          }
+        ],
+        "log_directory": "/Users/spwang/Documents/Quant/kaggle_quantum_claude/autoresearch/experiments/EXP-20261120T074048Z-e403b3/cycle-01-commands"
+      }
+    }
+  ],
+  "updated_at": "2026-11-20T08:02:22.815379+00:00",
+  "parent": {
+    "schema_version": 1,
+    "champion_id": "IMPORT-kirilltym-v9-365594383",
+    "task": "invsqrt",
+    "parent_id": "baseline",
+    "created_at": "2026-11-04T13:59:20.768513+00:00",
+    "cost": 97921.60740959947,
+    "reference_cost": 2076774.233715282,
+    "artifacts": {
+      "task": "invsqrt",
+      "files": [
+        {
+          "path": "invsqrt.kmb",
+          "bytes": 479046,
+          "sha256": "0104d1b44d7394906c9ef1d445efbd8ca0bed8d2df833ce164e1802335f6c137"
+        }
+      ],
+      "digest": "f2596325f171a818fa3ad1bab22ebe30090a39dcaaa003745d12cc3ca71e55e4"
+    },
+    "source": {
+      "files": [
+        {
+          "path": "CREDITS.md",
+          "bytes": 7597,
+          "sha256": "f96bc07cc7bead77e38c4e653829b01e324816d7953e6c47374f2a36646c8f7e"
+        },
+        {
+          "path": "LICENSE_SCOPES.txt",
+          "bytes": 137,
+          "sha256": "b6d8d1ac81f03d14230fe151e9901ea69f11b2e4848307e2caed0ca91b296e47"
+        },
+        {
+          "path": "STARTING_POINT.md",
+          "bytes": 1581,
+          "sha256": "266cb81544caeeeac0d9a60df265ac6c40a58f8a3ca93646cd6ba71f43215aad"
+        },
+        {
+          "path": "full_dfthcsos_report.json",
+          "bytes": 1547,
+          "sha256": "8ead54f788d271bcf00fd7f160997d7795d405905209192ce48541083b19a53e"
+        },
+        {
+          "path": "full_dqi_report.json",
+          "bytes": 1094,
+          "sha256": "6692951137805169820d309ab9b644611e6d4dc5af13886df4cc65ef78d51014"
+        },
+        {
+          "path": "full_invsqrt_report.json",
+          "bytes": 556,
+          "sha256": "59bd1d49a7bc324c602af5239c6c6f2d801ccc95ea937e26222d0689bfd8df32"
+        },
+        {
+          "path": "notebook.ipynb",
+          "bytes": 316084,
+          "sha256": "beaedcca0dca57909a9382e607cfb17f1ebf3e6d440554bb07c0b617c44abc69"
+        },
+        {
+          "path": "output_manifest.json",
+          "bytes": 1920,
+          "sha256": "55e187d9589f9ba4c9ffa6908fd51524b9b8d657c336500d31d734205ae1d472"
+        },
+        {
+          "path": "source_pins.json",
+          "bytes": 6445,
+          "sha256": "41f7d655c1ba96b9e94332d73abafea5a58723d4e2ba205a9711c5e06b0211d1"
+        },
+        {
+          "path": "verification_conditions.json",
+          "bytes": 56288,
+          "sha256": "712bd6bb9545009ccfa1d474a7ae5feddecd143fce45bc50a4d4170bc57f1f64"
+        },
+        {
+          "path": "verification_receipt.json",
+          "bytes": 122925,
+          "sha256": "483f5e636190be2924cc9591da14aefc773e0c20e7e6d2fb41e3ce9e8fcdc291"
+        }
+      ],
+      "digest": "c660e8785f1c9531c80defe1eec615a1bb818df1c2ff823846260cd106d9eaf8"
+    },
+    "verification": {
+      "mode": "full",
+      "result": "runs/kirilltym-v9-365594383-full/invsqrt.json",
+      "result_sha256": "7481ffb3ee21ab2d3eacff924f71c7d17add2553a625035d31941bcf320ef7d5"
+    },
+    "provenance": "Published Kaggle notebook kirilltym/quantum-circuits-four-loaders-eight-toffolis v9 (script 365594383); independently verified locally at full settings",
+    "external_source": {
+      "notebook": "https://www.kaggle.com/code/kirilltym/quantum-circuits-four-loaders-eight-toffolis?scriptVersionId=365594383",
+      "version": 9,
+      "script_version_id": 365594383,
+      "archive_sha256": "e02ac3c0401c68618c154b84dab25a9cf3dce337985f8a9e680d301603b1ce15"
+    }
+  },
+  "plan": {
+    "title": "Measurement-erased uncomputation of one certified invsqrt AND pair",
+    "task": "invsqrt",
+    "evidence": [
+      {
+        "source_type": "paper",
+        "title": "Halving the cost of quantum addition",
+        "url": "https://arxiv.org/abs/1709.06648",
+        "local_path": "docs/papers/gidney_2018_halving_quantum_addition.pdf",
+        "insight": "Gidney's temporary logical-AND stores an AND with four T gates and later erases it with zero T gates by measurement plus a conditional CZ phase correction. The relevant mechanism is not a generic adder rewrite: when a clean ancilla holding a·b is later cleared by a second CCX with unchanged controls, that uncomputing CCX can be replaced by HMR on the ancilla and CZ on the original controls conditioned on the fresh measurement bit. This removes one Toffoli-like operation while preserving the complete values-and-phase map."
+      }
+    ],
+    "hypothesis": "The champion still contains a clean compute/use/uncompute sequence of the form CCX(a,b,t), operations that only read t and do not write a, b, or t, then CCX(a,b,t), with t proven zero before the first CCX. Applying the paper's temporary-AND erasure to only the second CCX should remove one unconditionally executed Toffoli-like gate without changing the inverse-square-root approximation, rotations, qubit count, or scratch cleanliness. This is materially different from the rejected shared-affine-quadratic merge: the prior scan found no affine-sharing match, whereas this experiment tests measurement-based erasure of an existing matched compute/uncompute pair.",
+    "implementation_steps": [
+      "Create a deterministic source/build.py that loads the supplied workspace champion invsqrt.kmb, snapshots it as source/parent_invsqrt.kmb for repeatable rebuilds, and requires SHA-256 0104d1b44d7394906c9ef1d445efbd8ca0bed8d2df833ce164e1802335f6c137 before every scan. Use the official kickmix reader/serializer and do not depend on the imported notebook's unavailable Kaggle inputs.",
+      "Scan only unconditional, phase-free X/CX/CCX regions. Match exactly two CCX instructions with the same two controls a,b and target t, requiring conservative clean-target provenance from a dominating R/reset with no intervening t write. Between the pair, forbid every write to a, b, or t and every measurement, reset, allocation/free, classical-condition change, Z_POW, or non-X/CX/CCX operation; t may only be read as a control. Bound candidates to at most 256 instructions and 16 active boundary wires.",
+      "For one deterministically selected eligible pair (earliest second-CCX instruction index), retain the first CCX and replace only the second with HMR t b_new followed by CZ a b if b_new. Choose b_new as a previously unused classical-bit identifier and use it nowhere else. Preserve the surrounding instruction order and all existing measurement bits.",
+      "Certify the selected rewrite by exhaustive boundary simulation for every basis assignment of all other active wires, t=0 at entry, and both HMR outcomes. Require original and replacement windows to agree on every output wire and tracked phase; equality on every basis value and phase proves the same linear operation on arbitrary superpositions. Run a negative control with the conditional CZ omitted and require a detected phase mismatch. If no pair passes, emit a negative report and stop without copying the champion as a candidate.",
+      "Serialize exactly one rewritten circuit to invsqrt.kmb. Assert 62 qubits, the unchanged sole 22-qubit little-endian x register, identical instructions outside the one-gate replacement site, an unchanged Z_POW stream, no new quantum wires, and a static Toffoli-like count of 1536 versus the champion's 1537. Save the selected indices, pair and replacement instructions, clean-target proof, exhaustive-equivalence report, negative-control result, resource counts, and input/output hashes.",
+      "Let the orchestrator run the configured build checks and official invsqrt smoke verification for correctness only, then its single terminal full verification. Do not alter rotations, precision, approximation tables, other circuit regions, salts, or other tasks."
+    ],
+    "expected_resource_effect": "One eligible unconditional pair changes two executed CCX gates in the compute/uncompute lifecycle to one CCX plus a zero-Toffoli HMR/conditional-CZ erasure. With Q and the rotation/T stream fixed, each removed executed CCX should reduce invsqrt cost by approximately 62 cost units; the experiment deliberately rewrites only one pair. It adds one measurement/correction site and may increase reaction depth, but adds no qubits or synthesized rotations.",
+    "risks": [
+      "The champion may have no remaining pair satisfying the clean-target and unchanged-control conditions, especially because much of its arithmetic already uses measurement uncomputation; that is a bounded negative result, not a reason to broaden the rewrite.",
+      "Replacing an arbitrary toggling CCX rather than a true clean-AND erasure would be incorrect, so target provenance and control/target write exclusion must remain conservative.",
+      "HMR correctness depends on the phase correction and classical-bit scoping; the exhaustive two-outcome proof and negative control are required before any official run.",
+      "Changing circuit bytes changes hash-seeded measurement randomness. The local proof covers both outcomes for the new site, but smoke success alone is insufficient and the terminal full verifier remains authoritative.",
+      "The added measurement can increase reaction depth and operational overhead even though the official cost decreases; no claim is made about wall-clock runtime or hosted score."
+    ],
+    "acceptance_criteria": [
+      "Two deterministic builds consume the pinned champion hash and produce byte-identical invsqrt.kmb plus the same proof/resource reports; no external notebook inputs are needed.",
+      "Exactly one second-CCX site is replaced, its target is certified clean before the first CCX, controls and target are not written between the pair, and exhaustive entry-basis/two-outcome simulation proves identical values and phases while the no-CZ negative control fails.",
+      "The candidate has 62 qubits, the original x-only 22-qubit register schema, unchanged non-site instructions and Z_POW rotations, one fresh classical measurement bit, and exactly 1536 static Toffoli-like operations versus 1537 in the parent.",
+      "The configured official invsqrt smoke check passes, including restored x and clean scratch; smoke cost is not used for promotion.",
+      "The unmodified official full invsqrt verifier returns PASS with finite positive cost strictly below 97921.60740959947, and the verified candidate bytes are unchanged for promotion."
+    ]
+  }
+}

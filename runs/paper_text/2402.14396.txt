@@ -1,0 +1,1987 @@
+=== PDF PAGE 1 ===
+Quantum Circuit Optimization with AlphaTensor
+Francisco J. R. Ruiz∗,1 Tuomas Laakkonen∗,2 Johannes Bausch1
+Matej Balog1 Mohammadamin Barekatain1 Francisco J. H. Heras1
+Alexander Novikov1 Nathan Fitzpatrick3 Bernardino Romera-Paredes1
+John van de Wetering4 Alhussein Fawzi1 Konstantinos Meichanetzidis2
+Pushmeet Kohli1
+1 Google DeepMind, 6-8 Handyside Street, London N1C 4UZ, UK
+2 Quantinuum, 17 Beaumont Street, Oxford OX1 2NA, UK
+3 Quantinuum, Terrington House, 13–15 Hills Road, Cambridge CB2 1NL, UK
+4 Informatics Institute, University of Amsterdam, 1098 XH Amsterdam, NL
+Abstract
+A key challenge in realizing fault-tolerant quantum computers is circuit optimization. Focusing on
+the most expensive gates in fault-tolerant quantum computation (namely, the T gates), we address the
+problem of T-count optimization, i.e., minimizing the number of T gates that are needed to implement a
+given circuit. To achieve this, we develop AlphaTensor-Quantum, a method based on deep reinforcement
+learning that exploits the relationship between optimizing T-count and tensor decomposition. Unlike existing
+methods for T-count optimization, AlphaTensor-Quantum can incorporate domain-specific knowledge about
+quantum computation and leverage gadgets, which significantly reduces the T-count of the optimized circuits.
+AlphaTensor-Quantum outperforms the existing methods for T-count optimization on a set of arithmetic
+benchmarks (even when compared without making use of gadgets). Remarkably, it discovers an efficient
+algorithm akin to Karatsuba’s method for multiplication in finite fields. AlphaTensor-Quantum also finds
+the best human-designed solutions for relevant arithmetic computations used in Shor’s algorithm and for
+quantum chemistry simulation, thus demonstrating it can save hundreds of hours of research by optimizing
+relevant quantum circuits in a fully automated way.
+1 Introduction
+Quantum computation presents a fundamentally new approach to solving computational problems. Since its
+inception [1, 2], many potential applications in various fields have been proposed, including cryptography [3],
+drug discovery [4], and materials science and high energy physics [5]. Yet, fault-tolerant quantum computation
+introduce some expensive components that have a significant impact on the overall runtime and resource cost
+[6, 7]; thus it is important to minimize the use of these components in order to enable the execution of large
+computations that address these real-world problems.
+∗Equal contributors.
+1
+arXiv:2402.14396v2  [quant-ph]  5 Mar 2024
+
+=== PDF PAGE 2 ===
+Figure 1: Pipeline of AlphaTensor-Quantum. We first extract the non-Clifford components of an input
+circuit and represent them as a symmetric signature tensorT , a binary tensor depicted as a cube of solid and
+transparent blocks. We then use AlphaTensor-Quantum to find a low-rank Waring decomposition of that tensor,
+that is, a set of factors (displayed as columns of blocks) that can be mapped back into an optimized quantum
+circuit with reduced T-count. In general, there is a one-to-one correspondence between factors and T gates, but
+AlphaTensor-Quantum can also group factors intogadgets (highlighted in green and blue)—constructions that
+can be equivalently implemented with fewer T gates than the sum of the factors.
+To be able to implement any quantum algorithm, universal quantum computers require a combination
+of two types of quantum gates: Clifford (e.g., Hadamard or CNOT) and non-Clifford gates (e.g., the T
+gate). Non-Clifford gates are required to achieve universality [8]; indeed, a quantum algorithm implemented
+using Clifford gates alone can be simulated on a classical computer efficiently, i.e., in polynomial time
+(Gottesman–Knill theorem [9]). Unfortunately, non-Clifford gates are the expensive components, as they are
+notoriously harder to implement than Clifford gates. This is because fault-tolerant quantum computation
+requires error correction schemes [10, 11], whose implementation requires distilling magic states [6], a process
+with high spacetime cost (qubit-seconds) [12]. For example, the spacetime cost of the T gate is about two
+orders of magnitude larger than the cost of a CNOT operation between two adjacent qubits [8]. Consequently,
+the cost of a quantum algorithm in the fault-tolerant era is arguably dominated by the cost of implementing the
+non-Clifford gates.
+In this paper, we focus on the problem of T-count optimization, i.e., minimizing the number of T gates of
+quantum algorithms. T-count optimization is an NP-hard problem [13] that has been addressed in the literature
+using different approaches [14–23]. Like most of these works, and for the reasons laid out before, we consider
+the T-count as the sole metric of complexity of a quantum circuit.
+With that aim, we first transform the problem into an instance of tensor decomposition, exploiting the
+relationship between T-count optimization and finding the symmetric tensor rank [ 16, 18]. We develop
+AlphaTensor-Quantum, an extension of AlphaTensor [24], a method that finds low-rank tensor decompositions
+using deep reinforcement learning (RL). AlphaTensor-Quantum tackles the problem from the tensor decompo-
+sition point of view and is able to find efficient algorithm implementations with low T-count. The approach is
+illustrated in Figure 1.
+2
+
+=== PDF PAGE 3 ===
+AlphaTensor-Quantum addresses three main challenges that go beyond the capabilities of AlphaTensor
+[24] when applied on this problem. First, we need to optimize the symmetric tensor rank, as opposed to the
+standard notion of tensor rank. Second, the approach must extend to large tensor sizes, since the size of the
+tensor corresponds directly to the number of qubits in the circuit to be optimized. Third, AlphaTensor cannot
+leverage domain knowledge that falls outside of the tensor decomposition framework. AlphaTensor-Quantum
+addresses these three challenges. First, it modifies the RL environment and actions to provide symmetric
+decompositions (called Waring decompositions) of the tensor; this has the beneficial side effect of reducing the
+action search space. Second, it scales up to larger tensors due to its innovative neural network architecture
+featuring symmetrization layers. Third, it incorporates domain knowledge by leveraging so-called gadgets
+(constructions that can save T gates by using auxiliary ancilla qubits); this is achieved through an efficient
+procedure embedded in the RL environment that exploits the Toffoli gadget [25] and the controlled S (CS)
+gadget [26].
+We show that AlphaTensor-Quantum is a powerful method for finding efficient quantum circuits. On a
+benchmark of arithmetic primitives, AlphaTensor-Quantum outperforms all existing methods for T-count opti-
+mization, especially when allowed to leverage domain knowledge. For the relevant operation of multiplication
+in finite fields, which has applications in cryptography [27], AlphaTensor-Quantum finds an efficient quantum
+algorithm with the same complexity as the classical Karatsuba’s method [28]. As quantum computations
+are reversible by nature, naive translations of classical algorithms commonly introduce overhead [ 29, 30].
+AlphaTensor-Quantum thus finds the most efficient quantum algorithm for multiplication on finite fields
+reported to date. We also optimize quantum primitives for other relevant problems, ranging from arithmetic
+computations used, e.g., in Shor’s algorithm [ 31], to Hamiltonian simulation in quantum chemistry, e.g.,
+FeMoco simulation [32, 33]. Here, AlphaTensor-Quantum recovers the best known hand-designed solutions,
+demonstrating it can effectively optimize circuits of interest in a fully automated way. We envision this
+approach can significantly accelerate discoveries in quantum computation as it saves the numerous hours of
+research invested in the design of optimized circuits.
+These results show that AlphaTensor-Quantum can effectively exploit the domain knowledge that is provided
+in the form of gadgets and state-of-the-art magic state factories [8], finding constructions that are optimal for
+the chosen metrics of interest. Because of its flexibility, AlphaTensor-Quantum can be readily extended in
+multiple ways, e.g., by considering different complexity metrics (other than the T-count), or by incorporating
+new domain knowledge. Thus, we expect that AlphaTensor-Quantum will become instrumental for automatic
+circuit optimization with new advancements in quantum computing.
+2 AlphaTensor-Quantum for T-count Optimization
+We describe AlphaTensor-Quantum, an RL agent to optimize the T-count of quantum circuits. It relies on the
+relation between T-count optimization and tensor decomposition (see Figure 1), which we briefly review next.
+Quantum gates. Quantum computers work with qubits. The state of a qubit is representable as a L2-
+normalized vector in C2, typically denoted with the bra-ket notation as|𝜓⟩, with the basis vectors being|0⟩
+and|1⟩. An 𝑁-qubit state is represented by a normalized vector in C2𝑁 . Quantum circuits perform linear
+operations over a quantum state that preserve the normalization, thus they can be represented by unitary
+matrices. Quantum circuits are implemented by quantum gates.
+3
+
+=== PDF PAGE 4 ===
+Quantum operator #Qubits Gate symbol Unitary matrix
+Controlled NOT (CNOT) 2
+S
+'›››
+«
+1 0 0 0
+0 1 0 0
+0 0 0 1
+0 0 1 0
+“ﬁﬁﬁ
+‹
+Controlled S (CS) 2
+S
+'›››
+«
+1 0 0 0
+0 1 0 0
+0 0 1 0
+0 0 0 𝑖
+“ﬁﬁﬁ
+‹
+Controlled Z (CZ) 2
+S
+'›››
+«
+1 0 0 0
+0 1 0 0
+0 0 1 0
+0 0 0 −1
+“ﬁﬁﬁ
+‹
+Controlled controlled Z (CCZ) 3
+S
+'›››››››››
+«
+1 0 0 0 0 0 0 0
+0 1 0 0 0 0 0 0
+0 0 1 0 0 0 0 0
+0 0 0 1 0 0 0 0
+0 0 0 0 1 0 0 0
+0 0 0 0 0 1 0 0
+0 0 0 0 0 0 1 0
+0 0 0 0 0 0 0 −1
+“ﬁﬁﬁﬁﬁﬁﬁﬁﬁ
+‹
+Toffoli (Controlled CNOT) 3
+S
+'›››››››››
+«
+1 0 0 0 0 0 0 0
+0 1 0 0 0 0 0 0
+0 0 1 0 0 0 0 0
+0 0 0 1 0 0 0 0
+0 0 0 0 1 0 0 0
+0 0 0 0 0 1 0 0
+0 0 0 0 0 0 0 1
+0 0 0 0 0 0 1 0
+“ﬁﬁﬁﬁﬁﬁﬁﬁﬁ
+‹
+Table 1: Common controlled gates used in quantum computing, along with their symbols and unitary matrices.
+Following convention, we focus on the Clifford+T gate set because it is the leading candidate for fault-
+tolerant implementation and it is approximately universal, meaning that any unitary matrix can be approximated
+arbitrarily well by a circuit consisting of these gates. In particular, we consider the following gate set: Hadamard
+(H) and controlled NOT (CNOT), which are Clifford gates, and T gates, given by the unitary matrices
+𝑇 =
+ 
+1 0
+0 e 𝑖𝜋/4
+!
+, 𝐻 = 1√
+2
+ 
+1 1
+1 −1
+!
+, and CNOT =
+'››››
+«
+1 0 0 0
+0 1 0 0
+0 0 0 1
+0 0 1 0
+“ﬁﬁﬁﬁ
+‹
+.
+For convenience, we also define the following Clifford gates:
+𝑆 =𝑇 2, 𝑍 =𝑆2, 𝑋 =
+ 
+0 1
+1 0
+!
+, and 𝑌 =
+ 
+0 −𝑖
+𝑖 0
+!
+.
+Each of these gates, except the CNOT, acts on a single qubit. The T, S, and Z gates perform phase
+operations, e.g., for a quantum state|𝑥⟩ with𝑥∈{ 0, 1}, we have𝑇|𝑥⟩ = e𝑖 𝜋4𝑥|𝑥⟩. The CNOT acts on two
+qubits: it flips the second qubit if the first qubit is in the |1⟩ state, i.e., CNOT|𝑥,𝑦⟩ =|𝑥,𝑥 ⊕𝑦⟩, where ‘⊕’
+denotes the XOR operation. Controlled gates like the CNOT enable quantum entanglement; these gates are
+summarized in Table 1. For instance, the controlled CNOT, or Toffoli gate, acts on three qubits and applies the
+operation Tof|𝑥,𝑦,𝑧 ⟩ =|𝑥,𝑦,𝑧 ⊕( 𝑥𝑦)⟩.
+4
+
+=== PDF PAGE 5 ===
+Quantum gates can be composed to implement arbitrary unitary operations: serial composition corresponds
+to matrix multiplication, and parallel composition corresponds to Kronecker product.
+Signature tensor. Given a circuit composed of CNOT and T gates alone, we can encode the information
+about the non-Clifford components into a symmetric signature tensorT∈{ 0, 1}𝑁×𝑁×𝑁 , with𝑁 being the
+number of qubits. Indeed, two CNOT + T circuits implement the same unitary matrix, up to Clifford gates, if
+and only if they have the same signature tensor [16, 18] (see Section 5.1).
+To optimize the T-count of a circuit, we first find its representation in terms of the signature tensor T .
+When the circuit has gates other than CNOT and T gates alone, to obtain the signature tensor we first split the
+circuit into two parts—one that consists only of Clifford gates, and a diagonal part that contains only CNOT
+and T gates. We do this using the techniques of Heyfron and Campbell [16] in combination with the algorithm
+by Vandaele et al. [34] (see Figure 3 for an example and Appendix C.1 for more details).
+After that, we obtainT by first mapping each T gate to a vector𝑢(𝑟)∈{ 0, 1}𝑁 , which is a straightforward
+step [35], and then constructing the tensor from the Waring decomposition (a symmetric form of the tensor
+rank decomposition) given by these vectors, i.e.,
+T =
+𝑅∑︁
+𝑟=1
+𝑢(𝑟)⊗𝑢(𝑟)⊗𝑢(𝑟),
+where𝑅 is the number of T gates, ‘⊗’ denotes the outer product, and the additions are under modulo 2.
+Crucially, any alternative Waring decomposition ofT can also be mapped to a quantum circuit, as each
+vector𝑢(𝑟) corresponds one-to-one to a T gate. The resulting circuit is equivalent to the original one up to
+Clifford operations [18], albeit with a different number of T gates—according to the number of factors𝑅 in the
+decomposition. Hence, we recast the problem of T-count optimization as finding low-rank decompositions of
+T .
+TensorGame. AlphaTensor-Quantum is an RL-based tensor factorization approach that finds low-rank
+Waring decompositions of tensors. It builds upon AlphaTensor [ 24], which uses deep RL to find low-rank
+decompositions of 3-dimensional tensors. AlphaTensor-Quantum recasts the problem of tensor decomposition
+into a single-player game, called TensorGame, in which at each step 𝑠 the player observes the game state,
+consisting of a tensorT(𝑠) and all the past played actions (initially, the tensorT(1) is set to the signature tensor
+of interestT , and there are no past actions). At step𝑠, the player selects an action consisting of a vector (or
+factor)𝑢(𝑠)∈{ 0, 1}𝑁 . Choosing an action affects the game state: the tensorT(𝑠+1) =T(𝑠)−𝑢(𝑠)⊗𝑢(𝑠)⊗𝑢(𝑠),
+and𝑢(𝑠) is included as the last played action. The goal of TensorGame is to reach the all-zero tensor in as few
+moves as possible. The game ends after𝑆 moves if that is the case and, by construction, the played actions
+form a rank-𝑆 Waring decomposition of the signature tensor, sinceT = ˝𝑆𝑠=1𝑢(𝑠)⊗𝑢(𝑠)⊗𝑢(𝑠). (The game
+also ends after a user-specified maximum number of moves to avoid infinitely long games, in which case the
+game is declared “unsuccessful” as it did not find a decomposition of the tensor.) To encourage the RL agent to
+find low-rank decompositions or, equivalently, circuits with lower T-count, games are penalized based on the
+number of moves taken to reach the all-zero tensor (with an additional penalty for unsuccessful games): every
+played move incurs a reward of−1.
+In AlphaTensor-Quantum, each action consists of a single factor 𝑢(𝑠). This represents a significant
+advantage over standard AlphaTensor (where actions consist of factor triplets), because for a fixed tensor size𝑁,
+5
+
+=== PDF PAGE 6 ===
+Figure 2: Illustration of gadgetization in TensorGame. Nodes in the tree correspond to states, and the number
+in each node is the immediate reward associated to the action leading to that node. In state (i), the last played
+action is labeled “a”, and state (ii) is reached after playing another action (labeled “b”). From state (ii), playing
+action “c” leads to state (iii), incurring an additional−1 reward. If action “ab” is played instead from state
+(ii), the reward leading to state (iiib) is 0 because the move completes a CS gadget (blue path). Similarly, the
+sequence of moves in the green path completes a Toffoli gadget, and thus the immediate reward in state (vii) is
++4 so that the last seven actions jointly receive a reward of−2 (see Section 5.2 for details on the gadgetization
+patterns). With its ability to plan, from state (i) the agent may decide to play actions in the green or blue paths
+and benefit from the adjusted rewards, or to play other actions that are not part of a gadget (black dashed paths).
+In this way, AlphaTensor-Quantum can automatically find trade-offs between playing actions that are part of a
+gadget and actions that are not.
+6
+
+=== PDF PAGE 7 ===
+the action space reduces from 23𝑁 to 2𝑁 . This is one of the key properties that allows AlphaTensor-Quantum
+to scale up to tensors larger than the ones considered by Fawzi et al.[24]; we consider tensors of size up to
+𝑁 = 72 in Section 3.
+Gadgets. In contrast to other state-of-the-art T-count optimization approaches, AlphaTensor-Quantum can
+leverage gadgetization techniques to find more efficient constructions. In this context, a gadget is an alternative
+implementation of a quantum gate that reduces the number of T gates at the cost of introducing additional
+(ancilla) qubits and operations such as Clifford gates and measurement-based corrections. (These extra qubits
+do not represent a significant limitation in practice, as they can be reused throughout the circuit.)
+We consider two such gadgets. First, the Toffoli gate, a quantum gate that needs at least seven T gates [15]
+to implement without ancillae. The Toffoli gate admits a gadget to implement it using four T gates [25], or
+when considering a state-of-the-art magic state factory [8], a gadget to implement it at a cost equivalent to that
+of two T gates. Second, the CS gate, which can be built with a cost equivalent to that of two T gates due to the
+magic state factory, instead of the three T gates of its direct implementation [26, Appendix A.3].
+Although the gadgetization techniques fall outside of the tensor decomposition framework, AlphaTensor-
+Quantum incorporates them into TensorGame as follows. Every time that an action is played, we check whether
+it completes a Toffoli when combined with the six previous actions, a CS gate when combined with the two
+previous actions, or none of them. (These checks are up to Clifford operations and they simply involve finding
+linear dependencies among the factors; see Section 5.2 and appendix C.3 for details.) If it completes a Toffoli,
+we assign a positive reward, so that the seven actions jointly incur a reward of−2 (corresponding to two T
+gates) as opposed to the reward of−7 corresponding to the un-gadgetized implementation. If it completes a
+CS, we adjust the reward so that the three actions jointly incur a reward of−2. See Figure 2 for an illustration
+of a TensorGame with gadgetization.
+Other than the reward signal, AlphaTensor-Quantum has no further information about the gadgets. It learns
+to recognize and exploit those patterns of actions from the data, and it finds good trade-offs between playing
+actions that are part of a gadget and actions that are not.
+3 Results
+Section 3.1 demonstrates the effectiveness of AlphaTensor-Quantum on a benchmark of circuits widely used in
+the literature of T-count optimization, and Section 3.2 shows applications of AlphaTensor-Quantum in different
+domains.
+3.1 Benchmark Circuits
+We consider a benchmark set of quantum circuits originally proposed by Amy et al.[14] and widely used in the
+literature of T-count optimization [16–18, 23]. We take the circuits from Amy[36] (we also include GF(22)-mult
+and GF(23)-mult for completeness; see Appendix D.1) and apply two versions of AlphaTensor-Quantum: the
+full approach that includes gadgetization, and an alternative agent that does not consider any gadgets. We
+report the resulting T-count for each approach in Table 2.
+7
+
+=== PDF PAGE 8 ===
+Circuit compilation. We apply a standard compilation technique [ 16, 23] with an improvement [ 34]
+(see Appendix C.1 for details and Figure 3 for an example). To make the circuits amenable to the tensor
+decomposition approach, we replace the Hadamard gates by extra ancilla qubits and Clifford gates (we refer to
+this as Hadamard gadgetization[16] to distinguish it from the gadgetization described in Section 2). For circuits
+exceeding 60 qubits after this process, we split them into smaller sub-circuits of fewer than 60 qubits each,
+and apply AlphaTensor-Quantum on each sub-circuit independently. We split the circuits at the boundaries
+corresponding to Hadamard gates via a random-greedy algorithm designed to minimize the number of splits
+(see Appendix C.2).
+Results. In Table 2, we compare the results of the non-gadgetized version of AlphaTensor-Quantum against
+the best T-count reported in the literature [ 14, 16–19, 22, 23, 37, 38], as the baselines do not consider any
+gadgets either. For the circuits that did not require splitting, AlphaTensor-Quantum matches or outperforms
+all the existing T-count optimization methods. For all small circuits (at most 20 T gates), we confirmed with
+the Z3 theorem prover [39] that AlphaTensor-Quantum obtains the best possible T-count achievable with a
+tensor decomposition approach. For the circuits that exceed 60 qubits, AlphaTensor-Quantum outperforms the
+baselines for Hamming15 (high) and Mod-Adder1024, but not for the others, likely due to the lack of optimality
+of the splitting technique.
+When considering gadgets, AlphaTensor-Quantum leverages the Toffoli and CS gates tofurther drastically
+reduce the T-count. When compared against the original construction of the circuits, consisting mostly of
+Toffoli gates, AlphaTensor-Quantum reduces the T-count in all except two cases (likely due to the splitting).
+When compared against the baselines, AlphaTensor-Quantum reduces the T-count for all circuits except Grover5.
+Remarkably, for the GF(2𝑚)-mult circuits, AlphaTensor-Quantum finds constructions with significantly smaller
+T-count than the baselines or the original constructions; we discuss this further in Section 3.2.
+8
+
+=== PDF PAGE 9 ===
+#Qubits T-count without gadgets T-count with gadgetsCircuit Original Compiled Baselines AlphaTensor-Quantum Original AlphaTensor-Quantum
+8-bit adder 24 ★ 129 [16] 139 114 (57Tof) 94 (33Tof + 28T)
+Barenco Toff3 5 8 13 [22, 23] 13∗ 8 (4Tof) 4 (2Tof)
+Barenco Toff4 7 14 24 [16, 22] 23 16 (8Tof) 8 (4Tof)
+Barenco Toff5 9 20 34 [16, 22] 33 24 (12Tof) 12 (6Tof)
+Barenco Toff10 19 50 84 [16] 83 64 (32Tof) 32 (16Tof)
+CSLA-MUX3 15 21 40 [22] 39 20 (10Tof) 16 (8Tof)
+CSUM-MUX9 30 42 72 [16, 19] 71 56 (28Tof) 28 (14Tof)
+GF(22)-mult 6 6 17† 17∗ 8 (4Tof) 6 (3Tof)
+GF(23)-mult 9 9 31† 29 18 (9Tof) 12 (6Tof)
+GF(24)-mult 12 12 47 [22] 39 32 (16Tof) 18 (9Tof)
+GF(25)-mult 15 15 84 [22] 59 50 (25Tof) 26 (13Tof)
+GF(26)-mult 18 18 118 [22] 77 72 (36Tof) 36 (18Tof)
+GF(27)-mult 21 21 167 [23] 104 98 (49Tof) 44 (22Tof)
+GF(28)-mult 24 24 214 [19] 123 128 (64Tof) 58 (29Tof)
+GF(29)-mult 27 27 295 [16] 161 162 (81Tof) 70 (35Tof)
+GF(210)-mult 30 30 350 [16] 196 200 (100Tof) 92 (46Tof)
+Grover5 9 ★ 44 [16] 152 96 (48Tof) 66 (27Tof + 12T)
+Hamming15 (high) 20 ★ 787† (1010 [16]) 773 702 (351Tof) 440 (173Tof + 2CS + 90T)
+Hamming15 (low) 17 42 75 [16] 73 46 (23Tof) 34 (17Tof)
+Hamming15 (med) 17 ★ 156† (162 [16]) 156 164 (82Tof) 78 (35Tof + 8T)
+HWB6 7 27 51 [16] 51 30 (15Tof) 20 (10Tof)
+Mod-Adder1024 28 ★ 798† (978 [16]) 762 570 (285Tof) 500 (141Tof + 15CS + 188T)
+Mod-Mult55 9 11 17 [16] 17∗ 14 (7Tof) 6 (3Tof)
+Mod-Red21 11 28 55 [16, 22] 51 34 (17Tof) 22 (11Tof)
+Mod 54 5 5 7 [19, 22, 23] 7∗ 8 (4Tof) 2 (1Tof)
+QCLA-Adder10 36 ★ 116 [16] 135 68 (34Tof) 94 (28Tof + 5CS + 28T)
+QCLA-Com7 24 42 59 [16] 59 58 (29Tof) 24 (12Tof)
+QCLA-Mod7 26 ★ 165 [16] 199 118 (59Tof) 122 (43Tof + 36T)
+QFT4 5 43 55 [16] 53 59 (2Tof + 55T) 44 (4Tof + 3CS + 30T)
+RC-Adder6 14 24 37 [16, 22] 37 22 (11Tof) 12 (6Tof)
+NC Toff3 5 7 13 [16, 22, 23] 13∗ 6 (3Tof) 4 (2Tof)
+NC Toff4 7 11 19 [16, 22, 23] 19∗ 10 (5Tof) 6 (3Tof)
+NC Toff5 9 15 25 [16] 25 14 (7Tof) 8 (4Tof)
+NC Toff10 19 35 55 [16] 55 34 (17Tof) 18 (9Tof)
+VBE-Adder3 10 14 20 [16, 22, 23] 19∗ 20 (10Tof) 6 (3Tof)
+Table 2: T-count achieved by different methods on a set of benchmark circuits. Even without gadgetization,
+AlphaTensor-Quantum matches or outperforms the considered baselines for all circuits that have not been
+split into sub-circuits (split circuits are marked with★). When considering gadgets, AlphaTensor-Quantum
+further reduces the T-count drastically, and generally outperforms the original constructions with gadgets. The
+notation “𝑎Tof+𝑏CS+𝑐T” indicates a circuit with𝑎 Toffoli gates,𝑏 CS gates, and𝑐 T gates (when multiple
+solutions from AlphaTensor-Quantum achieve the same T-count but differ in the trade-off between gadgets
+and T gates, we report the result with the highest number of Toffoli gates). Baseline results marked with†
+were obtained with the methods in Appendix B and are better than the best published T-count (provided in
+parentheses where applicable). Results marked with * were proven to be optimal decompositions of the given
+tensor using the Z3 theorem prover.
+3.2 Applications
+We applied AlphaTensor-Quantum to circuits derived from several important use-cases for quantum computing,
+which fit into two broad categories: quantum implementations of classical reversible logic for arithmetic
+9
+
+=== PDF PAGE 10 ===
+Figure 3: Results of AlphaTensor-Quantum on the Mod 54 circuit. (1) The original quantum circuit, which
+can be implemented with 4 Toffoli gates (with an equivalent cost of 8 T gates). (2) The compiled circuit,
+which has been split into Clifford gates and a subcircuit of just CNOT and T gates (in the highlighted box).
+(2a) The Waring decomposition corresponding to the highlighted CNOT+T circuit: each T gate corresponds
+precisely to one of the factors displayed as columns of blocks. (2b) The signature tensor formed from this
+decomposition. (2c) An alternative Waring decomposition of the tensor found by the RL agent. Again, each
+factor corresponds one-to-one to a T gate; however in this case the seven factors are grouped into a single
+Toffoli gadget. (2d) The quantum circuit obtained from this new decomposition. (3) The optimized circuit after
+having applied AlphaTensor-Quantum, which can be implemented using Clifford gates and a single Toffoli
+gate (i.e., its equivalent T-count is 2).
+operations, and primitives important to quantum chemistry. We study the former because many quantum
+algorithms (for instance, Shor’s algorithm and many variations of Grover’s algorithm) require a quantum
+implementation of a classical oracle that performs some arithmetical or logical operation. We study the latter
+because quantum chemistry is a major application of quantum computing, and many of the state-of-the-art
+methods share similar circuit constructions.
+Multiplication in finite fields. Multiplication in finite fields is a crucial operation for cryptography, since
+many elliptic-curve cryptography (ECC) implementations are built over such finite fields, and in fact these
+circuits are derived from a quantum algorithm that cracks ECC in polynomial time [27].
+The results from Table 2 show that AlphaTensor-Quantum excels in optimizing the primitives for
+multiplication in finite fields of order 2 𝑚, i.e., the circuits GF(2 𝑚)-mult. In Figure 4a, we show that for
+𝑚 ={2, 3, 4, 5, 7}, AlphaTensor-Quantum actually achieves the same Toffoli gate count as the best known
+upper bound for the equivalent classical (non-reversible) circuits [40, 41]. For 𝑚 ={2, 3, 4, 5} this is also the
+best known lower bound [42], which suggests that the resulting quantum circuits are likely optimal. While the
+circuits for these targets were constructed using the naiveO(𝑚2) multiplication algorithm, the number of Toffoli
+gates of the optimized circuits follows∼𝑚log2(3) for the considered values of𝑚. Thus, AlphaTensor-Quantum
+found a multiplication algorithm with the same complexity as Karatsuba’s method [28], a classical algorithm
+for multiplication in finite fields. While it is conceivable to construct the resulting circuits by hand in principle,
+to the best of our knowledge no sub-quadratic constructions of quantum circuits for multiplication in finite fields
+have been discussed in the literature. AlphaTensor-Quantum finds them automatically, similar to Gidney’s
+10
+
+=== PDF PAGE 11 ===
+(a)
+ (b)
+Figure 4: Number of Toffoli gates of the optimized circuits found by AlphaTensor-Quantum. (a) For
+multiplication in finite fields of order 2 𝑚, AlphaTensor-Quantum finds efficient circuits that significantly
+outperform the original construction, which scales likeO(𝑚2). The number of Toffoli gates matches the best
+known lower bound of the classical circuits [42] for some values of 𝑚, and scales as∼ 𝑚log2(3), showing
+that AlphaTensor-Quantum found an algorithm with the same complexity as Karatsuba’s method [ 28], a
+classical algorithm for multiplication on finite fields for which a quantum version has not been reported in
+the literature. (The baselines marked with † are classical circuits, and hence not directly comparable, as
+naive translations of classical to quantum circuits commonly introduce overheads. To compare, we assume
+the number of effective Toffoli gates is the number of 1-bit AND gates in the classical circuit.) (b) For
+binary addition, AlphaTensor-Quantum halves the cost of the circuits from Cuccaro et al.[43] matching the
+state-of-the-art circuits from Gidney [31]. Remarkably, it does so automatically without any prior knowledge
+of the measurement-based uncomputation technique, which was crucial to their results.
+translation of Karatsuba’s method for multiplication of integers [ 30], but in contrast to the latter without
+requiring additionally ancilla qubits.
+Binary addition. We apply AlphaTensor-Quantum to two different quantum implementations of the binary
+addition operation, which is a relevant primitive in oracle construction because many other common operations
+are built from it (such as multiplication, comparators, and modular arithmetic). For example, controlled
+addition circuits are the dominant cost of Shor’s algorithm. There are many types of quantum addition circuits
+(ripple-carry, carry-save, or block-carry-lookahead); we focus on ripple-carry addition circuits because they
+have fewer ancilla qubits generated by Hadamard gadgetization.
+In particular, we optimize the circuits of Cuccaro et al.[43], which have a Toffoli count scaling as 2𝑛+O( 1)
+where𝑛 is the number of input bits, as well as the circuits of Gidney [31], with a Toffoli count of𝑛+O( 1). As
+shown in Figure 4b, AlphaTensor-Quantum reduces the Toffoli count of Cuccaro et al.’s circuits, matching the
+Toffoli count of Gidney’s construction of𝑛+O( 1).
+Prior to the publication of Gidney’s results, Cuccaro et al.’s circuits attained the lowest Toffoli count
+of any addition circuit. To halve their cost, Gidney introduced a new approach called measurement-based
+uncomputation, which allows Toffoli gates that were performed on zero-initialized ancilla qubits to be
+uncomputed for free under certain conditions, by introducing measurements and classically-controlled Clifford
+11
+
+=== PDF PAGE 12 ===
+H H
+|+⟩
+X
+Mx
+|+⟩
+X
+Mx |+⟩
+Mx|+⟩
+X
+Mx
+Z
+Z
+Z
+X
+→ →→
+Compilation Process
+AlphaTensor-Quantum
+|+⟩
+Mx|+⟩
+X
+Mx
+Z
+Z
+Z
+X
+⊕ ⊕
+(a) Original circuit (b) After Hadamard gadgetization (c) All Clifford gates moved to the end (d) Non-Clifford portion optimized
+Figure 5: An example in which measurement-based uncomputation tricks can be recovered by AlphaTensor-
+Quantum. Here, a portion of the NC Toff 3 circuit is mapped to three CCZ gates, a pair of which share
+two inputs (in the highlighted box), by the Hadamard gadgetization process (detailed in Appendix C.1).
+AlphaTensor-Quantum optimizes this pair by expressing it as a single gadget, saving one Toffoli gate with
+respect to the original construction. This kind of optimization happens often because CCZ gates can usually be
+moved freely along the circuit, as the corresponding unitary matrix will be diagonal after compilation. This is
+reminiscent of the temporary logical-AND construction from Gidney [31], although some patterns with more
+than two CCZ gates can also be combined in this way.
+gates. This non-trivial technique was invented more than a decade after the addition circuits of Cuccaro et al.
+[43], but is now widely used for optimizing fault-tolerant quantum circuits.
+Importantly, for both circuit constructions, AlphaTensor-Quantum had no knowledge of measurement-
+based uncomputation, and all Toffoli gates were compiled naively using the standard unitary construction
+with seven T gates. Yet, AlphaTensor-Quantum automatically finds optimized circuits only accessible via
+measurement-based uncomputation. It does so with its ability to find Toffoli gadgets, by exploiting the fact
+that ancilla qubits from the Hadamard gadgetization allow the movement of Toffoli gates; see Figure 5 for an
+example.
+Hamming weight and phase gradients. Applying small angle rotations to qubits is a common operation
+in quantum algorithms, e.g., in the quantum Fourier transform, data loading, and quantum chemistry. In
+fault-tolerant quantum circuits, any rotation can be implemented using the Solovay-Kitaev algorithm with a
+sequence of Hadamard and T gates. However, if the same small angle is to be applied repeatedly (such as in
+quantum chemistry), it is often more efficient to use a technique called Hamming weight phasing.
+We use AlphaTensor-Quantum to optimize the Hamming weight phasing circuits from Gidney[31]. While
+the original circuits use measurement-based uncomputation, we instead compile a version where every Toffoli
+gate is constructed explicitly, as before. Again, AlphaTensor-Quantum halves the cost with respect to the naive
+input circuits, thus matching the complexity of the circuits with measurement-based uncomputation tricks.
+Unary iteration. We also apply AlphaTensor-Quantum to a family of circuits calledunary iteration [33].
+These circuits allow selecting which Pauli operator (from a set of operators) to apply on the data qubits,
+based on the value of some control qubits. We apply this construction to the Pauli operators 𝑃1 = 𝑋𝐼··· 𝐼,
+𝑃2 =𝐼𝑋··· 𝐼,... ,𝑃𝑚 =𝐼𝐼··· 𝑋 on𝑚 = 8, 16, and 32 qubits, therefore implementing the quantum equivalent
+of a classical𝑛-to-2𝑛 demultiplexer or decoder for𝑛 = 3, 4, 5 (see Figure 6). These circuits could be used to
+12
+
+=== PDF PAGE 13 ===
+|c⟩
+|x0⟩
+|x1⟩
+|xn⟩
+...
+|ϕ⟩ P0 P1 P2 P3 Pm
+. . .
+. . .
+. . .
+. . .
+. . .
+...... ... ... ...
+Figure 6: The action implemented by the unary iteration family of circuits. If the control qubit 𝑐 is in the
+state|1⟩, the circuit applies one of the Pauli operators from the set{𝑃1,...,𝑃 𝑚} to the multiqubit state|𝜙⟩,
+depending on the value of the qubits𝑥1 to𝑥𝑛. If the control qubit 𝑐 is in the state|0⟩, no operation is applied to
+|𝜙⟩.
+implement the same construction for any set of 8, 16, or 32 Pauli operators, without extra T-count, and because
+of their generality, they appear both in oracle construction (demultiplexers are commonly used in classical
+logic) and in quantum chemistry (as in the linear combination of unitaries method discussed further below).
+The unary iteration circuits were implemented following Babbush et al. [33], except we compiled the
+Toffoli gates unitarily with seven T gates instead of using measurement-based uncomputation. The largest
+circuit (𝑛 = 5) has 72 qubits after compilation. As before, AlphaTensor-Quantum finds its own version of
+measurement-based uncomputation to match the best known T-count of these circuits.
+We also apply a version of AlphaTensor-Quantum without gadgets. Remarkably, it finds optimized circuits
+that, for each value of𝑛, have only three T gates more than the circuits from Babbush et al. [33] (where each
+Toffoli gate is implemented using four T gates), suggesting that the unary iteration circuits have an internal
+structure particularly amenable to this kind of optimization.
+Quantum chemistry. Molecular simulation involves solving the Schr¨odinger equation, which requires a
+computational cost scaling exponentially with the number of particles in the system. This makes classical
+methods struggle to simulate strongly correlated molecules [44]. Quantum computers can theoretically handle
+these calculations more efficiently, with one compelling use case being the simulation of the FeMoco molecule,
+the active site in the nitrogenase enzyme responsible for nitrogen fixation. This use case has high potential
+industrial impact, but is challenging due to the highly complex electronic structure of FeMoco [45].
+FeMoco simulation motivated Lee et al.’s [46] fault-tolerant implementation of a quantum walk-based
+algorithm. In this method, the Hamiltonian associated with the molecule is encoded into the quantum circuit
+with a technique known aslinear combination of unitaries (LCU). This framework requires the implementation
+of two oracles called Prepare and Select (each being an instance of the unary iteration operation discussed
+earlier). These are repeated many times, making up the dominant cost of the whole algorithm, and therefore
+optimizing these oracles can significantly impact the total resource requirements (see Appendix A for more
+details on the algorithm).
+We run AlphaTensor-Quantum on portions of Lee et al.’s Select oracle construction (which is itself based
+on von Burg et al. [47]). Specifically, we set a range of parameters to keep the total qubit count below 60, and
+compile angle rotations of the state into the diagonal basis using the phase-gradient technique from Gidney
+[31]; see Figure 7 for details. As before, we remove all measurement-based uncomputation tricks and compile
+13
+
+=== PDF PAGE 14 ===
+|𝑎⟩
+|¯0⟩𝑝
+W
+|𝜓⟩
+=
+|𝑎⟩ 𝑍
+|¯0⟩𝑝
+𝑈𝐿𝐶𝑈
+|𝜓⟩
+=
+|𝑎⟩ 𝑍
+|¯0⟩𝑝 PREPARE
+SELECT
+PREPARE†
+|𝜓⟩
+(a)
+|ψ↑⟩
+|ψ↓⟩
+|+⟩
+|+⟩
+|0⟩
+|ν=M +1⟩
+|ν⟩
+|µ⟩
+|succ⟩
+Inµ
+data:rotµ In
+R† Z1
+In
+R
+Inµ
+data:rotµ
+×
+×
+×
+×
+Inν
+data:rotν In
+R† Z1
+In
+R
+Inν
+data:rotν
+×
+×
+×
+×
+N/2
+N/2
+nM
+nM
+(b)
+Figure 7: (a) The quantum walk operatorW at the heart of state-of-the-art quantum chemistry algorithms
+[33, 46, 48] (see Figure 9) can be decomposed using the LCU technique into two oracles,Prepare and Select,
+which encode the details of the molecule. This operator is repeated many times, so its cost dominates the
+overall algorithm. (b) Construction of the Select oracle. This figure is adapted from Lee et al. [46, Figure 5,
+pp. 18]. We compile and optimize the part in the dashed box, along with its constituent components, for a
+range of parameters (up to 10 bits of precision per rotation, and for systems of up to 10 spin-orbitals).
+the Toffoli gates unitarily with seven T gates. We find that, for all parameter values, AlphaTensor-Quantum is
+able to match the T-count of Lee et al. [46], which relies heavily on measurement-based uncomputation.
+Thus, AlphaTensor-Quantum automatically finds state-of-the-art constructions for multiple use cases. We
+expect that, as new improvements on quantum chemistry are made at a structural level, AlphaTensor-Quantum
+will be able to automatically find the best constructions (in terms of T-count), without additional human effort.
+4 Discussion
+We have demonstrated the effectiveness of AlphaTensor-Quantum at optimizing the T-count, a key metric
+in quantum computations, showing that it significantly outperforms existing approaches, being able to
+automatically discover constructions as efficient as the best human-designed ones across various applications.
+For those applications, the fact that very different techniques achieve the same T-count might hint to the
+optimality of the discovered constructions. In fact, although AlphaTensor-Quantum does not come with
+optimality guarantees, we proved that some decompositions in Section 3.1 are optimal in terms of the number
+of factors of the decomposition.
+Compared to previous works that use RL to optimize quantum circuits [49–51] or to improve variational
+quantum algorithms [52–56], Compared to previous works that use RL to optimize quantum circuits [49–51],
+14
+
+=== PDF PAGE 15 ===
+AlphaTensor-Quantum is the the first one that scales to a large enough number of qubits to cover a wide range
+of applications (see Section 3.2), and the first one to consider fault-tolerant compilation. Compared to existing
+T-count optimization approaches, which are not RL-based, AlphaTensor-Quantum significantly outperforms
+them; however this comes at the cost of increased computational complexity (e.g., it took around 8 hours to
+optimize the addition circuits of Cuccaro et al. [43]) and loss of optimality due to extra compilation steps (e.g.,
+if the circuits need to be split into parts). A possible future research avenue to accelerate the algorithm is to
+improve the neural network architecture; another avenue to scale up further is to handle Hadamard gadgetization
+differently, so that the number of qubits does not increase as much during the compilation process, or to apply
+RL to alternative circuit representations that can optimize Hadamard gates natively. However, we argue that its
+comparably increased computational complexity is outweighed by its results, especially considering the cost of
+manually designing optimized constructions. Moreover, it is a one-off cost: once AlphaTensor-Quantum has
+been applied, the optimized circuits can be reused.
+Unlike existing approaches for T-count optimization, AlphaTensor-Quantum can leverage and exploit
+gadgets. These constructions are an active area of research [25, 26, 57, 58], and as fundamentally new gadgets
+are discovered, they can be readily incorporated into the RL environment, possibly allowing AlphaTensor-
+Quantum to discover even more efficient constructions for established quantum circuits. Similarly, due to its
+flexibility, AlphaTensor-Quantum can be extended to optimize metrics other than the T-count, such as T-depth
+[35] or weighted combinations of different types of gates [17], by changing the reward signal accordingly.
+We envision AlphaTensor-Quantum will play a pivotal role as quantum chemistry and related fields advance,
+and new improvements at a structural level emerge. Similarly to how Gidney [31] optimized the addition
+circuits of Cuccaro et al. [43] over a decade later, AlphaTensor-Quantum finds and exploits non-trivial patterns,
+thus eliminating the need for manual construction design and saving research costs.
+15
+
+=== PDF PAGE 16 ===
+5 Methods
+5.1 The Signature Tensor
+The tensor representation of a circuit relies on the concept ofphase polynomials. Consider a circuit with CNOT
+and T gates alone. Its corresponding unitary matrix𝑈 performs the operation𝑈|𝑥1:𝑁⟩ =𝑒𝑖𝜙(𝑥1:𝑁)|𝐴𝑥1:𝑁⟩, where
+𝜙(𝑥1:𝑁) is the phase polynomial and𝐴 is an invertible matrix that can be implemented with Clifford gates only.
+For example, applying a T gate to the second qubit after aCNOT gives(𝐼⊗𝑇)CNOT|𝑥,𝑦⟩ =𝑒𝑖 𝜋4(𝑥⊕𝑦)|𝑥,𝑥⊕𝑦⟩,
+i.e.,𝜙(𝑥,𝑦) = 𝜋4(𝑥⊕𝑦) = 𝜋4(𝑥+𝑦− 2𝑥𝑦). After cancelling out the terms leading to multiples of 2𝜋, the phase
+polynomial takes a multilinear form, i.e., 𝜙(𝑥1:𝑁) = 𝜋4
+˝
+𝑖𝑎𝑖𝑥𝑖+ 2˝𝑖<𝑗 𝑏𝑖𝑗𝑥𝑖𝑥𝑗+ 4˝𝑖<𝑗<𝑘 𝑐𝑖𝑗𝑘𝑥𝑖𝑥𝑗𝑥𝑘,
+where𝑎𝑖∈{ 0,..., 7},𝑏𝑖𝑗 ∈{ 0,..., 3}, and𝑐𝑖𝑗𝑘 ∈{ 0, 1}. This maps directly to a circuit of T, CS and CCZ
+gates: each 𝑎𝑖𝑥𝑖 term is implemented by𝑎𝑖 T gates acting on the𝑖-th qubit, each𝑏𝑖𝑗𝑥𝑖𝑥𝑗 term corresponds to
+𝑏𝑖𝑗 CS gates on qubits𝑖 and 𝑗, and each non-zero𝑐𝑖𝑗𝑘𝑥𝑖𝑥𝑗𝑥𝑘 term is a CCZ gate on qubits𝑖, 𝑗, and𝑘. Each of
+these terms corresponds to a non-Clifford operation only if the corresponding constant (𝑎𝑖,𝑏𝑖𝑗 , or𝑐𝑖𝑗𝑘 ) is odd.
+Thus, two CNOT + T circuits implement the same unitary up to Clifford gates if and only if they have the same
+phase polynomial after taking the modulo 2 of their coefficients. This information about the polynomial can
+then be captured in a symmetric 3-dimensional binary signature tensorT of size𝑁×𝑁×𝑁 [16, 18]. See
+Appendix A for more details.
+5.2 System Description
+AlphaTensor-Quantum builds on AlphaTensor, which is in turn based on AlphaZero [59]. It is implemented
+over a distributed computing architecture, composed of one learner and multiple actors that communicate
+asynchronously. The learner is responsible for hosting a neural network and updating its parameters, while the
+main role of the actors is to play games in order to generate data for the learner. When the learner updates the
+network parameters by gradient descent steps, it sends them to the actors. The actors employ Monte Carlo
+tree search (MCTS), using queries to the network to guide their policy, and play games whose actions tend to
+improve over the policy dictated by the neural network. Played games are sent to the learner and stored in a
+buffer, and they will serve as future data points to train the network parameters.
+Neural network. The neural network at the core of AlphaTensor-Quantum takes as input the game state
+and outputs: (i) a policy, i.e., a probability distribution over the next action to play, and (ii) a probability
+distribution over the estimated return (i.e., the sum of rewards from the current state until the end of the
+game); see Figure 8a. The neural network has a key component, the torso, where a set of attention operations
+[60] are applied. In AlphaTensor-Quantum, the torso interleaves two types of layers: axial attention [ 61]
+and symmetrization layers (Figure 8b). Symmetrization layers are inspired by the empirical observation that,
+for a symmetric input 𝑋∈ R𝑁×𝑁 (with𝑋 = 𝑋⊤), preserving the symmetry of the output in-between axial
+attention layers significantly improves performance. Therefore, after each axial attention layer, we add a
+symmetrization operation, defined as𝑋←𝛽⊙𝑋+( 1−𝛽)⊙ 𝑋⊤, where ‘⊙’ denotes element-wise product.
+For𝛽 = 12, this makes the output 𝑋 symmetric. In practice, we found that letting 𝛽 be a learnable 𝑁×𝑁
+matrix improves performance even further, even though𝑋 is no longer symmetric, due to the ability of the
+network to exchange information between rows and columns after each axial attention layer. (When the input is
+a tensor,𝑋∈ R𝑁×𝑁×𝐶, we apply the symmetrization operations independently across the dimensions𝐶, using
+16
+
+=== PDF PAGE 17 ===
+(a)
+ (b)
+Figure 8: (a) An overview of the neural network, where the input is the current state (tensor and past actions)
+and the outputs are distributions over the next action to play (given by the policy head) and over the estimated
+return (given by the value head). (b) A symmetrized axial attention layer, the building block of the neural
+network torso. Symmetrized axial attention incorporates a symmetrization operation after each axial attention
+layer to favour exchange of information between rows and columns.
+the same matrix𝛽.) We refer to this architecture as symmetrized axial attention. See Appendix C.4 for more
+details of the full neural network architecture.
+Symmetrized axial attention performs better than the neural network of standard AlphaTensor (which
+requires attention operations across every pair of modes of the tensor) [24]. It is also one of the key ingredients
+that allow AlphaTensor-Quantum to scale up to larger tensors: for 𝑁 = 30 and the same number of layers,
+symmetrized axial attention runs about 4x faster and reduces the memory consumption by a factor of 3x. (See
+also Appendix D.3 for further ablations.) We believe symmetrized axial attention may be useful for other
+applications beyond AlphaTensor-Quantum.
+Gadgetization patterns. In TensorGame, every time an action is played, we check whether it completes
+a gadget to adjust the reward signal accordingly. If the action𝑢(𝑠) at step𝑠 does not complete a gadget, the
+immediate reward is simply−1. Otherwise, the reward is+4 if it completes a Toffoli, or 0 if it completes a CS
+gadget. These checks are done up to Clifford operations, and they involve finding certain linear dependencies
+between𝑢(𝑠) and the previous actions:
+• If𝑠≥ 7, we check whether the action𝑢(𝑠) completes a Toffoli gadget. Let 𝑎 ≜𝑢(𝑠−6),𝑏 ≜𝑢(𝑠−5), and
+𝑐 ≜𝑢(𝑠−4). If the vectors𝑎,𝑏, and𝑐 are linearly independent and all the following relationships hold,
+then we declare that𝑢(𝑠) completes a Toffoli gadget:
+𝑢(𝑠−3) =𝑎+𝑏, 𝑢 (𝑠−2) =𝑎+𝑐, 𝑢 (𝑠−1) =𝑎+𝑏+𝑐, and 𝑢(𝑠) =𝑏+𝑐.
+• If𝑠≥ 3, we check whether the action𝑢(𝑠) completes a CS gadget. Let 𝑎 ≜𝑢(𝑠−2) and𝑏 ≜𝑢(𝑠−1). If the
+vectors𝑎 and𝑏 are linearly independent and𝑢(𝑠) =𝑎+𝑏, then𝑢(𝑠) completes a CS gadget.
+We refer to the relationships above asgadgetization patterns (see Appendix C.3 for a justification of these
+steps). Each factor (action) may belong to at most one gadget; thus, if the action at step𝑠 completes a gadget of
+any type, we only check for a new CS gadget from step𝑠+ 3 onward, and for a new Toffoli gadget from step
+𝑠+ 7 onward.
+Synthetic demonstrations. Like its predecessor, AlphaTensor-Quantum uses a data set of randomly generated
+tensor/factorization pairs to train the neural network. Specifically, the network is trained on a mixture of a
+17
+
+=== PDF PAGE 18 ===
+supervised loss (which encourages it to imitate the synthetic demonstrations) and a standard RL loss (which
+encourages it to learn to decompose the target quantum signature tensor). For each experiment, we generate 5
+million synthetic demonstrations. To generate each demonstration, we first randomly sample the number of
+factors𝑅 from a uniform distribution in[1, 125] and then sample𝑅 binary factors𝑢(𝑟), such that each element
+has a probability of 0.75 of being set to 0.
+After having generated the factors, we randomly overwrite some of them to incorporate the patterns of the
+Toffoli and CS gadgets, in order to help the network learn and identify those patterns. For each demonstration,
+we include at least one gadget with probability 0.9. The number of gadgets is uniformly sampled in[1, 15]
+(the value is also truncated when𝑅 is not large enough), and for each gadget we sample the starting index𝑟
+and the type of gadget (Toffoli with probability 0.6 and CS with probability 0.4), overwriting the necessary
+factors according to the gadget’s pattern. We ensure gadgets do not overlap throughout the demonstration.
+Change of basis. To increase the diversity of the played games, the actors apply a random change of basis to
+the target tensorT at the beginning of each game. From the quantum computation point of view, a change of
+basis can be implemented by a Clifford-only circuit, and therefore this procedure does not affect the resulting
+number of T gates.
+A change of basis is represented by a matrix𝑀∈{ 0, 1}𝑁×𝑁 such that det(𝑀) = 1 under modulo 2. We
+randomly generate 50 000 such basis changes and use them throughout the experiment, i.e., the actor first
+randomly picks a matrix𝑀 and then applies the following transformation to the target tensorT :
+eT𝑖𝑗𝑘 =
+𝑁∑︁
+𝑎=1
+𝑁∑︁
+𝑏=1
+𝑁∑︁
+𝑐=1
+𝑀𝑖𝑎𝑀𝑗𝑏𝑀𝑘𝑐T𝑎𝑏𝑐.
+The actor then plays the game in that basis (i.e., it aims at finding a decomposition of eT ). After the game has
+finished, we can map the played actions back to the standard basis by applying the inverse change of basis.
+The diversity injected by the change of basis facilitates the agent’s task, because it suffices to find a low-rank
+decomposition in any basis. Note that gadgets are not affected by the change of basis, since their patterns
+correspond to linear relationships that are preserved after linear transformations.
+Data augmentation. For each game played by the actors, we obtain a new game by swapping two of the
+actions in it. Specifically, we swap the last action that is not part of a gadget with a randomly chosen action
+that is also not part of a gadget. Mathematically, swapping actions is a valid operation due to commutativity.
+From the quantum computation point of view, it is a valid operation because the considered unitary matrices
+are diagonal.
+Besides the action permutation, we also permute the inputs at acting time every time we query the neural
+network. In particular, we apply a random permutation to the input tensor and past actions that represent
+the current state, and then invert this permutation at the output of the network’s policy head. Similarly, at
+training time, we apply a random permutation to both the input and the policy targets, and train the neural
+network on this transformed version of the data. In practice, we sample 100 permutations at the beginning of
+an experiment, and use them thereafter.
+18
+
+=== PDF PAGE 19 ===
+Sample-based MCTS. In AlphaTensor-Quantum, the action space is huge, and therefore it is not possible to
+enumerate all the possible actions from a given state. Instead, AlphaTensor-Quantum relies on sample-based
+MCTS, similarly to sampled AlphaZero [62].
+Before committing to an action, the agent uses a search tree to explore multiple actions to play. Each node
+in the tree represents a state, and each edge represents an action. For each state-action pair(𝑠,𝑎), we store a set
+of statistics: the visit count 𝑁(𝑠,𝑎), the action value𝑄(𝑠,𝑎), and the empirical policy probability b𝜋(𝑠,𝑎). The
+search consists of multiple simulations; each simulation traverses the tree from the root state𝑠0 until a leaf state
+𝑠𝐿 is reached, by recursively selecting in each state𝑠 an action𝑎 that has high empirical policy probability and
+high value but has not been frequently explored, i.e., we choose𝑎 according to
+arg max
+𝑎
+𝑄(𝑠,𝑎)+ 𝑐(𝑠)b𝜋(𝑠,𝑎)
+√︁˝
+𝑏𝑁(𝑠,𝑏)
+1+𝑁(𝑠,𝑎) ,
+where𝑐(𝑠) is an exploration factor. The MCTS simulation keeps choosing actions until a leaf state 𝑠𝐿 is
+reached; when that happens, the network is queried on 𝑠𝐿 — obtaining the policy probability 𝜋(𝑠𝐿,·) and
+the return probability 𝑧(𝑠𝐿). We sample 𝐾 actions𝑎𝑘 from the policy to initialize b𝜋(𝑠𝐿,𝑎) = 1𝐾 ˝𝑘𝛿𝑎,𝑎 𝑘,
+and initialize 𝑄(𝑠𝐿,𝑎) from𝑧(𝑠𝐿) using a risk-seeking value [ 24]. After the node 𝑠𝐿 has been expanded,
+we update the visit counts and values on the simulated trajectory in a backward pass [62]. We simulate 800
+trajectories using MCTS; after that, we use the visit counts of the actions at the root of the search tree to
+form a sample-based improved policy, following Fawzi et al.[24], and commit to an action sampled from that
+improved policy.
+Training regime. We train AlphaTensor-Quantum on a TPU with 256 cores, with a total batch size of 2 048,
+training for 1 million iterations on average (the number of training iterations varies depending on the application,
+ranging between 80 000 and 3 million iterations). We use 3 600 actors on average per experiment, each running
+on a standalone TPU. Each experiment is ran on a set of target tensors, which we group by application (i.e.,
+one experiment for addition, one for unary iteration, etc.); this allows the RL agent to recognize and exploit the
+decomposition patterns that might be present across multiple tensors within the same experiment. We find that
+the experiment variance is very low: a single experiment is enough for AlphaTensor-Quantum to find the best
+constructions for each application.
+Other versions of AlphaTensor-Quantum. We found empirically that the GF(2 𝑚)-mult circuits were
+particularly challenging to optimize, and they required additional training iterations. To reduce the size of
+the search space and accelerate the training procedure, we developed a variant of AlphaTensor-Quantum that
+significantly favours Toffoli gates. Specifically, every time that three consecutive and linearly independent
+actions (factors) are played, the environment automatically applies the remaining four actions that would
+complete the Toffoli gadget. We applied this version of AlphaTensor-Quantum to optimize these targets only.
+5.3 Verification
+In order to verify that the results of AlphaTensor-Quantum are correct, we used thefeynver tool developed by
+Amy [36] after each step of the compilation process discussed in Appendix C.1. It uses the sum-over-paths
+formalism [63] to produce a proof of equality and can be applied to any circuit. However, it is a sound but not
+19
+
+=== PDF PAGE 20 ===
+complete method, so it may fail both to prove and to disprove equality for some pairs of circuits. Since the tool
+runs slowly for larger circuits, we ran it wherever practical (limiting each run to several hours). Each circuit
+was verified assuming that any intermediate measurements introduced by Hadamard gadetization always return
+zero, because our software pipeline does not generate the classically-controlled correction circuits (these can
+be easily constructed but are irrelevant to AlphaTensor-Quantum).
+This allowed us to verify inputs up to the point where a tensor is obtained. In order to verify that the
+decompositions constructed by AlphaTensor-Quantum were correct, we computed the corresponding tensor
+and checked that it was equal to the original input tensor. While we did not use the optimized decompositions
+to produce circuits, they could be verified in the same way as discussed above.
+Acknowledgements
+The authors thank Steve Clark, Alexander L. Gaunt, Alexandre Krajenbrink, Luca Mondada, and Richie Yeung
+for their feedback on the paper; and Ryan Babbush, Sergio Boixo, Craig Gidney, Matt Harrigan, Tanuj Khattar,
+and Nicholas Rubin for insightful discussions and ideas.
+References
+[1] Richard P Feynman. Simulating physics with computers. International journal of theoretical physics, 21
+(6/7):467–488, 1982.
+[2] Yuri Manin. Computable and noncomputable. Sovetskoe Radio, 1980.
+[3] Peter W. Shor. Polynomial-time algorithms for prime factorization and discrete logarithms on a quantum
+computer. SIAM Journal on Computing , 26(5):1484–1509, October 1997. ISSN 1095-7111. doi:
+10.1137/s0097539795293172.
+[4] Nick S. Blunt, Joan Camps, Ophelia Crawford, R ´obert Izs ´ak, Sebastian Leontica, Arjun Mirani,
+Alexandra E. Moylett, Sam A. Scivier, Christoph S¨ underhauf, Patrick Schopf, Jacob M. Taylor, and
+Nicole Holzmann. Perspective on the current state-of-the-art of quantum computing for drug discovery
+applications. Journal of Chemical Theory and Computation, 18(12):7001–7023, November 2022. ISSN
+1549-9626. doi: 10.1021/acs.jctc.2c00574.
+[5] Alexander M. Dalzell, Sam McArdle, Mario Berta, Przemyslaw Bienias, Chi-Fang Chen, Andr´as Gily´en,
+Connor T. Hann, Michael J. Kastoryano, Emil T. Khabiboulline, Aleksander Kubica, Grant Salton,
+Samson Wang, and Fernando G. S. L. Brand ˜ao. Quantum algorithms: A survey of applications and
+end-to-end complexities, 2023.
+[6] Sergey Bravyi and Alexei Kitaev. Universal quantum computation with ideal Clifford gates and noisy
+ancillas. Physical Review A, 71:022316, 2005.
+[7] Earl T. Campbell, Barbara M. Terhal, and Christophe Vuillot. Roads towards fault-tolerant universal
+quantum computation. Nature, 549(7671):172–179, September 2017. ISSN 1476-4687. doi: 10.1038/
+nature23460.
+20
+
+=== PDF PAGE 21 ===
+[8] Craig Gidney and Austin G. Fowler. Efficient magic state factories with a catalyzed |𝐶𝐶𝑍⟩ to 2|𝑇⟩
+transformation. Quantum, 3:135, 2019.
+[9] Daniel Gottesman. The Heisenberg representation of quantum computers. arXiv preprint arXiv:quant-
+ph/9807006, 1998.
+[10] A. R. Calderbank and Peter W. Shor. Good quantum error-correcting codes exist. Physical Review A, 54
+(2):1098–1105, August 1996. ISSN 1094-1622. doi: 10.1103/physreva.54.1098.
+[11] Dorit Aharonov and Michael Ben-Or. Fault tolerant quantum computation with constant error, 1996.
+[12] Bryan Eastin and Emanuel Knill. Restrictions on transversal encoded quantum gate sets. Physical Review
+Letters, 102(11), March 2009. ISSN 1079-7114. doi: 10.1103/physrevlett.102.110502.
+[13] John van de Wetering and Matthew Amy. Optimising T-count is NP-hard.arXiv preprint arXiv:2310.05958,
+2023.
+[14] Matthew Amy, Dmitri Maslov, and Michele Mosca. Polynomial-time T-depth optimization of clifford+T
+circuits via matroid partitioning. arXiv preprint arXiv:1303.2042, 2013.
+[15] David Gosset, Vadym Kliuchnikov, Michele Mosca, and Vincent Russo. An algorithm for the T-count.
+Quantum Information & Computation, 14(15–16):1261–1276, nov 2014.
+[16] Luke E. Heyfron and Earl T. Campbell. An efficient quantum compiler that reduces T count. Quantum
+Science and Technology, 4(1):015004, sep 2018.
+[17] Yunseong Nam, Neil J. Ross, Yuan Su, Andrew M. Childs, and Dmitri Maslov. Automated optimization
+of large quantum circuits with continuous parameters. npj Quantum Information, 4(23), 2018.
+[18] Matthew Amy and Michele Mosca. T-count optimization and Reed-Muller codes. IEEE Transactions on
+Information Theory, 65(8):4771–4784, 2019.
+[19] Aleks Kissinger and John van de Wetering. Reducing T-count with the ZX-calculus. arXiv preprint
+arXiv:1903.10477, 2019.
+[20] Vlad Gheorghiu, Michele Mosca, and Priyanka Mukhopadhyay. T-count and T-depth of any multi-qubit
+unitary. npj Quantum Information, 8(141), 2022.
+[21] Aleks Kissinger and John van de Wetering. Simulating quantum circuits with ZX-calculus reduced
+stabiliser decompositions. Quantum Science and Technology, 7:044001, 2022.
+[22] Neil de Beaudrap, Xiaoning Bian, and Quanlong Wang. Techniques to reduce𝜋/4-parity-phase circuits,
+motivated by the ZX calculus. arXiv preprint arXiv:1911.09039, 2019.
+[23] Niel de Beaudrap, Xiaoning Bian, and Quanlong Wang. Fast and effective techniques for T-count reduction
+via spider nest identities. In Conference on the Theory of Quantum Computation, Communication and
+Cryptography, volume 158, pages 11:1–11:23, 2020.
+21
+
+=== PDF PAGE 22 ===
+[24] Alhussein Fawzi, Matej Balog, Aja Huang, Thomas Hubert, Bernardino Romera-Paredes, Mohammadamin
+Barekatain, Alexander Novikov, Francisco J. R. Ruiz, Julian Schrittwieser, Grzegorz Swirszcz, David
+Silver, Demis Hassabis, and Pushmeet Kohli. Discovering faster matrix multiplication algorithms with
+reinforcement learning. Nature, 610:47–53, 2022.
+[25] Cody Jones. Low-overhead constructions for the fault-tolerant Toffoli gate. Physical Review A, 87(2),
+2013.
+[26] Michael Beverland, Earl Campbell, Mark Howard, and Vadym Kliuchnikov. Lower bounds on the
+non-Clifford resources for quantum computations. Quantum Science and Technology, 5(3), 2020.
+[27] Donny Cheung, Dmitri Maslov, Jimson Mathew, and Dhiraj K. Pradhan. On the design and optimization
+of a quantum polynomial-time attack on elliptic curve cryptography. In Theory of Quantum Computation,
+Communication, and Cryptography, volume 5106, pages 96–104, 2008.
+[28] Anatoly Karatsuba and Yuri Ofman. Multiplication of many-digital numbers by automatic computers.
+Proceedings of the USSR Academy of Sciences, 145:293–294, 1962.
+[29] Charles H Bennett. Time/space trade-offs for reversible computation. SIAM J. Comput., 18(4):766–776,
+August 1989.
+[30] Craig Gidney. Asymptotically efficient quantum Karatsuba multiplication, 2019.
+[31] Craig Gidney. Halving the cost of quantum addition. Quantum, 2(74), 2018.
+[32] Markus Reiher, Nathan Wiebe, Krysta M. Svore, Dave Wecker, and Matthias Troyer. Elucidating
+reaction mechanisms on quantum computers. Proceedings of the National Academy of Sciences, 114(29):
+7555–7560, 2017.
+[33] Ryan Babbush, Craig Gidney, Dominic W. Berry, Nathan Wiebe, Jarrod McClean, Alexandru Paler, Austin
+Fowler, and Hartmut Neven. Encoding electronic spectra in quantum circuits with linear t complexity.
+Physical Review X, 8:041015, Oct 2018.
+[34] Vivien Vandaele, Simon Martiel, Simon Perdrix, and Christophe Vuillot. Optimal Hadamard gate count
+for Clifford+T synthesis of Pauli rotations sequences. arXiv preprint arXiv:2302.07040, 2023.
+[35] Matthew Amy, Dmitri Maslov, Michele Mosca, and Martin Roetteler. A meet-in-the-middle algorithm
+for fast synthesis of depth-optimal quantum circuits. IEEE Transactions on Computer-Aided Design of
+Integrated Circuits and Systems, 32(6):818–830, 2013.
+[36] Matthew Amy. Feynman. https://github.com/meamy/feynman, 2016.
+[37] Fang Zhang and Jianxin Chen. Optimizing T gates in Clifford+T circuit as𝜋/4 rotations around Paulis.
+arXiv preprint arXiv:quant-ph/1903.12456, 2019.
+[38] Anthony Munson, Bob Coecke, and Quanlong Wang. AND-gates in ZX-calculus: Spider nest identities
+and QBC-completeness. In Quantum Physics and Logic, 2020.
+22
+
+=== PDF PAGE 23 ===
+[39] Leonardo de Moura and Nikolaj Bjørner. Z3: An efficient SMT solver. In C. R. Ramakrishnan and
+Jakob Rehof, editors, Tools and Algorithms for the Construction and Analysis of Systems, pages 337–340,
+Berlin, Heidelberg, 2008. Springer Berlin Heidelberg. ISBN 978-3-540-78800-3.
+[40] Peter L. Montgomery. Five, six, and seven-term Karatsuba-like formulae. IEEE Transactions on
+Computers, 54(3):362–369, 2005.
+[41] Haining Fan and M. Anwar Hasan. Comments on “five, six, and seven-term Karatsuba-like formulae”.
+IEEE Transactions on Computers, 56(5):716–717, 2007. doi: 10.1109/TC.2007.1024.
+[42] Razvan Barbulescu, J´er´emie Detrey, Nicolas Estibals, and Paul Zimmermann. Finding optimal formulae
+for bilinear maps. In Ferruh ¨Ozbudak and Francisco Rodr´ıguez-Henr´ıquez, editors, Arithmetic of Finite
+Fields, pages 168–186, Berlin, Heidelberg, 2012. Springer Berlin Heidelberg. ISBN 978-3-642-31662-3.
+[43] Steven A. Cuccaro, Thomas G. Draper, Samuel A. Kutin, and David Petrie Moulton. A new quantum
+ripple-carry addition circuit. arXiv preprint arXiv:quant-ph/0410184, 2004.
+[44] Rom´an Or´ us. Tensor networks for complex quantum systems.Nature Reviews Physics, 1(9):538–550,
+2019. doi: 10.1038/s42254-019-0086-7.
+[45] Markus Reiher, Nathan Wiebe, Krysta M. Svore, Dave Wecker, and Matthias Troyer. Elucidating
+reaction mechanisms on quantum computers. Proceedings of the National Academy of Sciences, 114(29):
+7555–7560, 2017. doi: 10.1073/pnas.1619152114.
+[46] Joonho Lee, Dominic W. Berry, Craig Gidney, William J. Huggins, Jarrod R. McClean, Nathan Wiebe, and
+Ryan Babbush. Even more efficient quantum computations of chemistry through tensor hypercontraction.
+PRX Quantum, 2:030305, Jul 2021. doi: 10.1103/PRXQuantum.2.030305.
+[47] Vera von Burg, Guang Hao Low, Thomas H¨aner, Damian S. Steiger, Markus Reiher, Martin Roetteler,
+and Matthias Troyer. Quantum computing enhanced computational catalysis. Phys. Rev. Res., 3:033055,
+Jul 2021. doi: 10.1103/PhysRevResearch.3.033055.
+[48] Dominic W. Berry, Craig Gidney, Mario Motta, Jarrod R. McClean, and Ryan Babbush. Qubitization of
+Arbitrary Basis Quantum Chemistry Leveraging Sparsity and Low Rank Factorization. Quantum, 3:208,
+December 2019. ISSN 2521-327X. doi: 10.22331/q-2019-12-02-208.
+[49] Lorenzo Moro, Matteo G. A. Paris, Marcello Restelli, and Enrico Prati. Quantum compiling by deep
+reinforcement learning. Communications Physics, 4(1):178, 2021. doi: 10.1038/s42005-021-00684-3.
+[50] Thomas F¨osel, Murphy Y. Niu, Floriand Marquardt, and Li Li. Quantum circuit optimization with deep
+reinforcement learning. arXiv preprint arXiv:quant-ph/2103.07585, 2021.
+[51] Nils Quetschlich, Lukas Burgholzer, and Robert Wille. Compiler optimization for quantum computing
+using reinforcement learning, 2023.
+[52] Mateusz Ostaszewski, Lea M. Trenkwalder, Wojciech Masarczyk, Eleanor Scerri, and Vedran Dunjko.
+Reinforcement learning for optimization of variational quantum circuit architectures. In M. Ranzato,
+A. Beygelzimer, Y. Dauphin, P.S. Liang, and J. Wortman Vaughan, editors,Advances in Neural Information
+Processing Systems, volume 34, pages 18182–18194. Curran Associates, Inc., 2021.
+23
+
+=== PDF PAGE 24 ===
+[53] En-Jui Kuo, Yao-Lung L. Fang, and Samuel Y.-C. Chen. Quantum architecture search via deep
+reinforcement learning. arXiv preprint arXiv:quant-ph/2104.07715, 2021.
+[54] Xianchao Zhu and Xiaokai Hou. Quantum architecture search via truly proximal policy optimization.
+Scientific Reports, 13(1):5157, 2023. doi: 10.1038/s41598-023-32349-2.
+[55] Jiahao Yao, Haoya Li, Marin Bukov, Lin Lin, and Lexing Ying. Monte Carlo tree search based hybrid
+optimization of variational quantum circuits. In Bin Dong, Qianxiao Li, Lei Wang, and Zhi-Qin John Xu,
+editors, Proceedings of Mathematical and Scientific Machine Learning, volume 190 of Proceedings of
+Machine Learning Research, pages 49–64. PMLR, 15–17 Aug 2022.
+[56] Bodo Rosenhahn and Tobias J. Osborne. Monte Carlo graph search for quantum circuit optimization.
+Phys. Rev. A, 108:062615, Dec 2023. doi: 10.1103/PhysRevA.108.062615.
+[57] Craig Gidney and Cody Jones. A CCCZ gate performed with 6 T gates.arXiv preprint arXiv:2106.11513,
+2021.
+[58] Matthew Amy and Neil J. Ross. Phase-state duality in reversible circuit design. Physical Review A, 104:
+052602, Nov 2021.
+[59] David Silver, Thomas Hubert, Julian Schrittwieser, Ioannis Antonoglou, Matthew Lai, Arthur Guez,
+Marc Lanctot, Laurent Sifre, Dharshan Kumaran, Thore Graepel, Timothy Lillicrap, Karen Simonyan,
+and Demis Hassabis. A general reinforcement learning algorithm that masters chess, shogi, and Go
+through self-play. Science, 362(6419):1140–1144, 2018.
+[60] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Lukasz
+Kaiser, and Illia Polosukhin. Attention is all you need. In Advances in Neural Information Processing
+Systems, 2017.
+[61] Jonathan Ho, Nal Kalchbrenner, Dirk Weissenborn, and Tim Salimans. Axial attention in multidimensional
+transformers. arXiv preprint arXiv:1912.12180, 2019.
+[62] Thomas Hubert, Julian Schrittwieser, Ioannis Antonoglou, Mohammadamin Barekatain, Simon Schmitt,
+and David Silver. Learning and planning in complex action spaces. In International Conference on
+Machine Learning, pages 4476–4486, 2021.
+[63] Christopher M. Dawson, Andrew P. Hines, Duncan Mortimer, Henry L. Haselgrove, Michael A. Nielsen,
+and Tobias J. Osborne. Quantum computing and polynomial equations over the finite field𝑧2. Quantum
+Info. Comput., 5(2):102–112, mar 2005. ISSN 1533-7146.
+[64] Yuan Su, Dominic W. Berry, Nathan Wiebe, Nicholas Rubin, and Ryan Babbush. Fault-tolerant
+quantum simulations of chemistry in first quantization. PRX Quantum, 2:040332, Nov 2021. doi:
+10.1103/PRXQuantum.2.040332.
+[65] Mark Steudtner, Sam Morley-Short, William Pol, Sukin Sim, Cristian L. Cortes, Matthias Loipersberger,
+Robert M. Parrish, Matthias Degroote, Nikolaj Moll, Raffaele Santagati, and Michael Streif. Fault-tolerant
+quantum computation of molecular observables. Quantum, 7:1164, November 2023. ISSN 2521-327X.
+doi: 10.22331/q-2023-11-06-1164.
+24
+
+=== PDF PAGE 25 ===
+[66] Ronald de Wolf. Quantum computing: Lecture notes, 2019.
+[67] Bela Bauer, Sergey Bravyi, Mario Motta, and Garnet Kin-Lic Chan. Quantum algorithms for quantum
+chemistry and quantum materials science.Chemical Reviews, 120(22):12685–12717, October 2020. ISSN
+1520-6890. doi: 10.1021/acs.chemrev.9b00829. URL http://dx.doi.org/10.1021/acs.chemrev.
+9b00829.
+[68] Seunghoon Lee, Joonho Lee, Huanchen Zhai, Yu Tong, Alexander M. Dalzell, Ashutosh Kumar,
+Phillip Helms, Johnnie Gray, Zhi-Hao Cui, Wenyuan Liu, Michael Kastoryano, Ryan Babbush, John
+Preskill, David R. Reichman, Earl T. Campbell, Edward F. Valeev, Lin Lin, and Garnet Kin-Lic Chan.
+Evaluating the evidence for exponential quantum advantage in ground-state quantum chemistry.Nature
+Communications, 14(1):1952, 2023. doi: 10.1038/s41467-023-37587-6.
+[69] Andrew M. Childs and Nathan Wiebe. Hamiltonian simulation using linear combinations of unitary
+operations. Quantum Info. Comput., 12(11–12):901–924, nov 2012. ISSN 1533-7146.
+[70] Guang Hao Low, Vadym Kliuchnikov, and Luke Schaeffer. Trading T-gates for dirty qubits in state
+preparation and unitary synthesis. arXiv preprint arXiv:1812.00954, 2018.
+[71] Guang Hao Low and Isaac L. Chuang. Hamiltonian Simulation by Qubitization. Quantum, 3:163,
+July 2019. ISSN 2521-327X. doi: 10.22331/q-2019-07-12-163. URL https://doi.org/10.22331/
+q-2019-07-12-163 .
+[72] John van de Wetering, Richie Yeung, Tuomas Laakkonen, and Aleks Kissinger. Optimal compilation of
+parametrised quantum circuits. arXiv preprint arXiv:2401.12877, 2024.
+[73] Vivien Vandaele, Simon Martiel, and Timoth ´ee Goubault de Brugi `ere. Phase polynomials synthesis
+algorithms for NISQ architectures and beyond. Quantum Science and Technology, 7(4):045027, sep 2022.
+[74] Arianne Meijer-van de Griend and Ross Duncan. Architecture-aware synthesis of phase polynomials for
+NISQ devices. arXiv preprint arXiv:quant-ph/2004.06052, 2020.
+[75] Giulia Meuli, Mathias Soeken, and Giovanni De Micheli. Sat-based {cnot, t} quantum circuit synthesis.
+In Jarkko Kari and Irek Ulidowski, editors, Reversible Computation, pages 175–188, Cham, 2018.
+Springer International Publishing.
+25
+
+=== PDF PAGE 26 ===
+A Additional Background
+A.1 Quantum Computing
+Qubits. While a classical computer works on bits 0 and 1, a quantum computer works with qubits, which are
+superpositions of 0 and 1, representable by a normalized vector in the vector space C2. We write|0⟩,|1⟩∈ C2
+for the standard basis vectors. Generally, we adoptbra-ket notation, and write|𝜓⟩ =𝑎|0⟩+ 𝑏|1⟩ (with𝑎,𝑏 ∈ C)
+for any normalized complex vector (i.e., with|𝑎|2+|𝑏|2 = 1). When we have two qubits, its state space is given
+by tensor product of the spaces for a single qubit:C2⊗ C2  C22. Generally, the𝑁-qubit state space consists of
+the normalized vectors in C2𝑁 . A basis for this space is given by the states|ﬁ𝑥⟩ given by bit stringsﬁ𝑥∈{ 0, 1}𝑁 .
+Quantum gates. State transformations in quantum computing are linear operations that preserve the
+normalization, and hence map quantum states to quantum states. These operations are fully represented by
+unitary matrices. Besides the common examples from the main paper, such as the Hadamard gate or the X
+gate, we define the Z[𝛼] phase gate as
+𝑍[𝛼] =
+ 
+1 0
+0 e 𝑖𝛼
+!
+.
+We use the notation Z[𝛼] to explicitly indicate that the gate is parameterized by 𝛼∈ R, so that 𝑍[𝛼]|𝜓⟩ =
+𝑎𝑍[𝛼]| 0⟩+ 𝑏𝑍[𝛼]| 1⟩ =𝑎|0⟩+ 𝑏e𝑖𝛼|1⟩. In contrast, when we refer to the (unparameterized) Z gate, we assume
+the special case𝛼 =𝜋, i.e.,𝑍≡𝑍[𝜋], such that𝑍|𝜓⟩ =𝑎|0⟩− 𝑏|1⟩. The T gate and the S gate are also phase
+gates, with𝛼 =𝜋/4 and𝛼 =𝜋/2, respectively.
+Controlled gates. As explained in the main paper, the controlled gates are two-qubit gates that only perform a
+non-trivial action on the second qubit if the first qubit is in the|1⟩ state. For instance, the CNOT gate performs
+a NOT gate on the second qubit if the first qubit is|1⟩. We can write this succinctly as CNOT|𝑥,𝑦⟩ =|𝑥,𝑥⊕𝑦⟩.
+Similarly, the CZ gate implements a Z phase gate on the second qubit if the first is in the |1⟩ state, i.e.,
+CZ|𝑥,𝑦⟩ =(−1)𝑥𝑦|𝑥,𝑦⟩, where here we write a juxtaposition of bits𝑥𝑦 to denote their AND. More generally,
+the controlled𝑍[𝛼] phase gate acts as CZ[𝛼]|𝑥,𝑦⟩ = e𝑖𝛼𝑥𝑦|𝑥,𝑦⟩. We also consider the controlled CNOT gate,
+also called Toffoli gate, whose action isTof|𝑥,𝑦,𝑧 ⟩ =|𝑥,𝑦, (𝑥𝑦)⊕ 𝑧⟩. Similarly, the controlled CZ gate acts as
+CCZ|𝑥,𝑦,𝑧 ⟩ =(−1)𝑥𝑦𝑧|𝑥,𝑦,𝑧 ⟩.
+Universal gate sets. The Hadamard𝐻, CNOT, and the Z phase gates𝑍[𝛼] form a universal gate set, meaning
+that any unitary matrix, and hence any quantum computation, can be decomposed into these gates. For instance,
+we have𝑋 =𝐻𝑍[𝜋]𝐻.
+In fault-tolerant quantum computation we cannot use a continuous family of gates like𝑍[𝛼], and instead
+work with a small discretized set of quantum gates. A particularly often used one is the T gate, 𝑇 ≜ 𝑍[𝜋4].
+The gate set consisting of𝐻, CNOT and𝑇 is an approximately universalgate set, meaning that any unitary can
+be approximated arbitrarily well by a circuit consisting of these gates.
+Clifford + T. While quantum computing is generally believed to be hard to classically simulate, there is a
+useful subset of quantum computations for which there is an efficient classical simulation algorithm. These are
+known as Clifford computations, and they are built out of Clifford gates. The Clifford gates are H, CNOT, and
+26
+
+=== PDF PAGE 27 ===
+S. For this reason, an often-used approximately universal gate set is {H, CNOT, S, T}, which is called the
+Clifford+T gate set. As the Clifford gates are efficiently simulable, the number of T gates is a measure of how
+hard it is to perform the computation classically.
+More concretely, T gates are also the hardest gates to execute: in most fault-tolerant architectures for
+quantum computation, the Clifford gates are relatively easy to perform, while T gates cost orders-of-magnitude
+more resources. This is because Clifford gates can be executed “natively” in many error-correcting codes,
+while T gates are implemented by injecting a magic state that first has to be distilled to a desired precision.
+T gate optimization. For this reason it is important to reduce the number of T gates required for a computation
+as much as possible. There are several ways to do this. For instance, since 𝑆 =𝑇 2, whenever two T gates
+appear in a row, they combine to form a Clifford gate. More generally, if we have𝑇𝑘, then this costs just one T
+gate if𝑘 is odd, and is Clifford otherwise. This technique for combining T gates can be generalized to settings
+where they do not appear directly after one another on the same qubit —which is a restrictive consideration.
+The generalization can be used to combine T gates that are applied to the same parity.
+Recall the actions of the Z[𝛼] and CNOT gates. Considering 𝑥,𝑦 ∈{ 0, 1}, we have𝑍[𝛼]|𝑥⟩ = e𝑖𝛼𝑥|𝑥⟩ and
+CNOT|𝑥,𝑦⟩ =|𝑥,𝑥⊕𝑦⟩. Thus, if we apply a𝑍[𝛼] gate to the second qubit after a CNOT, it applies a phase to
+the parity𝑥⊕𝑦, i.e.,(𝐼⊗𝑍[𝛼])CNOT|𝑥,𝑦⟩ =(𝐼⊗𝑍[𝛼])|𝑥,𝑥 ⊕𝑦⟩ = e𝑖𝛼(𝑥⊕𝑦)|𝑥,𝑥 ⊕𝑦⟩.
+More generally, when we have a circuit consisting of justCNOT and Z[𝛼] phase gates, the unitary matrix
+𝑈 that it implements acts as𝑈|ﬁ𝑥⟩ = e𝑖𝜙(ﬁ𝑥)|𝐴ﬁ𝑥⟩, where𝜙 :{0, 1}𝑛→ R is a phase polynomial, and 𝐴 is an
+invertible matrix that can be implemented with Clifford operations. Using this phase polynomial representation,
+phase gates that are implicitly acting on the same parity get combined. When we then resynthesize a quantum
+circuit from this representation, we hence possibly require fewer phase gates.
+Multilinear phase polynomials. When we construct a phase polynomial from a CNOT + Z[𝛼] circuit in
+this way, we get a phase polynomial consisting of XOR terms. This representation is not unique. As a simple
+example, we can see that e𝑖𝜋(𝑥+𝑦+𝑥⊕𝑦) = e2𝜋𝑖 = 1 for all𝑥,𝑦 ∈{ 0, 1}. If we were to directly synthesize the
+first expression, this would require three phase gates corresponding to the three terms (𝑥,𝑦, and𝑥⊕𝑦), even
+though it implements an identity. We can rewrite the phase polynomial into a unique form by decomposing
+each of the XOR terms into a multilinear form (i.e., a polynomial where the degree of each variable in each
+term is either 0 or 1), e.g.,
+𝑥⊕𝑦 =𝑥+𝑦− 2𝑥𝑦.
+(Note that here ‘+’ denotes regular addition in the real numbers.) We can generalize this expression to
+decompose an expression of𝑁 parities into a multilinear polynomial:
+𝑥1⊕···⊕ 𝑥𝑁 = −
+∑︁
+ﬁ𝑦≠ﬁ0
+(−2)|ﬁ𝑦|− 1𝑥𝑦11 ··· 𝑥𝑦𝑁𝑁 . (1)
+Note that the weight of a degree-𝑘 term is 2𝑘−1. This means that if we had a phase polynomial𝜙 where the
+smallest constant in its XOR form is 2𝜋/2𝑘, then all the terms in its multilinear form of degree greater than 𝑘
+will have a weight that is an integer multiple of 2𝜋, and hence can be ignored. In the example above, when
+we write e𝑖𝜋(𝑥+𝑦+𝑥⊕𝑦) in multilinear form we get e𝑖𝜋(2𝑥+2𝑦−2𝑥𝑦), so that it only contains expressions that are
+multiples of 2𝜋.
+27
+
+=== PDF PAGE 28 ===
+In particular, if we have a circuit ofCNOT and T gates only (i.e.,𝛼 =𝜋/4), the multilinear phase polynomial
+involves terms of degree at most 3, after having removed all the terms leading to multiple of 2𝜋. Hence, there
+is a one-to-one correspondence between𝑁-qubit diagonal CNOT + T circuits and multilinear polynomials of
+the form
+𝜙(𝑥1,...,𝑥 𝑁) = 𝜋4 '›
+«
+∑︁
+𝑖
+𝑎𝑖𝑥𝑖+ 2
+∑︁
+𝑖<𝑗
+𝑏𝑖𝑗𝑥𝑖𝑥𝑗+ 4
+∑︁
+𝑖<𝑗<𝑘
+𝑐𝑖𝑗𝑘𝑥𝑖𝑥𝑗𝑥𝑘“ﬁ
+‹
+, (2)
+where𝑎𝑖∈{ 0,..., 7},𝑏𝑖𝑗 ∈{ 0,..., 3} and𝑐𝑖𝑗𝑘 ∈{ 0, 1}.
+We can now check whether two diagonalCNOT + T circuits implement the same unitary by converting
+them to the multilinear phase polynomial representation of Eq. 2. However, since we are considering Clifford
+operations to be free, we only need to check whether twoCNOT + T circuits are equal up to Clifford operations.
+Symmetric 3-tensors. The multilinear representation corresponds directly to a circuit of T, CS and CCZ
+gates: each 𝑎𝑖𝑥𝑖 term is implemented by𝑎𝑖 T gates acting on the𝑖th qubit; each𝑏𝑖𝑗𝑥𝑖𝑥𝑗 term corresponds to
+𝑏𝑖𝑗 CS gates on qubits𝑖 and 𝑗; and each𝑐𝑖𝑗𝑘𝑥𝑖𝑥𝑗𝑥𝑘 term corresponds to one CCZ gate on qubits𝑖, 𝑗 and𝑘 if
+𝑐𝑖𝑗𝑘 = 1. Each of these terms only corresponds to a non-Clifford operation if the constant 𝑎𝑖,𝑏𝑖𝑗 or𝑐𝑖𝑗𝑘 is
+odd. Hence, to check whether two diagonal CNOT + T circuits implement the same unitary up to Clifford
+operations, we can calculate their multilinear polynomials in Eq. 2 and take modulo 2 of their coefficients.
+That is, two CNOT + T circuits are equal up to Clifford operations if and only if they have the same polynomial
+(after taking modulo 2 of their coefficients). All this information about the multilinear polynomial can then be
+captured in a single symmetric 3-tensorT with entries in{0, 1}. Namely, we make the correspondence as
+follows: for𝑖 < 𝑗 < 𝑘an entryT𝑖𝑗𝑘 = 1 if we have𝑐𝑖𝑗𝑘 = 1 in the corresponding polynomial 𝜙; for𝑖 < 𝑗,
+T𝑖𝑗𝑗 = 1 if𝑏𝑖𝑗 = 1; and for any𝑖, we haveT𝑖𝑖𝑖 = 1 if𝑎𝑖 = 1.
+Rank of a tensor. We can write a parity expression like𝑥1⊕𝑥3 as a dot product with a vectorﬁ𝑦 =(1, 0, 1)
+viaﬁ𝑦·ﬁ𝑥 =𝑦1𝑥1⊕𝑦2𝑥2⊕𝑦3𝑥3, where we take the value of the dot product to be modulo 2 and the ones inﬁ𝑦
+indicate which variables are part of the parity. Now, take an XOR phase polynomial consisting of a single
+term e𝑖 𝜋4ﬁ𝑦·ﬁ𝑥. We can also write this as e𝑖 𝜋4𝑥𝑎1⊕···⊕ 𝑥𝑎𝑘 where the indices𝑎𝑘 indicate the positions wherer𝑦𝑖 = 1.
+Using Eq. 1 to decompose this polynomial into multilinear form, we get all combinations of the terms 𝑥𝑎𝑖,
+2𝑥𝑎𝑖𝑥𝑎 𝑗 and 4𝑥𝑎𝑖𝑥𝑎 𝑗𝑥𝑎𝑘 —for all the variables𝑥𝑖 where𝑦𝑖 = 1. Hence, we set the corresponding symmetric
+3-tensorT𝑖𝑗𝑘 asT𝑖𝑗𝑘 =𝑦𝑖𝑦𝑗𝑦𝑘. This is then a rank-one symmetric tensor, as it is built out of a single vector
+ﬁ𝑦. Let such a rank-one tensor be denoted asTﬁ𝑦. Any rank-one tensor is defined by a vectorﬁ𝑦, and hence if a
+symmetric 3-tensor built from a phase polynomial has rank-one, then it corresponds to a single XOR term.
+The translation from the XOR form into the 3-tensor is linear in the XOR terms. Hence, if the phase
+polynomial is a sum of parity terms,{ﬁ𝑦1·ﬁ𝑥,ﬁ𝑦2·ﬁ𝑥,..., ﬁ𝑦𝑘·ﬁ𝑥}, then its corresponding symmetric 3-tensor is
+T =Tﬁ𝑦1+···+T ﬁ𝑦 𝑘, where again the summation is under modulo 2. Conversely, each symmetric 3-tensor can
+be decomposed in this manner. The rank of the tensor is the number of terms in this decomposition. Thus, if
+we have a symmetric 3-tensor, finding a rank-𝑅 decomposition corresponds to finding a set of𝑅 XOR parity
+terms that result in the same tensor, which hence implement the same unitary up to Clifford operations. Given
+that implementing the unitary matrix corresponding to a single parity phase requires one T gate, the T-count of
+this circuit is then exactly equal to the rank of the decomposition.
+Therefore, we have reduced the problem of T-count optimization ofCNOT + T circuits to finding Waring
+decompositions of symmetric𝑁×𝑁×𝑁 3-tensors with elements in{0, 1}.
+28
+
+=== PDF PAGE 29 ===
+A.2 Quantum Chemistry
+Due to the exponential computational cost associated with solving the Schr ¨odinger equation for strongly
+correlated many-electron systems, state-of-the-art classical quantum chemistry methods struggle to accurately
+simulate strongly correlated molecules [44]. Quantum computers, in theory, can handle these calculations
+more efficiently, due to the logarithmic scaling of qubit number with system size. The FeMoco molecule,
+which is the active site in the nitrogenase enzyme responsible for nitrogen fixation, presents a compelling use
+case for quantum computing in strongly correlated quantum chemistry, due to its highly complex electronic
+structure [45]. The primary function of nitrogenase is to catalyze the conversion of atmospheric nitrogen
+(breaking a strong triple bond) at room temperature, into ammonia. Synthetically this is done via the Haber
+process which is incredibly energy intensive. The FeMoco molecule contains multiple atoms, including iron
+and molybdenum.
+To understand complex reaction pathways such as those in FeMoCo one must first calculate the ground state
+energy of a molecule at a particular geometry. Of the techniques for fault-tolerant quantum computation of
+molecular ground states, the current most efficient method is thelinear combinations of unitaries(LCU) method
+combined with qubitization for phase estimation, which leads to a linear T gate complexity in the outcome
+precision [33]. This can be further improved with Coulomb operator prepossessing that exploits sparsity
+[48] or the use of tensor hyper-contraction approaches [ 46]. Furthermore, beyond the Born-Oppenheimer
+approximation of fixed nuclei, a first quantized plane wave framework has been proposed as the optimal for
+molecules [64]. This approach has been extended to be used with pseudo potentials for simulating materials.
+Furthermore, these qubitized phase estimation techniques have been used to calculate molecular observables
+when combined with quantum signal processing [65].
+The rest of this section assumes prior knowledge of the standard mathematical formulation of quantum
+computing and quantum algorithms. See de Wolf [66, Sections 4 & 9 ] for a more gentle introduction and
+Bauer et al. [67] for a more comprehensive reference on the applicability of quantum algorithms in chemistry.
+Quantum phase estimation. The typical way to calculate ground state energies is to exploit the relation of a
+unitary matrix acting on its eigenvector|𝑘⟩, which when applied to a mixture of eigenstates|𝜓⟩ = ˝𝑘𝑐𝑘|𝑘⟩ ,
+gives a superposition
+⟨𝜓|𝑈|𝜓⟩ =
+∑︁
+𝑗
+|𝑐𝑘|2e𝑖𝜙 𝑘⟨𝑘|𝑘⟩.
+where e𝑖𝜙 𝑘 are the eigenvalues of𝑈 (and we call𝜙𝑘 the eigenphases).
+The canonical phase estimation algorithm is shown in Figure 9. The ancilla register is prepared in the
+Hadamard basis, then phase-kickback of controlled unitaries acting on their eigenbasis 𝑈|𝑘⟩ = e𝜙𝑘|𝑘⟩ is
+used to put the powers of eigenphases into the Fourier basis on the ancilla register. The eigenphases are then
+extracted into the computational basis from the Fourier basis using the inverse quantum Fourier transform.
+Readout of the ancilla bits gives the eigenphases in fixed-point binary representation. The eigenstates with
+the dominant initial overlap will have their eigenphases obtained with the largest probability. Therefore it is
+required that the initial state must have dominant overlap with the state of interest. Generating initial states
+with this property is an unresolved problem in quantum chemistry and has been discussed by Lee et al. [68].
+In quantum chemistry applications, we encode the energies of the eigenstate |𝑘⟩ of the Hamiltonian
+describing the chemical system into the phase𝜙𝑘 using the qubitized quantum walk unitary from Eq. 4 (see
+below). Qubitized quantum phase estimation [33] applies a controlled quantum-walk operator as opposed to a
+29
+
+=== PDF PAGE 30 ===
+···
+···
+···
+···
+|0⟩ 𝐻
+𝑄𝐹𝑇−1
+|𝜙1⟩
+|0⟩ 𝐻 |𝜙2⟩
+|0⟩ 𝐻 |𝜙3⟩
+|𝜓0⟩ 𝑈20 𝑈21 𝑈22
+Figure 9: Canonical quantum phase estimation.
+controlled time-evolution operator, where the Hamiltonian𝐻 of the system is encoded in the quantum walk
+operator𝑊 = e𝑖 arccos(𝐻) ˆ𝑌 , where ˆ𝑌 is the Pauli𝑌 operator applied to each eigenvector independently. The
+eigenphases of this walk operator are proportional to the Hamiltonian eigenvalues𝐸𝑘 and can be extracted
+when applied to eigenstates|𝑘⟩ of the Hamiltonian. Consider any state|𝜓⟩ = ˝𝑘𝑐𝑘|𝑘⟩, then:
+⟨𝜓|𝑊|𝜓⟩ =⟨𝜓|e𝑖 arccos(𝐻) ˆ𝑌|𝜓⟩ = ∑︁
+𝑘
+|𝑐𝑘|2e±𝑖 arccos(𝐸𝑘)⟨𝑘|𝑘⟩.
+A naive implementation of the controlled quantum walk circuit𝑊 is shown in Figure 7. Its complexity can
+be improved by using the techniques employed by Babbush et al.[33], which exploit adjacent cancellation of
+reflection operators and a different initial ancilla state.
+Linear combination of unitaries. The𝑈𝐿𝐶𝑈 operator is a block encoding the Hamiltonian of interest,
+describing the molecule at a given geometry. It uses two registers, a state register and a prepare register. The
+block encoding is indexed by the unique bit strings of thePREPARE register, it can be thought of as there being a
+state block for each PREPARE register row and column bit strings.
+A Hamiltonian operator can be decomposed into a LCU by
+𝐻 =
+𝐿−1∑︁
+ℓ=0
+𝛼ℓ𝐻ℓ,
+where𝐻ℓ is a unitary matrix and 𝛼𝑙 a linear expansion coefficient. We can assume 𝛼𝑙 to be a real positive
+number, since any complex phases in the coefficients can be absorbed into𝐻ℓ. The LCU circuit primitives
+were first introduced by Childs and Wiebe [69]. The operator 𝐻 is encoded into a block of a larger unitary
+matrix𝑈𝐿𝐶𝑈 , and it is accessed by projecting into the block via post-selection – that is, we measure the qubits
+defining the block structure, and the encoding succeeds when this returns zero. To ensure the overall matrix
+𝑈𝐿𝐶𝑈 is unitary, the operator is re-scaled by|𝛼|, its𝐿1-norm , i.e.,
+𝑈𝐿𝐶𝑈 =
+ 
+𝐻
+|𝛼| ∗
+∗ ∗
+!
+, where |𝛼| =
+∑︁
+ℓ
+|𝛼ℓ|.
+30
+
+=== PDF PAGE 31 ===
+|𝑝⟩
+|𝜓⟩ SEL(𝐻) =
+...
+...
+...
+...
+|𝑝⟩2
+|𝑝⟩1
+|𝑝⟩0
+|𝜓⟩ 𝑃0 𝑃1 𝑃2 𝑃3 𝑃𝑁
+Figure 10: SELECT circuit implementing ˝ℓ|ℓ⟩⟨ℓ|⊗ 𝑃ℓ.
+The Hamiltonian is encoded into a quantum circuit via two oracles: SELECT(𝐻) and PREPARE(𝛼) which
+encode the unitaries𝐻ℓ and the coefficients𝛼ℓ respectively. The PREPARE(𝛼) transforms the all zeros state of
+the control register to a state|𝑝⟩ (with positive real amplitudes) defined by the given coefficients in Eq. 3,
+PREPARE(𝛼) :|0⟩↦→
+𝐿−1∑︁
+ℓ=0
+√︂𝛼ℓ
+|𝛼||ℓ⟩ =
+ √︃  𝛼0|𝛼| · ...√︃  𝛼1|𝛼| · ...... ... ...√︃ 𝛼𝑘−1|𝛼| · ...  (3)
+A leading fault-tolerant primitive was proposed by Low et al.[70]. The signs and phases of the coefficients are
+pulled into the SELECT.
+It must be noted that upon an action of the SELECT, an orthogonal complement|𝑝⊥⟩ will also be generated,
+which leads to success probabilities (of the block-encoding) of less than 1. The SELECT oracle is typically a
+multi-controlled unitary matrix that applies the Hamiltonian terms to the state register via a multi-control for
+each term, indexed by a unique PREPARE register bit string. A fault tolerant approach was proposed by Babbush
+et al. [33] built upon Gidney’s work [31]. The multi-control multiplies the weighting coefficient from the
+PREPARE to the Pauli for that bit string and applies the weighted Pauli to the state register. The SELECT oracle is
+shown in Figure 10 and given by
+SELECT(𝐻) :=
+𝐿−1∑︁
+ℓ=0
+|ℓ⟩⟨ℓ|⊗ 𝐻ℓ
+While any operator can in principle be written as a linear combination of unitary matrices, second quantized
+Hamiltonians in the Pauli representation are naturally expressed in this framework. The SELECT(𝐻) and
+PREP(𝛼) oracles can be combined to create a probabilistic circuit for acting on an arbitrary quantum state|𝜓⟩
+with an operator 𝐻|𝛼| ; this is shown in Figure 11.
+The operation 𝐻𝛼|𝜓⟩ is successful if a measurement on the prepare register returns |¯0⟩. The success
+probability is related to the closeness of𝐻 to being unitary and the initial state overlap,
+𝑃𝑠𝑢𝑐𝑐𝑒𝑠𝑠 = 1|𝛼|2⟨𝜓|𝐻†𝐻|𝜓⟩
+31
+
+=== PDF PAGE 32 ===
+¯0|¯0⟩𝑝𝑟𝑒𝑝 PREP(𝛼) PREP(𝛼)†
+|𝜓⟩ SEL(𝐻) 𝐻|𝛼||𝜓⟩
+Figure 11: LCU Circuit acting on an arbitrary quantum state |𝜓⟩ with a rescaled operator 𝐻|𝛼| , when a
+successful post-selection occurs.
+The𝐿1-norm of the operator has a significant effect on the success probability and this is the dominant
+factor in the complexity results analysis. Therefore the majority of work on trying to improve the complexity
+of LCU methods typical aiming to reduce the𝐿1-norm of the operator.
+Qubitization. First proposed by Low and Chuang [71], qubitization is a powerful method allowing one
+to implement polynomials of block encoded operators. In block encoding methods we are typically only
+interested in the PREPARE|0··· 0⟩⟨0··· 0| block of the unitary matrix where the Hamiltonian is encoded. The
+rest of the rows and columns of the unitary matrix are refereed to as the orthogonal complement,|0··· 0⊥⟩.
+𝑈𝐿𝐶𝑈 =
+|0··· 0⟩|𝜓⟩ | 0··· 0⊥⟩|𝜓⟩  𝐻 ∗ | 0··· 0⟩|𝜓⟩
+∗ ∗ | 0··· 0⊥⟩|𝜓⟩
+=
+˚
+𝑘
+|0··· 0⟩|𝑘⟩ | 0··· 0⊥⟩|𝑘⟩ !
+𝜆𝑘
+√︃
+1−𝜆2𝑘 |0··· 0⟩|𝑘⟩√︃
+1−𝜆2𝑘 −𝜆𝑘 |0··· 0⊥⟩|𝑘⟩
+.
+In the eigenbasis |𝜓⟩ = ˝𝑘𝜆𝑘|𝑘⟩ the𝑈𝐿𝐶𝑈 becomes a direct sum of 2 × 2 blocks indexed on each
+eigenvector. Where the orthogonal compliment|0··· 0⊥⟩ of the prepare register is given an arbitrary vector
+which just has to exist to generate the qubitized 2x2 subspace via some Gram-Schmidt projection. We can then
+turn this into a quantum walk operator by applying a reflection, which is typically implemented as a all-0 CZ
+gate with a minus phase,
+𝑊 =
+˚
+𝑘
+ 
+1 0
+0 −1
+!
+'›
+«
+𝜆𝑘
+√︃
+1−𝜆2𝑘√︃
+1−𝜆2𝑘 −𝜆𝑘
+“ﬁ
+‹
+=
+˚
+𝑘
+'›
+«
+𝜆𝑘
+√︃
+1−𝜆2𝑘
+−
+√︃
+1−𝜆2𝑘 𝜆𝑘
+“ﬁ
+‹
+.
+|¯0⟩𝑝
+W
+|𝜓⟩
+=
+|¯0⟩𝑝
+𝑈𝐿𝐶𝑈
+𝑍0··· 0
+|𝜓⟩
+=
+|¯0⟩𝑝 PREPARE
+SELECT
+PREPARE† 𝑍0··· 0
+|𝜓⟩
+32
+
+=== PDF PAGE 33 ===
+Therefore, powers of the quantum walk operator take the form of increments of an𝑅𝑦(arccos(𝜆𝑘)) rotation
+in the 2× 2 sub-spaces of{|0··· 0⟩|𝑘⟩,|0··· 0⊥⟩|𝑘⟩}. These rotation matrices can be interpreted in terms of
+the Chebyshev polynomials of the first𝑇𝑑(𝜆𝑘) and second𝑈𝑑(𝜆𝑘) kind:
+𝑊𝑑 = ˚
+𝑘
+ 
+cos(𝑑𝜃𝑘) sin(𝑑𝜃𝑘)
+− sin(𝑑𝜃𝑘) cos(𝑑𝜃𝑘)
+!
+=
+˚
+𝑘
+'›
+«
+𝑇𝑑(𝜆𝑘)
+√︃
+1−𝜆2𝑘𝑈𝑑−1(𝜆𝑘)
+−
+√︃
+1−𝜆2𝑘𝑈𝑑−1(𝜆𝑘) 𝑇𝑑(𝜆𝑘)
+“ﬁ
+‹
+=
+ 
+𝑇𝑑(𝐻) ·
+· ·
+!
+The phase of this operator can be found in the same way as traditional phase estimation using a controlled
+quantum-walk:
+⟨𝜓|𝑊|𝜓⟩ =⟨𝜓|e𝑖 arccos(𝐻) ˆ𝑌|𝜓⟩ = ∑︁
+𝑘
+|𝑐𝑘|2e±𝑖 arccos(𝐸𝑘)⟨𝑘|𝑘⟩ (4)
+This operation is the compilation target for the quantum chemistry section of this work.
+B Baselines
+Methods for T-count optimization are broadly divided into two camps: those that treat all non-Clifford phase
+gates equivalently, and those that utilize specific optimizations for T gates. In the algorithms in the first
+category [e.g., 14, 17, 19, 37], non-Clifford rotation gates are treated as distinct black boxes, without any
+knowledge of transformations relating them, except that they can be merged together to reduce the number of
+gates. While limited in this way, they also have the ability to optimize all circuits, regardless of the gates used,
+and in particular they can optimize circuits containing Hadamard gates.
+By contrast, algorithms in the second category [e.g., 16, 18, 23] are based (either directly or indirectly)
+on the representation of CNOT+T circuits as Waring decompositions of the signature tensor, as they are
+considered in AlphaTensor-Quantum. These generally perform better on such circuits than the black-box
+methods. However, since they cannot optimize around Hadamard gates, it is beneficial to first apply a black-box
+optimizer that can do so [34].
+To obtain the baseline T-count for the circuit benchmarks used in this work, we applied the phase-
+teleportation algorithm of Kissinger and van de Wetering [19] followed by compiling the circuits to the
+Waring decomposition using the steps detailed in Appendix C.1. Then we apply TODD [ 16] and STOMP
+[23] and take the output with better T-count. (For STOMP, we took the best of twenty runs.) For the standard
+arithmetic benchmarks (i.e., the non-split circuits), we compared against the published T-count numbers and
+took whichever was better.
+We chose phase-teleportation because it was shown to be essentially optimal for reducing T-count in the
+black-box setting [72], and TODD/STOMP were chosen because they consistently outperform other methods
+[18] in published benchmarks. While TODD and STOMP both have methods to compile Clifford+T circuits to
+a Waring decomposition, we opt to use the method in Appendix C.1 as it includes a more recent and better
+performing method from Vandaele et al. [34].
+33
+
+=== PDF PAGE 34 ===
+C Method Details
+C.1 Compilation of the Quantum Circuits
+To obtain signature tensors suitable for optimization with AlphaTensor-Quantum from quantum circuits, we
+proceed as follows:
+1. First, we express the input circuit over the{H, Z, S, T, CNOT} gate set.
+2. We apply the phase-teleportation optimization algorithm of Kissinger and van de Wetering[19] to reduce
+the initial number of T gates as much as possible. As discussed in Appendix B, this is particularly
+beneficial because phase-teleportation can optimize around Hadamard gates.
+3. We rewrite the circuit to contain as few internal Hadamard gates as possible, using the algorithm of
+Vandaele et al. [34]. A Hadamard gate is internal if there are T gates between it and both the beginning
+and end of the circuit that it cannot commute with (for example, in the sequence𝐻𝑇𝐻𝑇𝐻 the second
+Hadamard is internal but the first and third ones are not).
+4. We split the circuit 𝑈 into alternating blocks of Clifford circuits 𝐵𝑖 and circuits 𝐴𝑖 containing only
+CNOT and phase gates, such that 𝑈 = 𝐵𝑚𝐴𝑚−1𝐵𝑚−1··· 𝐴1𝐵1. We accomplish this by scanning the
+circuit from left to right, collecting as many Clifford gates as possible into the first block𝐵1 until we
+encounter a T gate. After this, we collect gates into the block𝐴1 until we encounter a Hadamard gate.
+Then we switch to collecting Clifford gates into block𝐵2, etc. We proceed in this way until the whole
+circuit has been consumed.
+5. We apply the Hadamard gadgetization process of Heyfron and Campbell [16] to remove all internal
+Hadamard gates by replacing them with ancilla and Clifford gates. In Section 3.1, if this process generates
+more than 60 qubits, we take the output of the previous step and use the technique in Appendix C.2
+to split the circuit into smaller sections, and we repeat this compilation process on each. We discuss
+Hadamard gadgetization in further detail below.
+6. At this point we can partition the circuit into the form 𝑈 = 𝑈3𝑈2𝑈1 where 𝑈1 and 𝑈3 contain
+Clifford gates and non-internal Hadamard gates, and 𝑈2 contains only CNOT and phase gates. Let
+𝐶 be the circuit formed by taking just the CNOT gates in 𝑈2, then consider the transformation
+𝑈 = 𝑈′3𝑈′2𝑈1 =(𝑈3𝐶)(𝐶†𝑈2)𝑈1. Now, 𝑈′2 is a diagonal operator. Let 𝑉 be the circuit formed by
+removing all T gates from𝑈′2 and𝑊 be the circuit formed by removing all S and Z gates from𝑈′2. Then𝑉
+is Clifford,𝑊 contains only CNOT and T gates, and it can be shown that𝑈′2 =𝑉𝑊 , so𝑈 =(𝑈3𝐶𝑉)𝑊𝑈1.
+Therefore, all the non-Clifford components of the original circuit𝑈 is now contained within𝑊.
+7. We map𝑊 to a Waring decomposition of the signature tensor as follows. Suppose𝑊 contains𝑅 T gates
+and𝑁 qubits, then let𝐴 be a𝑁×𝑅 matrix in F2. For the𝑖th T gate in𝑊, set𝐴𝑗𝑖 = 1 if it appears on the
+𝑗th qubit, and𝐴𝑗𝑖 = 0 otherwise. Scan over𝑊 from left to right: for each CNOT gate with control𝑎
+and target𝑏, if there are any T gates to its right, then let𝑖′ be the corresponding column of 𝐴 and set
+𝐴𝑎𝑖← 𝐴𝑎𝑖+𝐴𝑏𝑖 for all𝑖′≤𝑖≤ 𝑅. After all CNOT gates have been processed, 𝐴 will be a Waring
+decomposition of the signature tensor of𝑊, which we can calculate asT𝑖𝑗𝑘 = ˝𝑅𝑚=1𝐴𝑖𝑚𝐴𝑗𝑚𝐴𝑘𝑚. This
+is then ready to be optimized with AlphaTensor-Quantum. Overall, this procedure is the same as the
+phase polynomial method in Section 5.1, but phrased in terms of matrices.
+34
+
+=== PDF PAGE 35 ===
+Hadmard gadgetization. To remove the internal Hadamard gates from a circuit, we can use the Hadamard
+gadgetization method of Heyfron and Campbell [16]. In this method, each Hadamard gate is replaced with the
+following gadget circuit, consisting of an ancilla, Clifford gates, measurements, and classically-controlled gates
+(here,𝐴 and𝐵 represent the rest of the circuit):
+... A B
+H
+...... ... A B ......=
+|+⟩
+Z X
+MX
+However, in this implementation, we assume that the measurement always returns zero. Therefore, the
+corresponding gadget implementation is as follows (additionally rewritten to our target gate set):
+H =
+|+⟩
+Z =
+|+⟩
+S†
+S†⊕S
+⊕
+⊕
+This is justified in that it does not change the non-Clifford behaviour of a circuit—in fact, the classically
+controlled X gate correction factor can be translated into a controlled Clifford operator at the end of the
+circuit [16, 23], hence the T-count is unchanged by this assumption. Because computing these correction
+factors is complicated, and existing quantum circuit representations have poor support for classically-controlled
+operations; this decision was also made for the implementations of both TODD [16] and STOMP [23]. Since
+fault-tolerant quantum computing is still a number of years away from practical implementation, we argue that
+this is acceptable at this stage.
+Reconstructing optimized circuits. In order to reconstruct an optimized form𝑊′ of the diagonal circuit𝑊
+computed above, we can follow the steps in Appendix C.3 given a new Waring decomposition of the signature
+tensorT . With𝑊′, we can recompose the original circuit𝑈 =(𝑈3𝐶𝑉)𝑊𝑈1. However, note that𝑊′ may differ
+from the original𝑊 by a diagonal Clifford factor, so it must be corrected. This factor can be computed, given
+the original and optimized Waring decompositions along with𝑉, by considering the difference between the
+signature tensors over Z rather than F2—see Heyfron and Campbell [16] for more details. As discussed above,
+in this process we discarded the classically-controlled Clifford gates incurred during Hadamard gadgetization.
+It is possible in principle (and computationally easy) to take these into account—see de Beaudrap et al. [23]
+for more details and Heyfron and Campbell [16] for the general method. Since in this work we only determine
+the optimized T-count rather than reconstructing the circuit, we do not need to implement either of these steps.
+35
+
+=== PDF PAGE 36 ===
+C.2 Splitting Larger Quantum Circuits
+During the compilation process, each quantum circuit𝑈 is split into a list of blocks alternating between circuits
+𝐴𝑖 containing CNOT and phase gates, and Clifford circuits𝐵𝑖, i.e.,
+𝑈 =𝐵𝑚𝐴𝑚−1𝐵𝑚−1··· 𝐴2𝐵2𝐴1𝐵1.
+For most circuits, we can then proceed with Hadamard gadgetization of the 𝐵𝑖 blocks as described above.
+However, for some circuits, this would result in a circuit with too many qubits. Hence, we choose some
+boundaries 1 = 𝑗1 < 𝑗2 <··· < 𝑗𝑘 =𝑚 to break up the circuit into a set of subcircuits:
+𝑈𝑖 = 𝐴𝑗𝑖+1−1𝐵𝑗𝑖+1−1··· 𝐴𝑗𝑖𝐵𝑗𝑖 where𝑈 =𝐵𝑚𝑈𝑘··· 𝑈1.
+We want to minimize𝑘 in order to maximize the number of T gates that can be considered together in each
+block. To do this, we use a random-greedy algorithm: fix a threshold 𝑡 on the maximum number of qubits
+allowed in any subcircuit (e.g., 60), and initially let𝑗𝑖 =𝑖 so that𝑘 =𝑚. For any consecutive pair𝑈𝑖 and𝑈𝑖+1,
+we consider them to be compatible if
+| supp𝑈𝑖∪ supp𝑈𝑖+1| +
+∑︁
+𝑗𝑖<𝑛<𝑗 𝑖+2
+|𝐵𝑛|𝐻≤𝑡,
+where supp𝑈𝑖 is the set of qubits used by gates on𝑈𝑖, and|𝐶|𝐻 is the number of Hadamard gates in𝐶. While
+there is any compatible pair remaining, pick one at random and set 𝑗𝑛← 𝑗𝑛+1 for𝑛≥𝑖+ 1 and𝑘←𝑘− 1. In
+this way, we merge consecutive compatible pairs until there are only a few blocks remaining, and combining
+any two of them would result in too many qubits being generated. We repeat this process 1 000 times and take
+the run that results in the smallest value of𝑘. We can then treat each𝑈𝑖 as its own target circuit, processing it
+back through the compilation pipeline, and optimizing it with AlphaTensor-Quantum. To composite the final
+circuit we combine the𝑈𝑖 along with the Clifford circuit𝐵𝑚 to form𝑈 =𝐵𝑚𝑈𝑘··· 𝑈1.
+C.3 Gadgetization
+The conversion of phase-gadget circuits to Waring decompositions of the signature tensor as described in
+Appendix C.1 can be inverted to obtain a phase-gadget circuit from a decomposition by placing a CNOT-fanout
+structure conjugating a T gate for each factor, where the target corresponds to some non-zero entry in the factor,
+and the controls are on every other non-zero entry. For example:
+'››››››
+«
+0
+1
+1
+0
+1
+“ﬁﬁﬁﬁﬁﬁ
+‹
+'››››››
+«
+0
+1
+0
+1
+0
+“ﬁﬁﬁﬁﬁﬁ
+‹
+'››››››
+«
+1
+1
+0
+1
+1
+“ﬁﬁﬁﬁﬁﬁ
+‹
+=⇒
+⊕ ⊕ 𝑇 ⊕ ⊕
+⊕ ⊕𝑇
+⊕ ⊕ 𝑇 ⊕ ⊕⊕ ⊕
+a) b) c) a) b) c)
+Note that this is not optimal with respect to the number of CNOT gates, and many strategies have been
+developed to improve this [73–75]. In this work we ignore the cost of Clifford gates, and so do not attempt
+36
+
+=== PDF PAGE 37 ===
+to optimize this step. If we are constrained to CNOT+T circuits, this method is optimal in terms of T gates,
+but some patterns of factors can be implemented with fewer non-Clifford resources if we make use of ancilla
+qubits, measurements, and classically-controlled Clifford gates.
+In particular, suppose we have factors𝑢(1)··· 𝑢(7) such that𝑢(1),𝑢(2) and𝑢(3) are linearly independent,
+and the following equations are satisfied:
+𝑢(4) =𝑢(1)+𝑢(2)
+𝑢(5) =𝑢(1)+𝑢(3)
+𝑢(6) =𝑢(1)+𝑢(2)+𝑢(3)
+𝑢(7) =𝑢(2)+𝑢(3)
+where addition is considered elementwise over F2. We call such patterns Toffoli gadgets. They can be
+implemented using a single Toffoli gate conjugated by CNOT and Hadamard gates as follows,
+...
+U1 U2 U3 U4 U5 U6 U7
+... ...
+C C †
+...
+⊕
+...
+=
+..................
+H
+HH
+H
+H
+H
+H
+H
+H
+H
+H
+H
+H
+H
+where𝑈𝑖 denotes the CNOT-fanout circuit given above for factor𝑢(𝑖), and 𝐶 is a CNOT circuit such that
+𝐶|𝑢(1)⟩ =|100···⟩ ,𝐶|𝑢(2)⟩ =|010···⟩ ,𝐶|𝑢(3)⟩ =|001···⟩ . This can be proven by considering this circuit
+in the sum-over-paths formalism [63]. For example:
+⊕ ⊕T
+T
+⊕ ⊕T
+T
+⊕ T⊕⊕ ⊕⊕⊕ T⊕⊕ ⊕⊕ ⊕ T⊕ ⊕⊕
+=
+⊕
+⊕
+⊕
+⊕
+⊕
+⊕
+⊕
+H
+H
+H
+H
+H
+H
+H
+H
+H
+H
+H
+H
+Since Toffoli gates can be implemented efficiently using either four T gates or a CCZ magic state which using
+state of the art factories costs the same as two T gates (see Figure 12), each Toffoli gadget can be implemented
+more efficiently than the seven T gates required to represent it as a phase-gadget circuit.
+Because𝑢(1),𝑢(2),𝑢(3) are linearly independent, such a circuit𝐶 must exist. To construct it, we first build
+an invertible matrix 𝑀 over F2 such that the first three columns of 𝑀 are𝑢(1),𝑢(2),𝑢(3) respectively. The
+remaining columns of𝑀 can be computed as a basis for the kernel of the first three via Gaussian elimination.
+Then we can synthesize a CNOT circuit𝐶 such that𝐶|𝑥⟩ =|𝑀−1𝑥⟩ using the Patel-Markov-Hayes algorithm.
+By definition, this must send|𝑢(1)⟩ to|100···⟩ , etc., as required. Therefore, to encourage Toffoli gadgets
+to be played by AlphaTensor-Quantum, we assign a positive reward to moves which complete a group. To
+identify when this happens, we set𝑢(1) to be the factor at step𝑠− 6,𝑢(2) to be the factor at step𝑠− 5, and so
+37
+
+=== PDF PAGE 38 ===
+on, so that𝑢(7) is the last played action (at step𝑠).1 Finally, to synthesize a quantum circuit from a Waring
+decomposition of the signature tensor, we apply this construction to any Toffoli gadgets that were identified by
+AlphaTensor-Quantum, and synthesize the remaining factors with the CNOT-fanout approach from above.
+In the same way, we call groups of three factors 𝑢(1),𝑢(2),𝑢(3) such that 𝑢(1) and 𝑢(2) are linearly
+independent and𝑢(3) =𝑢(1)+𝑢(2) CS gadgets. In this case, such a group can be implemented by a single CS
+gate conjugated by CNOT gates:
+... U1 U2 U3 ... C C † ...
+S
+...=.........
+H
+H
+H
+H
+H
+H
+H
+HH
+H
+H
+H
+The CNOT circuit𝐶 is such that𝐶|𝑢(1)⟩ =|10... ⟩ and𝐶|𝑢(2)⟩ =|01···⟩ , and it can be generated in exactly
+the same way as for the Toffoli gadget case. For example:
+⊕ ⊕T
+⊕ ⊕T ⊕ T⊕ ⊕ ⊕⊕⊕
+=
+⊕
+⊕
+⊕
+⊕
+S H
+H
+H
+H H
+H
+H
+H
+H
+H
+H
+H
+The central CS gate can be implemented using a CCZ magic state (see Figure 13), which costs the same as two
+T gates, and so the whole gadget can be implemented more efficiently than representing it as a phase-gadget
+circuit with three T gates. Note that in both of these gadgets, most of the Hadamard gates can be eliminated by
+commuting them with the CNOT gates in𝐶.
+C.4 Neural Network Architecture
+As shown in Figure 8a, the neural network has three main components: the torso, the policy head, and the
+value head.
+The input to the neural network is formed from the current game state, which, at step𝑠 of TensorGame, is
+composed of a (residual) tensorT(𝑠) and a list of all the previously played actions𝑢(𝑠′), with𝑠′ < 𝑠. To form
+the input to the network, we only consider the last𝑇 = 20 actions; specifically we stack them into a tensor
+of size𝑁×𝑁×𝑇, where each𝑁×𝑁 slice is obtained by taking the outer product𝑢(𝑠′)⊗𝑢(𝑠′). This tensor
+is concatenated withT(𝑠), as well as with the output of a linear layer that takes as input a single scalar: the
+square root of the quotient between𝑠 and the maximum number of allowed moves, which is 250. Figure 14
+shows an overview of the torso.
+The concatenated inputs are first passed through a linear layer that maps from R𝑁+𝑇+1 to R𝑐, with𝑐 = 512.
+The output of this layer is passed through 𝐿 = 4 layers of symmetrized axial attention (see Figure 8b),
+1Any permutation of the seven factors could be absorbed in𝐶 and therefore it would still correspond to a Toffoli gadget. Additionally,
+the seven factors do not need to be consecutive in order to form a Toffoli gadget. However we impose a specific ordering of the (consecutive)
+factors𝑢(1),...,𝑢 (7) for two reasons. First, the sequence of seven factors does not include the pattern of the CS gadget as a subsequence.
+Second, this makes it easier for the RL agent to automatically detect and exploit the gadgetization patterns.
+38
+
+=== PDF PAGE 39 ===
+⊕
+=
+|+⟩ ⊕⊕𝑇
+⊕
+⊕
+𝑇
+𝑇†
+𝑇†
+⊕
+⊕
+𝐻 𝑆
+⊕
+𝐻
+𝑍
+𝑀𝑍
+⊕
+=
+𝐻 𝐻
+⊕
+⊕
+⊕
+𝑀𝑍
+𝑀𝑍
+𝑀𝑍
+|CCZ⟩
+𝑍
+𝑋
+𝑋
+𝑍
+𝑋
+𝑍
+𝑋
+a)
+b)
+Figure 12: The Toffoli gate can be implemented efficiently using ancilla qubits, measurements, classically-
+controlled Clifford gates, and either four T gates (a) as in Jones [25], or a CCZ magic state (b) which are
+produced natively by the magic state factories of Gidney and Fowler [8] at a cost equivalent to two T gates.
+which alternates self-attention operations with symmetrization layers. Each attention operation is depicted
+in Figure 15 and uses multi-head attention with 16 heads and head depth 32. The dense layer in Figure 15
+consists in a feed-forward neural network with a single hidden layer that has twice as many hidden units as the
+input (and that applies the ReLU non-linearity).
+Finally, the output of the torso is reshaped and passed to the policy and value heads (see Figure 14). The
+architecture of both the policy and value heads is taken from Fawzi et al.[24]. In particular, for the policy head,
+we use an autoregressive model that predicts e𝑁 entries of𝑢(𝑠) at a time, where e𝑁 divides𝑁. For instance, we
+use e𝑁 = 10 for the experiments from Section 3.1 for which𝑁 = 60, and e𝑁 = 12 for the experiments on unary
+iteration for which𝑁 = 72.
+39
+
+=== PDF PAGE 40 ===
+|CCZ ⟩
+MY
+Z MZ
+MZ
+⊕
+⊕
+X S†
+Z
+X
+S† Z
+S
+=
+Figure 13: A CS gate can implemented efficiently [ 26, Appendix A] using ancilla qubits, measurements,
+classically-controlled Clifford gates and a CCZ magic state which is produced natively by the magic state
+factories of Gidney and Fowler [8] at a cost equivalent to two T gates.
+Figure 14: Overview of the neural network torso. Its main component is a stack of symmetrized axial attention
+layers.
+Figure 15: Overview of the self-attention operation. It features the standard components of a self-attention
+layer [60], including skip connections, layer normalization, multi-head attention, and a dense (fully connected)
+network with one hidden layer. When the input is a tensor of size𝑁×𝑁×𝑐, the self-attention layer is applied
+independently over each row (or column) of the input.
+40
+
+=== PDF PAGE 41 ===
+D Additional Results
+D.1 Additional Benchmark Circuits
+The benchmark circuits GF(22)-mult and GF(23)-mult are derived from Cheung et al. [27] in the same way
+as the rest of the GF(2 𝑚)-mult (𝑚≥ 4) series of circuits available from Amy [36], using the irreducible
+polynomials𝑋2+𝑋+ 1 and𝑋3+𝑋+ 1 respectively. We include them to complete the series, since𝑚 = 2 is
+the smallest interesting instance (𝑚 = 1 corresponds to a single Toffoli gate). For reference, the source code is
+given in OpenQASM 2.0 format as follows:
+Listing 1: GF(22)-mult
+OPENQASM 2.0;
+include " qelib1 .inc ";
+qreg a [2];
+qreg b [2];
+qreg c [2];
+ccx a[1] , b[1] , c [0];
+cx c[0] , c [1];
+ccx a[0] , b[0] , c [0];
+ccx a[1] , b[0] , c [1];
+ccx a[0] , b[1] , c [1];
+Listing 2: GF(23)-mult
+OPENQASM 2.0;
+include " qelib1 .inc ";
+qreg a [3];
+qreg b [3];
+qreg c [3];
+ccx a[1] , b[2] , c [0];
+ccx a[2] , b[1] , c [0];
+ccx a[2] , b[2] , c [1];
+cx c[1] , c [2];
+cx c[0] , c [1];
+ccx a[0] , b[0] , c [0];
+ccx a[1] , b[0] , c [1];
+ccx a[0] , b[1] , c [1];
+ccx a[2] , b[0] , c [2];
+ccx a[1] , b[1] , c [2];
+ccx a[0] , b[2] , c [2];
+D.2 Benchmarks Circuits with a Larger Number of Qubits
+Table 3 reports the T-count obtained on the circuits from Section 3.1 that were split into sub-circuits (i.e., the
+ones marked with★ in Table 2), together with the T-count for each of the sub-circuits. For each sub-circuit, the
+baseline T-count was obtained as described in Appendix B.
+D.3 Neural Network Ablations
+Here we compare different architectures for the torso of the neural network (see Section 5.2 and appendix C.4).
+Comparison across architectures. We first compare the following: (i) attentive modes [24], which uses
+attention operations across pairs of modes of the input tensor; (ii) axial attention [61], which we recover when
+we eliminate the symmetrization layers from our architecture in Figure 8b; and (iii)symmetrized axial attention,
+which is the architecture that we introduce in Section 5.2, featuring symmetrization layers.
+41
+
+=== PDF PAGE 42 ===
+0 5 10 15 20
+Time (hours)
+2.30
+2.35
+2.40
+2.45
+2.50
+2.55
+2.60Loss
+Attentive modes
+Axial attention
+Symmetrized axial attention
+(a) Policy loss (lower is better).
+0 5 10 15 20
+Time (hours)
+0.40
+0.45
+0.50
+0.55
+0.60
+0.65Loss
+Attentive modes
+Axial attention
+Symmetrized axial attention (b) Value loss (lower is better).
+Figure 16: Comparison of different architectures for the torso of the neural network on a supervised experiment
+on 30× 30× 30 tensors. Symmetrized axial attention performs best. The reported policy loss is the average
+cross-entropy loss for the first step of the autoregressive model. (For better visualization, all curves have been
+smoothed using an average moving window of size 20.)
+We run each architecture on a supervised experiment with synthetic data only (i.e., a system without
+actors), using tensors of size 𝑁 = 30, and compare the loss that they achieve. For each of the methods, we
+set the number of layers𝐿 = 4. For axial attention and symmetrized axial attention, this means 8 (batched)
+attention operations with 𝑁 tokens each; for attentive modes, this means 12 (batched) attention operations
+with 2𝑁 tokens each. Therefore, we expect the architecture of Fawzi et al.[24] to run slower, and in fact we
+verify that its runtime is about 2x that of the other architectures: attentive modes runs at about 6 iterations per
+second, while axial attention and symmetrized axial attention complete 11.8 and 11.4 iterations per second,
+respectively.
+We report in Figure 16 the training loss from each head of the neural network (the loss on a test set performs
+similarly). While axial attention and symmetrized axial attention run at approximately the same speed, the
+symmetrization layers bring a significant boost in performance. In contrast, although the architecture based on
+attentive modes performs almost as good as symmetrized axial attention if ran for longer, its decreased speed
+make it an impractical choice for AlphaTensor-Quantum (it also presents memory issues when applied on
+larger tensors).
+Comparison of symmetrization layers. We now consider two different choices for the symmetrization
+layers. Recall that the symmetrization operation performs the operation 𝑋←𝛽⊙𝑋+( 1−𝛽)⊙ 𝑋⊤. We refer
+to the choice of𝛽 = 12 as fixed scalar, in contrast to letting𝛽∈ R𝑁×𝑁 be a learnable matrix.
+We compare both versions of symmetrization in Figure 17, where we report the training loss. Using a
+learnable matrix provides a small improvement over a fixed scalar (both choices run at approximately the same
+speed of 11.4 iterations per second). Letting 𝛽 be a learnable matrix increases the number of model parameters
+by a negligible fraction (e.g., in this scenario, it adds 3 600 parameters to a model of approximately 132.7
+million parameters).
+42
+
+=== PDF PAGE 43 ===
+0 5 10 15 20
+Time (hours)
+2.28
+2.30
+2.32
+2.34
+2.36
+2.38
+2.40Loss
+Fixed scalar
+Learnable matrix
+(a) Policy loss (lower is better).
+0 5 10 15 20
+Time (hours)
+2.30
+2.32
+2.34
+2.36
+2.38
+2.40Loss
+Fixed scalar
+Learnable matrix (b) Value loss (lower is better).
+Figure 17: Comparison of different versions of the symmetrization operation, on a supervised experiment on
+30× 30× 30 tensors. Symmetrization layers with learnable parameters lead to some performance improvement.
+The reported policy loss is the average cross-entropy loss for the first step of the autoregressive model. (For
+better visualization, all curves have been smoothed using an average moving window of size 20.)
+43
+
+=== PDF PAGE 44 ===
+AlphaTensor-QuantumCircuit #Qubits Baselines Without gadgets With gadgets
+8-bit adder 129 [16] 139 94 (33Tof + 28T)
+block 1 31 50 48 36 (11Tof + 14T)
+block 2 50 95 91 58 (22Tof + 14T)
+Grover5 44 [16] 152 66 (27Tof + 12T)
+block 1 58 108 107 44 (19Tof + 6T)
+block 2 27 46 45 22 (8Tof + 6T)
+Hamming15 (high) 787† (1010 [16]) 773 440 (173Tof + 2CS + 90T)
+block 1 58 92 92 52 (21Tof + 10T)
+block 2 49 78 78 44 (18Tof + 8T)
+block 3 56 82 81 50 (18Tof + 14T)
+block 4 57 95 94 55 (20Tof + 15T)
+block 5 46 66 66 40 (16Tof + 8T)
+block 6 50 75 77 45 (18Tof + 9T)
+block 7 53 88 86 50 (20Tof + 10T)
+block 8 58 106 100 53 (20Tof + 2CS + 9T)
+block 9 59 105 99 51 (22Tof + 7T)
+Hamming15 (med) 156† (162 [16]) 156 78 (35Tof + 8T)
+block 1 25 38 38 20 (8Tof + 4T)
+block 2 59 118 118 58 (27Tof + 4T)
+Mod-Adder1024 798† (978 [16]) 762 500 (141Tof + 15CS + 188T)
+block 1 54 77 75 42 (16Tof + 10T)
+block 2 52 71 70 47 (12Tof + 23T)
+block 3 53 80 76 48 (16Tof + 16T)
+block 4 55 86 77 47 (15Tof + 17T)
+block 5 54 75 73 53 (15Tof + 5CS + 13T)
+block 6 52 84 83 58 (13Tof + 5CS + 22T)
+block 7 59 89 87 60 (19Tof + 22T)
+block 8 56 80 73 54 (7Tof + 5CS + 30T)
+block 9 56 96 89 58 (17Tof + 24T)
+block 10 53 60 59 33 (11Tof + 11T)
+QCLA-Adder10 116 [16] 135 94 (28Tof + 5CS + 28T)
+block 1 37 53 53 43 (12Tof + 19T)
+block 2 48 83 82 51 (16Tof +5CS + 9T)
+QCLA-Mod7 165 [16] 199 122 (43Tof + 36T)
+block 1 50 95 95 60 (21Tof + 18T)
+block 2 59 107 104 62 (22Tof + 18T)
+Table 3: T-count achieved by different methods on a set of benchmark circuits, after splitting them into
+sub-circuits (blocks). AlphaTensor-Quantum finds good trade-offs between gadgets and T gates and outperforms
+the baseline methods for all circuits except Grover5. The T-count from AlphaTensor-Quantum is obtained
+by additively combining all sub-circuits. The baseline T-count for the sub-circuits is given by a combination
+of methods (see Appendix B). For the shaded rows, the baseline corresponds to the lowest between the best
+reported value in the literature and the sum of the T-count across sub-circuits (the symbol† indicates it is the
+latter case and also includes in parenthesis the best reported value in the literature, for completeness). The
+notation “𝑎Tof+𝑏CS +𝑐T” indicates𝑎 Toffoli gates,𝑏 CS gates, and𝑐 T gates. Bold font highlights results
+with strictly better T-count than the baselines.
+44

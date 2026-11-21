@@ -1,0 +1,5123 @@
+{
+  "shots_per_domain": 4096,
+  "seeds_per_domain": 2,
+  "candidates": [
+    {
+      "index": 17031,
+      "line": "CCX q21 q59 q40",
+      "bits": [
+        601
+      ]
+    },
+    {
+      "index": 17083,
+      "line": "CSWAP q20 q40 q3",
+      "bits": [
+        317,
+        388,
+        391,
+        486,
+        1001
+      ]
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bits": [
+        326,
+        327,
+        389,
+        395,
+        396,
+        397,
+        398,
+        399,
+        408,
+        482,
+        483,
+        486,
+        491,
+        600,
+        601,
+        602,
+        1001
+      ]
+    },
+    {
+      "index": 24891,
+      "line": "CCX q46 q39 q47",
+      "bits": [
+        1,
+        327,
+        412,
+        482,
+        7902,
+        7909
+      ]
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bits": [
+        6,
+        18,
+        20,
+        211,
+        218,
+        280,
+        285,
+        286,
+        317,
+        347,
+        361,
+        365,
+        371,
+        374,
+        388,
+        391,
+        411,
+        423,
+        427,
+        433,
+        435,
+        436,
+        486,
+        1001,
+        1005,
+        7903,
+        7907,
+        7913,
+        7914
+      ]
+    },
+    {
+      "index": 27238,
+      "line": "CSWAP q14 q40 q2",
+      "bits": [
+        280,
+        486,
+        1001,
+        7903
+      ]
+    },
+    {
+      "index": 28040,
+      "line": "CCX q14 q21 q40",
+      "bits": [
+        280
+      ]
+    },
+    {
+      "index": 28224,
+      "line": "CCZ q42 q25 q26",
+      "bits": [
+        437
+      ]
+    },
+    {
+      "index": 28348,
+      "line": "CCZ q19 q49 q22",
+      "bits": [
+        439
+      ]
+    },
+    {
+      "index": 28361,
+      "line": "CCX q38 q52 q46",
+      "bits": [
+        438
+      ]
+    },
+    {
+      "index": 28369,
+      "line": "CCZ q39 q15 q53",
+      "bits": [
+        438
+      ]
+    },
+    {
+      "index": 28508,
+      "line": "CCX q58 q52 q40",
+      "bits": [
+        440
+      ]
+    },
+    {
+      "index": 28516,
+      "line": "CCZ q38 q15 q39",
+      "bits": [
+        440
+      ]
+    },
+    {
+      "index": 28651,
+      "line": "CCX q62 q52 q40",
+      "bits": [
+        441
+      ]
+    },
+    {
+      "index": 28659,
+      "line": "CCZ q58 q15 q38",
+      "bits": [
+        441
+      ]
+    },
+    {
+      "index": 28818,
+      "line": "CCZ q37 q52 q15",
+      "bits": [
+        442
+      ]
+    },
+    {
+      "index": 28960,
+      "line": "CCZ q34 q52 q15",
+      "bits": [
+        443
+      ]
+    },
+    {
+      "index": 29128,
+      "line": "CCX q39 q41 q46",
+      "bits": [
+        444
+      ]
+    },
+    {
+      "index": 29136,
+      "line": "CCZ q60 q42 q19",
+      "bits": [
+        444
+      ]
+    },
+    {
+      "index": 29156,
+      "line": "CCX q62 q49 q46",
+      "bits": [
+        297
+      ]
+    },
+    {
+      "index": 29164,
+      "line": "CCZ q58 q22 q24",
+      "bits": [
+        297
+      ]
+    },
+    {
+      "index": 29192,
+      "line": "CCZ q33 q52 q15",
+      "bits": [
+        240
+      ]
+    },
+    {
+      "index": 29364,
+      "line": "CCX q38 q41 q46",
+      "bits": [
+        445
+      ]
+    },
+    {
+      "index": 29372,
+      "line": "CCZ q39 q42 q25",
+      "bits": [
+        445
+      ]
+    },
+    {
+      "index": 29392,
+      "line": "CCX q37 q49 q46",
+      "bits": [
+        298
+      ]
+    },
+    {
+      "index": 29400,
+      "line": "CCZ q62 q22 q24",
+      "bits": [
+        298
+      ]
+    },
+    {
+      "index": 29428,
+      "line": "CCZ q32 q52 q15",
+      "bits": [
+        239
+      ]
+    },
+    {
+      "index": 29613,
+      "line": "CCX q34 q49 q46",
+      "bits": [
+        299
+      ]
+    },
+    {
+      "index": 29621,
+      "line": "CCZ q37 q22 q24",
+      "bits": [
+        299
+      ]
+    },
+    {
+      "index": 29649,
+      "line": "CCZ q31 q52 q15",
+      "bits": [
+        238
+      ]
+    },
+    {
+      "index": 29857,
+      "line": "CCZ q60 q57 q19",
+      "bits": [
+        447
+      ]
+    },
+    {
+      "index": 29871,
+      "line": "CCX q58 q42 q40",
+      "bits": [
+        446
+      ]
+    },
+    {
+      "index": 29879,
+      "line": "CCZ q38 q25 q26",
+      "bits": [
+        446
+      ]
+    },
+    {
+      "index": 29899,
+      "line": "CCX q34 q22 q40",
+      "bits": [
+        300
+      ]
+    },
+    {
+      "index": 29907,
+      "line": "CCZ q37 q24 q41",
+      "bits": [
+        300
+      ]
+    },
+    {
+      "index": 29932,
+      "line": "CCX q30 q52 q21",
+      "bits": [
+        237
+      ]
+    },
+    {
+      "index": 29940,
+      "line": "CCZ q31 q15 q32",
+      "bits": [
+        237
+      ]
+    },
+    {
+      "index": 30157,
+      "line": "CCZ q39 q57 q43",
+      "bits": [
+        449
+      ]
+    },
+    {
+      "index": 30171,
+      "line": "CCX q62 q42 q40",
+      "bits": [
+        448
+      ]
+    },
+    {
+      "index": 30179,
+      "line": "CCZ q58 q25 q26",
+      "bits": [
+        448
+      ]
+    },
+    {
+      "index": 30199,
+      "line": "CCX q33 q22 q40",
+      "bits": [
+        301
+      ]
+    },
+    {
+      "index": 30207,
+      "line": "CCZ q34 q24 q37",
+      "bits": [
+        301
+      ]
+    },
+    {
+      "index": 30232,
+      "line": "CCX q50 q52 q21",
+      "bits": [
+        236
+      ]
+    },
+    {
+      "index": 30240,
+      "line": "CCZ q30 q15 q31",
+      "bits": [
+        236
+      ]
+    },
+    {
+      "index": 30427,
+      "line": "CCZ q19 q44 q16 if b308",
+      "bits": [
+        308
+      ]
+    },
+    {
+      "index": 30469,
+      "line": "CCX q32 q22 q40",
+      "bits": [
+        302
+      ]
+    },
+    {
+      "index": 30477,
+      "line": "CCZ q33 q24 q34",
+      "bits": [
+        302
+      ]
+    },
+    {
+      "index": 30502,
+      "line": "CCX q29 q52 q21",
+      "bits": [
+        235
+      ]
+    },
+    {
+      "index": 30510,
+      "line": "CCZ q50 q15 q30",
+      "bits": [
+        235
+      ]
+    },
+    {
+      "index": 30752,
+      "line": "CCX q38 q43 q40",
+      "bits": [
+        451
+      ]
+    },
+    {
+      "index": 30760,
+      "line": "CCZ q39 q54 q44",
+      "bits": [
+        451
+      ]
+    },
+    {
+      "index": 30780,
+      "line": "CCX q37 q25 q40",
+      "bits": [
+        450
+      ]
+    },
+    {
+      "index": 30788,
+      "line": "CCZ q62 q26 q57",
+      "bits": [
+        450
+      ]
+    },
+    {
+      "index": 30808,
+      "line": "CCX q32 q24 q40",
+      "bits": [
+        303
+      ]
+    },
+    {
+      "index": 30816,
+      "line": "CCZ q33 q41 q34",
+      "bits": [
+        303
+      ]
+    },
+    {
+      "index": 30842,
+      "line": "CCX q52 q14 q21",
+      "bits": [
+        234
+      ]
+    },
+    {
+      "index": 30846,
+      "line": "CCX q29 q15 q40",
+      "bits": [
+        234
+      ]
+    },
+    {
+      "index": 30854,
+      "line": "CCZ q50 q53 q30",
+      "bits": [
+        234
+      ]
+    },
+    {
+      "index": 31106,
+      "line": "CCX q58 q43 q40",
+      "bits": [
+        453
+      ]
+    },
+    {
+      "index": 31114,
+      "line": "CCZ q38 q54 q39",
+      "bits": [
+        453
+      ]
+    },
+    {
+      "index": 31134,
+      "line": "CCX q34 q25 q40",
+      "bits": [
+        452
+      ]
+    },
+    {
+      "index": 31142,
+      "line": "CCZ q37 q26 q57",
+      "bits": [
+        452
+      ]
+    },
+    {
+      "index": 31162,
+      "line": "CCX q31 q24 q40",
+      "bits": [
+        304
+      ]
+    },
+    {
+      "index": 31170,
+      "line": "CCZ q32 q41 q33",
+      "bits": [
+        304
+      ]
+    },
+    {
+      "index": 31196,
+      "line": "CCX q52 q14 q21",
+      "bits": [
+        233
+      ]
+    },
+    {
+      "index": 31200,
+      "line": "CCX q28 q15 q40",
+      "bits": [
+        233
+      ]
+    },
+    {
+      "index": 31208,
+      "line": "CCZ q29 q53 q49",
+      "bits": [
+        233
+      ]
+    },
+    {
+      "index": 31456,
+      "line": "CCX q37 q57 q21",
+      "bits": [
+        455
+      ]
+    },
+    {
+      "index": 31464,
+      "line": "CCZ q62 q43 q54",
+      "bits": [
+        455
+      ]
+    },
+    {
+      "index": 31484,
+      "line": "CCX q32 q42 q21",
+      "bits": [
+        454
+      ]
+    },
+    {
+      "index": 31492,
+      "line": "CCZ q33 q25 q26",
+      "bits": [
+        454
+      ]
+    },
+    {
+      "index": 31512,
+      "line": "CCX q50 q22 q21",
+      "bits": [
+        305
+      ]
+    },
+    {
+      "index": 31520,
+      "line": "CCZ q30 q24 q31",
+      "bits": [
+        305
+      ]
+    },
+    {
+      "index": 31543,
+      "line": "CCX q45 q52 q14",
+      "bits": [
+        232
+      ]
+    },
+    {
+      "index": 31550,
+      "line": "CCZ q27 q15 q28",
+      "bits": [
+        232
+      ]
+    },
+    {
+      "index": 45239,
+      "line": "CCX q18 q46 q19",
+      "bits": [
+        318
+      ]
+    },
+    {
+      "index": 45241,
+      "line": "CCX q32 q61 q20",
+      "bits": [
+        318
+      ]
+    },
+    {
+      "index": 45243,
+      "line": "CCX q20 q40 q21",
+      "bits": [
+        318
+      ]
+    },
+    {
+      "index": 45245,
+      "line": "CCX q16 q13 q23",
+      "bits": [
+        318
+      ]
+    },
+    {
+      "index": 45247,
+      "line": "CCX q23 q12 q24",
+      "bits": [
+        318
+      ]
+    },
+    {
+      "index": 45249,
+      "line": "CCX q24 q11 q25",
+      "bits": [
+        318
+      ]
+    },
+    {
+      "index": 45251,
+      "line": "CCX q25 q10 q26",
+      "bits": [
+        318
+      ]
+    },
+    {
+      "index": 45253,
+      "line": "CCX q26 q9 q27",
+      "bits": [
+        318
+      ]
+    },
+    {
+      "index": 45255,
+      "line": "CCX q27 q8 q28",
+      "bits": [
+        318
+      ]
+    },
+    {
+      "index": 45281,
+      "line": "CCZ q56 q3 q2 if b320",
+      "bits": [
+        41,
+        214,
+        229,
+        287,
+        318,
+        320,
+        356,
+        393,
+        446,
+        7937
+      ]
+    },
+    {
+      "index": 45283,
+      "line": "CCZ q15 q5 q4 if b319",
+      "bits": [
+        318,
+        319
+      ]
+    },
+    {
+      "index": 45285,
+      "line": "CCZ q28 q7 q6 if b322",
+      "bits": [
+        318,
+        322
+      ]
+    },
+    {
+      "index": 45299,
+      "line": "CCZ q21 q51 q59 if b321",
+      "bits": [
+        318,
+        321
+      ]
+    },
+    {
+      "index": 45368,
+      "line": "CCX q18 q46 q19",
+      "bits": [
+        319,
+        8045
+      ]
+    },
+    {
+      "index": 45370,
+      "line": "CCX q32 q61 q20",
+      "bits": [
+        319,
+        8045
+      ]
+    },
+    {
+      "index": 45372,
+      "line": "CCX q16 q13 q23",
+      "bits": [
+        319,
+        8045
+      ]
+    },
+    {
+      "index": 45374,
+      "line": "CCX q23 q12 q24",
+      "bits": [
+        319,
+        8045
+      ]
+    },
+    {
+      "index": 45376,
+      "line": "CCX q24 q11 q25",
+      "bits": [
+        319,
+        8045
+      ]
+    },
+    {
+      "index": 45378,
+      "line": "CCX q25 q10 q26",
+      "bits": [
+        319,
+        8045
+      ]
+    },
+    {
+      "index": 45380,
+      "line": "CCX q26 q9 q27",
+      "bits": [
+        319,
+        8045
+      ]
+    },
+    {
+      "index": 45382,
+      "line": "CCX q15 q5 q30",
+      "bits": [
+        319,
+        8045
+      ]
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bits": [
+        223,
+        297,
+        314,
+        319,
+        320,
+        326,
+        396,
+        412,
+        424,
+        428,
+        444,
+        448,
+        459,
+        460,
+        483,
+        1005,
+        7903,
+        7911,
+        7921,
+        8045
+      ]
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bits": [
+        0,
+        2,
+        6,
+        14,
+        21,
+        22,
+        27,
+        29,
+        39,
+        41,
+        42,
+        47,
+        203,
+        206,
+        207,
+        209,
+        212,
+        214,
+        216,
+        223,
+        228,
+        236,
+        238,
+        284,
+        287,
+        288,
+        297,
+        299,
+        314,
+        319,
+        320,
+        326,
+        353,
+        354,
+        364,
+        366,
+        375,
+        389,
+        391,
+        395,
+        396,
+        397,
+        403,
+        407,
+        408,
+        410,
+        412,
+        413,
+        418,
+        419,
+        424,
+        426,
+        428,
+        432,
+        435,
+        440,
+        444,
+        448,
+        449,
+        454,
+        455,
+        456,
+        459,
+        460,
+        472,
+        477,
+        481,
+        482,
+        483,
+        486,
+        491,
+        1000,
+        1004,
+        1005,
+        7903,
+        7904,
+        7905,
+        7908,
+        7911,
+        7913,
+        7919,
+        7921,
+        7927,
+        7928,
+        7931,
+        7935,
+        7937,
+        7939,
+        7940,
+        7941,
+        8045
+      ]
+    },
+    {
+      "index": 45401,
+      "line": "CCX q27 q8 q17",
+      "bits": [
+        319,
+        322,
+        8045
+      ]
+    },
+    {
+      "index": 45402,
+      "line": "CCZ q17 q7 q6",
+      "bits": [
+        319,
+        322,
+        8045
+      ]
+    },
+    {
+      "index": 45418,
+      "line": "CCX q20 q40 q17",
+      "bits": [
+        319,
+        321,
+        8045
+      ]
+    },
+    {
+      "index": 45419,
+      "line": "CCZ q17 q51 q59",
+      "bits": [
+        319,
+        321,
+        8045
+      ]
+    },
+    {
+      "index": 45466,
+      "line": "CCX q16 q13 q17",
+      "bits": [
+        320,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45467,
+      "line": "CCX q17 q12 q18",
+      "bits": [
+        320,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45468,
+      "line": "CCZ q18 q11 q10",
+      "bits": [
+        320,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45481,
+      "line": "CCX q15 q5 q17",
+      "bits": [
+        13,
+        285,
+        320,
+        430,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bits": [
+        2,
+        3,
+        6,
+        7,
+        13,
+        18,
+        19,
+        20,
+        21,
+        23,
+        24,
+        25,
+        26,
+        28,
+        29,
+        31,
+        32,
+        33,
+        35,
+        36,
+        37,
+        42,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        68,
+        202,
+        203,
+        206,
+        208,
+        209,
+        210,
+        212,
+        213,
+        214,
+        217,
+        218,
+        223,
+        224,
+        228,
+        230,
+        231,
+        233,
+        234,
+        236,
+        237,
+        239,
+        278,
+        279,
+        283,
+        284,
+        285,
+        288,
+        298,
+        299,
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        312,
+        313,
+        314,
+        315,
+        317,
+        320,
+        341,
+        345,
+        350,
+        351,
+        353,
+        354,
+        355,
+        357,
+        358,
+        359,
+        360,
+        362,
+        364,
+        365,
+        366,
+        367,
+        368,
+        370,
+        372,
+        373,
+        374,
+        375,
+        383,
+        385,
+        388,
+        392,
+        394,
+        395,
+        396,
+        399,
+        400,
+        402,
+        407,
+        408,
+        410,
+        411,
+        412,
+        414,
+        416,
+        419,
+        422,
+        423,
+        424,
+        425,
+        427,
+        429,
+        430,
+        431,
+        436,
+        439,
+        441,
+        442,
+        444,
+        445,
+        447,
+        450,
+        451,
+        458,
+        460,
+        461,
+        463,
+        467,
+        474,
+        475,
+        476,
+        478,
+        479,
+        481,
+        482,
+        486,
+        491,
+        492,
+        600,
+        602,
+        603,
+        610,
+        612,
+        724,
+        738,
+        1002,
+        1003,
+        1004,
+        1009,
+        7801,
+        7902,
+        7903,
+        7906,
+        7908,
+        7911,
+        7912,
+        7913,
+        7914,
+        7915,
+        7916,
+        7917,
+        7918,
+        7921,
+        7926,
+        7928,
+        7930,
+        7931,
+        7935,
+        7936,
+        7938,
+        7939,
+        7941,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bits": [
+        2,
+        3,
+        6,
+        7,
+        13,
+        18,
+        19,
+        20,
+        21,
+        23,
+        24,
+        25,
+        26,
+        28,
+        29,
+        31,
+        32,
+        33,
+        35,
+        36,
+        37,
+        42,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        68,
+        202,
+        203,
+        206,
+        208,
+        209,
+        210,
+        212,
+        213,
+        214,
+        217,
+        218,
+        223,
+        224,
+        228,
+        230,
+        231,
+        233,
+        234,
+        236,
+        237,
+        239,
+        278,
+        279,
+        283,
+        284,
+        285,
+        288,
+        298,
+        299,
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        312,
+        313,
+        314,
+        315,
+        317,
+        320,
+        341,
+        345,
+        350,
+        351,
+        353,
+        354,
+        355,
+        357,
+        358,
+        359,
+        360,
+        362,
+        364,
+        365,
+        366,
+        367,
+        368,
+        370,
+        372,
+        373,
+        374,
+        375,
+        383,
+        385,
+        388,
+        392,
+        394,
+        395,
+        396,
+        399,
+        400,
+        402,
+        407,
+        408,
+        410,
+        411,
+        412,
+        414,
+        416,
+        419,
+        422,
+        423,
+        424,
+        425,
+        427,
+        429,
+        430,
+        431,
+        436,
+        439,
+        441,
+        442,
+        444,
+        445,
+        447,
+        450,
+        451,
+        458,
+        460,
+        461,
+        463,
+        467,
+        474,
+        475,
+        476,
+        478,
+        479,
+        481,
+        482,
+        486,
+        491,
+        492,
+        600,
+        602,
+        603,
+        610,
+        612,
+        724,
+        738,
+        1002,
+        1003,
+        1004,
+        1009,
+        7801,
+        7902,
+        7903,
+        7906,
+        7908,
+        7911,
+        7912,
+        7913,
+        7914,
+        7915,
+        7916,
+        7917,
+        7918,
+        7921,
+        7926,
+        7928,
+        7930,
+        7931,
+        7935,
+        7936,
+        7938,
+        7939,
+        7941,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45503,
+      "line": "CCX q16 q13 q17",
+      "bits": [
+        322,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45504,
+      "line": "CCX q17 q12 q18",
+      "bits": [
+        322,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45505,
+      "line": "CCX q18 q11 q19",
+      "bits": [
+        322,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45506,
+      "line": "CCX q19 q10 q20",
+      "bits": [
+        322,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45507,
+      "line": "CCX q20 q9 q21",
+      "bits": [
+        322,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45508,
+      "line": "CCX q21 q8 q22",
+      "bits": [
+        322,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45509,
+      "line": "CCZ q22 q7 q6",
+      "bits": [
+        322,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45537,
+      "line": "CCX q32 q61 q17",
+      "bits": [
+        321,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45538,
+      "line": "CCX q17 q40 q18",
+      "bits": [
+        321,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45539,
+      "line": "CCZ q18 q51 q59",
+      "bits": [
+        321,
+        8045,
+        8046
+      ]
+    },
+    {
+      "index": 45553,
+      "line": "CCX q14 q46 q15",
+      "bits": [
+        8045,
+        8046
+      ]
+    }
+  ],
+  "ranked": [
+    {
+      "index": 17083,
+      "line": "CSWAP q20 q40 q3",
+      "bit": 486,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.5086669921875
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 486,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.5086669921875
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 486,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.5086669921875
+    },
+    {
+      "index": 27238,
+      "line": "CSWAP q14 q40 q2",
+      "bit": 486,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.5086669921875
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 20,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.5069580078125
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 18,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50592041015625
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 326,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50555419921875
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 365,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.5054931640625
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 397,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50543212890625
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 399,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50531005859375
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 371,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50421142578125
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 433,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50390625
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 389,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50372314453125
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 280,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50323486328125
+    },
+    {
+      "index": 27238,
+      "line": "CSWAP q14 q40 q2",
+      "bit": 280,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50323486328125
+    },
+    {
+      "index": 28040,
+      "line": "CCX q14 q21 q40",
+      "bit": 280,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50323486328125
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 395,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50225830078125
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 6,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50213623046875
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 491,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50177001953125
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 602,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50164794921875
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 374,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50115966796875
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 427,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50103759765625
+    },
+    {
+      "index": 17083,
+      "line": "CSWAP q20 q40 q3",
+      "bit": 317,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.5008544921875
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 317,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.5008544921875
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 482,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50079345703125
+    },
+    {
+      "index": 24891,
+      "line": "CCX q46 q39 q47",
+      "bit": 482,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50079345703125
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 7914,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50079345703125
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 347,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.500732421875
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 286,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50067138671875
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 483,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.5003662109375
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 7907,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.5003662109375
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 7913,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.50006103515625
+    },
+    {
+      "index": 17031,
+      "line": "CCX q21 q59 q40",
+      "bit": 601,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.499755859375
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 601,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.499755859375
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 435,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.4996337890625
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 398,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49957275390625
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 218,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.4986572265625
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 396,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49853515625
+    },
+    {
+      "index": 24891,
+      "line": "CCX q46 q39 q47",
+      "bit": 7902,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.4984130859375
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 408,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49810791015625
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 7903,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49810791015625
+    },
+    {
+      "index": 27238,
+      "line": "CSWAP q14 q40 q2",
+      "bit": 7903,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49810791015625
+    },
+    {
+      "index": 17083,
+      "line": "CSWAP q20 q40 q3",
+      "bit": 391,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.497802734375
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 391,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.497802734375
+    },
+    {
+      "index": 17083,
+      "line": "CSWAP q20 q40 q3",
+      "bit": 388,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49774169921875
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 388,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49774169921875
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 285,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.4976806640625
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 436,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.496826171875
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 361,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.4964599609375
+    },
+    {
+      "index": 24891,
+      "line": "CCX q46 q39 q47",
+      "bit": 412,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.496337890625
+    },
+    {
+      "index": 24891,
+      "line": "CCX q46 q39 q47",
+      "bit": 1,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.495849609375
+    },
+    {
+      "index": 24891,
+      "line": "CCX q46 q39 q47",
+      "bit": 7909,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.495849609375
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 1005,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.495849609375
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 327,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49578857421875
+    },
+    {
+      "index": 24891,
+      "line": "CCX q46 q39 q47",
+      "bit": 327,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49578857421875
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 423,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49542236328125
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 411,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49530029296875
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 600,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49334716796875
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 211,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.49176025390625
+    },
+    {
+      "index": 17083,
+      "line": "CSWAP q20 q40 q3",
+      "bit": 1001,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.491455078125
+    },
+    {
+      "index": 17381,
+      "line": "CCX q40 q51 q2",
+      "bit": 1001,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.491455078125
+    },
+    {
+      "index": 27231,
+      "line": "CSWAP q14 q40 q3",
+      "bit": 1001,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.491455078125
+    },
+    {
+      "index": 27238,
+      "line": "CSWAP q14 q40 q2",
+      "bit": 1001,
+      "average_original_executions": 1.0,
+      "average_skipped": 0.491455078125
+    },
+    {
+      "index": 45281,
+      "line": "CCZ q56 q3 q2 if b320",
+      "bit": 446,
+      "average_original_executions": 0.2523193359375,
+      "average_skipped": 0.13067626953125
+    },
+    {
+      "index": 45281,
+      "line": "CCZ q56 q3 q2 if b320",
+      "bit": 229,
+      "average_original_executions": 0.2523193359375,
+      "average_skipped": 0.12890625
+    },
+    {
+      "index": 45281,
+      "line": "CCZ q56 q3 q2 if b320",
+      "bit": 214,
+      "average_original_executions": 0.2523193359375,
+      "average_skipped": 0.12884521484375
+    },
+    {
+      "index": 45281,
+      "line": "CCZ q56 q3 q2 if b320",
+      "bit": 41,
+      "average_original_executions": 0.2523193359375,
+      "average_skipped": 0.1282958984375
+    },
+    {
+      "index": 45281,
+      "line": "CCZ q56 q3 q2 if b320",
+      "bit": 393,
+      "average_original_executions": 0.2523193359375,
+      "average_skipped": 0.1243896484375
+    },
+    {
+      "index": 45281,
+      "line": "CCZ q56 q3 q2 if b320",
+      "bit": 7937,
+      "average_original_executions": 0.2523193359375,
+      "average_skipped": 0.12353515625
+    },
+    {
+      "index": 45281,
+      "line": "CCZ q56 q3 q2 if b320",
+      "bit": 356,
+      "average_original_executions": 0.2523193359375,
+      "average_skipped": 0.12286376953125
+    },
+    {
+      "index": 45281,
+      "line": "CCZ q56 q3 q2 if b320",
+      "bit": 287,
+      "average_original_executions": 0.2523193359375,
+      "average_skipped": 0.1224365234375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 315,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.09515380859375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 315,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.09515380859375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 313,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.09405517578125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 313,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.09405517578125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 455,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06805419921875
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 223,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06793212890625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 223,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06793212890625
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 1005,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06768798828125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 1005,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06768798828125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 435,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06744384765625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 422,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06744384765625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 422,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06744384765625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 284,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06732177734375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 486,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06732177734375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 47,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0672607421875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 419,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06707763671875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 472,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06707763671875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 426,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0670166015625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 27,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06695556640625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7904,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06695556640625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 367,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06695556640625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 367,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06695556640625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 207,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06683349609375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 364,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06683349609375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 21,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0667724609375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 42,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.066650390625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 354,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.066650390625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 46,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.066650390625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 224,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.066650390625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 46,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.066650390625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 224,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.066650390625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 353,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0665283203125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 353,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0665283203125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7939,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06646728515625
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 326,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06640625
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 448,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06640625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 326,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06640625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 448,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06640625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 1003,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0662841796875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7926,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0662841796875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 1003,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0662841796875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7926,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0662841796875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 395,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06610107421875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 408,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06610107421875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 47,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06610107421875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 47,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06610107421875
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 7903,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0660400390625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 353,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0660400390625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7903,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0660400390625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7935,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0660400390625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 391,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06597900390625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 413,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06597900390625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 357,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06597900390625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 441,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06597900390625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 357,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06597900390625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 441,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06597900390625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 482,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06591796875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 482,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06591796875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 22,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06585693359375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 2,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0657958984375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 209,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06573486328125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 288,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06573486328125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 223,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06573486328125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7935,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06573486328125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 223,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06573486328125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7935,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06573486328125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 29,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.065673828125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7941,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.065673828125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7941,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.065673828125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7928,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06561279296875
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 314,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0655517578125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 314,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0655517578125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 432,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0655517578125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 228,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0655517578125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 228,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0655517578125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7937,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06549072265625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7941,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06549072265625
+    },
+    {
+      "index": 45481,
+      "line": "CCX q15 q5 q17",
+      "bit": 13,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06549072265625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 13,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06549072265625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 479,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06549072265625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 13,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06549072265625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 479,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06549072265625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 14,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0654296875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 375,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0654296875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7908,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0654296875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 375,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0654296875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7908,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0654296875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 236,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06536865234375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 203,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0653076171875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 418,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0653076171875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 449,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0653076171875
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 428,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06524658203125
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 459,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06524658203125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 238,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06524658203125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 389,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06524658203125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 428,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06524658203125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 440,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06524658203125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 459,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06524658203125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7927,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06524658203125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7905,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.065185546875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 372,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.065185546875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 372,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.065185546875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 212,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06512451171875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 407,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06512451171875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 407,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06512451171875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 444,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0650634765625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 486,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0650634765625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 444,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0650634765625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 486,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0650634765625
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 297,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06494140625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 297,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06494140625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 210,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06494140625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 210,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06494140625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 354,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06488037109375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 354,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06488037109375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 237,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06475830078125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 364,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06475830078125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7911,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06475830078125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 237,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06475830078125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 364,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06475830078125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7911,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06475830078125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 454,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.064697265625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 456,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.064697265625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 1004,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.064697265625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 467,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.064697265625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 467,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.064697265625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 481,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06463623046875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 31,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06463623046875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 218,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06463623046875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 278,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06463623046875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 31,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06463623046875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 218,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06463623046875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 278,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06463623046875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 366,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0645751953125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 427,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0645751953125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 445,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0645751953125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 492,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0645751953125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 366,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0645751953125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 427,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0645751953125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 445,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0645751953125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 492,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0645751953125
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 396,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06451416015625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 39,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06451416015625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 228,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06451416015625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 396,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06451416015625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 410,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06451416015625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 213,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06451416015625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 351,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06451416015625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 365,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06451416015625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 213,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06451416015625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 351,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06451416015625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 365,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06451416015625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 212,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.064453125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 411,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.064453125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 431,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.064453125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 212,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.064453125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 411,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.064453125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 431,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.064453125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 6,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06439208984375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7919,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06439208984375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 400,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0643310546875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 400,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0643310546875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 214,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06427001953125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 396,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06427001953125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 474,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06427001953125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 396,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06427001953125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 474,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06427001953125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 41,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06414794921875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 299,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06414794921875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 447,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06414794921875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 602,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06414794921875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 738,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06414794921875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 299,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06414794921875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 447,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06414794921875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 602,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06414794921875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 738,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06414794921875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 299,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0640869140625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 397,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0640869140625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7931,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0640869140625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 476,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0640869140625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 476,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0640869140625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 206,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06402587890625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 24,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06402587890625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 234,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06402587890625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 475,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06402587890625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 1004,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06402587890625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 24,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06402587890625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 234,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06402587890625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 475,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06402587890625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 1004,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06402587890625
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 444,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06396484375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 444,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06396484375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 233,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06396484375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 1002,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06396484375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 233,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06396484375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 1002,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06396484375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 28,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06390380859375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 32,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06390380859375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 450,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06390380859375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 28,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06390380859375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 32,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06390380859375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 450,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06390380859375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 20,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0638427734375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 394,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0638427734375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 491,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0638427734375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 20,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0638427734375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 394,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0638427734375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 491,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0638427734375
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 483,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 483,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 298,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 360,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 383,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 423,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 425,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 461,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7902,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 298,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 360,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 383,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 423,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 425,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 461,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7902,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06378173828125
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 412,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 375,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 412,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 3,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 51,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 208,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 341,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 414,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7918,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 3,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 51,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 208,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 341,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 414,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7918,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063720703125
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 216,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06365966796875
+    },
+    {
+      "index": 45481,
+      "line": "CCX q15 q5 q17",
+      "bit": 430,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06365966796875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 362,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06365966796875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 430,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06365966796875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 362,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06365966796875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 430,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06365966796875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 366,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 206,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 288,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 305,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 306,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 385,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 610,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7916,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 206,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 288,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 305,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 306,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 385,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 610,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7916,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0635986328125
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 7921,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06353759765625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 403,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06353759765625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7913,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06353759765625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7921,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06353759765625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 2,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06353759765625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 603,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06353759765625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7921,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06353759765625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7939,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06353759765625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 2,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06353759765625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 603,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06353759765625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7921,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06353759765625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7939,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06353759765625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 482,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0634765625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7908,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0634765625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 214,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0634765625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 612,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0634765625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7936,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0634765625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 214,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0634765625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 612,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0634765625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7936,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0634765625
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 424,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 460,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 424,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 460,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 491,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 33,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 209,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 217,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 392,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7912,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7917,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 33,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 209,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 217,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 392,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7912,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7917,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06341552734375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 0,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0633544921875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7940,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0633544921875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0633544921875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 239,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0633544921875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 279,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0633544921875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 317,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0633544921875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 355,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0633544921875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0633544921875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 239,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0633544921875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 279,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0633544921875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 317,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0633544921875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 355,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0633544921875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 18,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06329345703125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 283,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06329345703125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 18,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06329345703125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 283,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06329345703125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 301,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063232421875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 302,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063232421875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 359,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063232421875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 301,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063232421875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 302,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063232421875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 359,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.063232421875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 477,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06317138671875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 439,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06317138671875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 439,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06317138671875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 50,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0631103515625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 481,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0631103515625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7903,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0631103515625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 50,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0631103515625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 481,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0631103515625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7903,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0631103515625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 68,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06304931640625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 345,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06304931640625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 358,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06304931640625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 68,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06304931640625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 345,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06304931640625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 358,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06304931640625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 231,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06298828125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 231,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06298828125
+    },
+    {
+      "index": 45481,
+      "line": "CCX q15 q5 q17",
+      "bit": 285,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06292724609375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 285,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06292724609375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 395,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06292724609375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 402,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06292724609375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 285,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06292724609375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 395,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06292724609375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 402,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06292724609375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 287,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0628662109375
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 1000,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0628662109375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 230,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0628662109375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 284,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0628662109375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 463,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0628662109375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 230,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0628662109375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 284,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0628662109375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 463,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0628662109375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 312,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06280517578125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 416,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06280517578125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 312,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06280517578125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 416,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06280517578125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 23,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.062744140625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 429,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.062744140625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 23,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.062744140625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 429,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.062744140625
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 407,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.06268310546875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7906,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06268310546875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7930,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06268310546875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7906,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06268310546875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7930,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06268310546875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 303,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0626220703125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 350,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0626220703125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 412,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0626220703125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 724,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0626220703125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 303,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0626220703125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 350,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0626220703125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 412,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0626220703125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 724,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0626220703125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 6,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06256103515625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 21,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06256103515625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 26,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06256103515625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 399,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06256103515625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 6,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06256103515625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 21,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06256103515625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 26,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06256103515625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 399,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06256103515625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 36,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 42,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 48,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 478,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7914,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 36,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 42,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 48,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 478,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7914,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 19,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06243896484375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 370,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06243896484375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7913,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06243896484375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 19,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06243896484375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 370,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06243896484375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7913,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06243896484375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 25,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0623779296875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 410,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0623779296875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 451,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0623779296875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7928,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0623779296875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 25,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0623779296875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 410,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0623779296875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 451,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0623779296875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7928,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0623779296875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 202,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.062255859375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7938,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.062255859375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 202,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.062255859375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7938,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.062255859375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 49,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06219482421875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 373,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06219482421875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 49,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06219482421875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 373,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06219482421875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7931,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06207275390625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7931,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06207275390625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 408,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06195068359375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 408,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06195068359375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 436,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0618896484375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 436,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0618896484375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 314,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06182861328125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 314,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06182861328125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 236,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06170654296875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 388,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06170654296875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 236,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06170654296875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 388,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06170654296875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 600,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06158447265625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 600,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06158447265625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 442,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0615234375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7801,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0615234375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 442,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0615234375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7801,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0615234375
+    },
+    {
+      "index": 45392,
+      "line": "CCX q30 q4 q17",
+      "bit": 7911,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0614013671875
+    },
+    {
+      "index": 45393,
+      "line": "CCZ q17 q3 q2",
+      "bit": 7911,
+      "average_original_executions": 0.130615234375,
+      "average_skipped": 0.0614013671875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 419,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06134033203125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 419,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06134033203125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 29,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06121826171875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 374,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06121826171875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 29,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06121826171875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 374,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06121826171875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 304,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06109619140625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 368,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06109619140625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 1009,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06109619140625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 7915,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06109619140625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 304,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06109619140625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 368,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06109619140625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 1009,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06109619140625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 7915,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06109619140625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 35,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06097412109375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 37,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06097412109375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 35,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06097412109375
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 37,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06097412109375
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 458,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0606689453125
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 458,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.0606689453125
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 203,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06060791015625
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 203,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.06060791015625
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 424,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.060546875
+    },
+    {
+      "index": 45482,
+      "line": "CCX q17 q4 q18",
+      "bit": 460,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.060546875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 424,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.060546875
+    },
+    {
+      "index": 45483,
+      "line": "CCZ q18 q3 q2",
+      "bit": 460,
+      "average_original_executions": 0.12701416015625,
+      "average_skipped": 0.060546875
+    }
+  ]
+}

@@ -1,0 +1,2476 @@
+=== PDF PAGE 1 ===
+Encoding Electronic Spectra in Quantum Circuits with Linear T Complexity
+Ryan Babbush, 1,∗ Craig Gidney, 2 Dominic W. Berry, 3 Nathan Wiebe, 4
+Jarrod McClean, 1 Alexandru Paler, 5 Austin Fowler,2 and Hartmut Neven 1
+1Google Inc., Venice, CA 90291, United States
+2Google Inc., Santa Barbara, CA 93117, United States
+3Department of Physics and Astronomy, Macquarie University, Sydney, NSW 2109, Australia
+4Microsoft Research, Redmond, WA 98052, United States
+5Institute for Integrated Circuits, Linz Institute of Technology, 4040 Linz, Austria
+(Dated: September 20, 2018)
+We construct quantum circuits which exactly encode the spectra of correlated electron models
+up to errors from rotation synthesis. By invoking these circuits as oracles within the recently in-
+troduced “qubitization” framework, one can use quantum phase estimation to sample states in the
+Hamiltonian eigenbasis with optimal query complexityO(λ/ϵ) whereλ is an absolute sum of Hamil-
+tonian coeﬃcients and ϵ is target precision. For both the Hubbard model and electronic structure
+Hamiltonian in a second quantized basis diagonalizing the Coulomb operator, our circuits have T
+gate complexityO(N + log(1/ϵ)) whereN is number of orbitals in the basis. This enables sampling
+in the eigenbasis of electronic structure Hamiltonians with T complexity O(N 3/ϵ +N 2 log(1/ϵ)/ϵ).
+Compared to prior approaches, our algorithms are asymptotically more eﬃcient in gate complexity
+and require fewer T gates near the classically intractable regime. Compiling to surface code fault-
+tolerant gates and assuming per gate error rates of one part in a thousand reveals that one can error
+correct phase estimation on interesting instances of these problems beyond the current capabilities
+of classical methods using only about a million superconducting qubits in a matter of hours.
+I. INTRODUCTION
+The ubiquitous problem of predicting material properties and chemical reactions from ab initio quantum mechanics
+is among the most anticipated applications of quantum computing. The limitation of most classical algorithms for
+modeling the physics of superconductivity and molecular electronic structure arises from the seemingly exponential
+growth of entanglement required to accurately capture strong correlation in systems of interacting electrons. This
+apparent classical intractability was referenced by Feynman in his seminal work as a key motivation for why we need
+quantum computers [1, 2]. Fourteen years later, Lloyd formalized the concept of a universal quantum simulator [3]
+and demonstrated an extension for treating systems of interacting electrons in second quantization [4].
+Since then, most work developing fermionic quantum simulation methods has focused on time evolution as a means
+of estimating Hamiltonian spectra and preparing eigenstates [5] via the quantum phase estimation algorithm [6].
+Beginning with the proposal of [7], the idea that one should use phase estimation and adiabatic state preparation
+[8–10] to extract quantum chemistry ground state energies became especially popular. More recently, experimental
+demonstrations [11–15] have focused research on the development of variational algorithms [16, 17] which are often
+[18, 19], but not always [20, 21], inspired by time-evolution primitives.
+Performing quantum phase estimation to sample Hamiltonian spectra requires a quantum circuit to implement an
+operationW(H) which has eigenvalues that are a known (and eﬃcient-to-compute) function of the eigenvalues of H.
+Most past work has analyzed phase estimation of circuits corresponding to dynamical Hamiltonian simulation, i.e.
+W(H)≈e−iHτ for some duration τ [6]. We denote by f the cost of implementing a primitive circuit that is repeated
+to realizeW(H); e.g., a Trotter step [22] or Taylor series segment [23]. We further deﬁne g(ϵ) as the number of times
+that one must repeat that primitive to ensure that error in the spectrum of H encoded in the eigenphases of W(H)
+is at mostO(ϵ). Then, the cost of phase estimation is bounded by
+O
+(f·g (ϵ)
+ϵ ‖W′(H)‖−1
+)
+(1)
+where‖·‖ denotes the spectral norm and the operation W′(H) is that where we have taken the derivative of the
+function of the eigenvalues. That is, W′(H) has eigenvalues which are a function of the eigenvalues of H, and that
+∗ Corresponding author: babbush@google.com
+arXiv:1805.03662v2  [quant-ph]  19 Sep 2018
+
+=== PDF PAGE 2 ===
+2
+function is the derivative of the function which gives the eigenvalues ofW(H). For the case of dynamical time-evolution
+W(H)≈e−iHτ ‖W′(H)‖−1 =‖‖−iτe−iHτ‖‖−1 = 1τ, (2)
+implying that the cost of phase estimation is O(f·g(ϵ)/(ϵτ)) in this context.
+Modern Hamiltonian simulation methods such as the signal processing algorithm [24] and qubitization [25] have
+achieved the provably optimal scaling that is possible for g(ϵ) within a query model that aims to synthesize e−iHτ :
+O
+(
+λτ + log (1/ϵ)log log (1/ϵ)). (3)
+The deﬁnition of λ depends on the query model; e.g. in models for which the Hamiltonian is given as a weighted
+sum of unitaries, λ is the sum of the absolute values of the weightings [25]. However, W(H)≈ e−iHτ is not the
+only encoding from which one may sample the spectrum of H via phase estimation. Recent papers [26, 27] have
+advocated performing phase estimation on a quantum walk operator corresponding to W(H) = ei arccos(H/λ) which
+can be realized exactly as a quantum circuit without approximations beyond those required for rotation synthesis
+[25]. (This quantum walk operator also produces eigenvalues corresponding to e−i arccos(H/λ), but we will ignore those
+for simplicity of the exposition here.) Even within a black box query model one can achieve g(ϵ) =O(1) if the goal is
+to implementei arccos(H/λ) rather than e−iH/λ. Performing phase estimation on either circuit would provide the same
+information since the spectra of these operators are isomorphic. In this case, the cost of phase estimation is O(f·λ/ϵ)
+which follows from Eq. (1), g(ϵ) =O(1), and
+W(H) =ei arccos(H/λ) ‖W′(H)‖−1 =
+‖‖‖‖−iei arccos(H/λ)√λ2−H2 ‖‖‖‖−1≤λ. (4)
+This work develops methods with such scaling for modeling systems of correlated electrons so thatf =O(N+log(1/ϵ)).
+Our focus on synthesizing unitaries for phase estimation, rather than time-evolution operators that could be used
+as variational primitives, will result in quantum circuits with millions of gates. Hence, we shall need quantum error
+correction. We focus on planar nearest-neighbor coupled arrays of qubits, which are being developed experimentally
+by multiple groups [28–30]. We shall use the surface code [31–35], as it has the highest gate threshold error rate for
+this geometry. Within this model of fault-tolerant quantum computation, the physical resources required for error
+correcting a quantum circuit are mostly determined by (i) the number of logical qubits and (ii) the number of T gates.
+The focus on T gates arises because applying a single T gate consumes many logical qubits and takes signiﬁcantly
+longer than applying any other operation [36]. Preparing a|T⟩ state to enable a T gate requires hundreds of thousands
+of physical qubits. If the goal is to minimize the number of qubits required to execute an algorithm, it makes sense to
+prepare|T⟩ states serially. Typically, it also takes over 100 rounds of error detection to prepare a |T⟩ state, leaving
+plenty of time to perform Cliﬀord gates in parallel with this preparation, meaning the execution time of the complete
+algorithm can be approximated as the total number of T gates multiplied by the time to prepare each|T⟩ state. Thus,
+throughout this work we focus on T complexity as the primary cost model. We note, however, that for all algorithms
+presented or discussed in this work, the T complexity is within logarithmic factors of the gate complexity.
+We focus on the two most-studied models of correlated electrons: the Fermi-Hubbard model and the molecular
+electronic structure Hamiltonian. The Hubbard Hamiltonian is an approximate model of electrons interacting on a
+planar lattice which some believe may qualitatively capture the behavior of high-temperature superconductivity in
+cuprates [46]. The molecular electronic structure Hamiltonian is a realistic model of electrons interacting via the
+Coulomb potential with real kinetic energy in the presence of an external potential (which usually arises from atomic
+nuclei), in a ﬁnite-sized basis [47]. We shall focus on simulating the electronic structure Hamiltonian in a basis
+diagonalizing the Coulomb potential [43, 44, 48]. For both the Hubbard model and molecular electronic structure
+Hamiltonian we are able to provide circuits which simulate ei arccos(H/λ) with T complexityO(N + log(1/ϵ)) where N
+is the number of orbitals in a second-quantized representation of the system. In Table I and Table II we compare the
+T complexity of past quantum simulation methods for these problems.
+In Theorem 1 and Theorem 2 we concisely state the T complexity and ancilla requirements of our approach to
+phase estimation for both the electronic structure Hamiltonian and Hubbard model Hamiltonian, respectively. Both
+of these theorems are established throughout the paper, but especially in Eq. (54), Eq. (55), Eq. (61), and Eq. (62).
+In addition to bounding the T complexity of our algorithms we provide explicit circuits for their construction and
+compile all bottleneck primitives down to surface code fault-tolerant gates (topological braiding diagrams). Therefore,
+the fault-tolerant aspect of our analysis goes further than prior estimates in the simulation literature [49], the most
+rigorous of which stopped at estimates of T complexity for Trotter based electronic structure phase estimation [45]
+and for a variety of techniques used to eﬀect time-evolution of the one-dimensional Heisenberg model [50]. We show
+
+=== PDF PAGE 3 ===
+3
+that one can perform fault-tolerant phase estimation on interesting instances of both Fermi-Hubbard and molecular
+electronic structure beyond the capabilities of known classical algorithms using roughly one million physical qubits in
+the surface code assuming an architecture with two-qubit error rates of about one part in a thousand.
+Theorem 1. Consider the electronic structure Hamiltonian in a basis of N spin-orbitals which diagonalizes the
+Coulomb operator, H =∑p,qT (p−q)a†paq +∑pU(p)np +∑p⁄=qV (p−q)npnq where{a†p,aq} = δpq are fermionic
+raising and lowering operators. Furthermore, deﬁne λ =∑pq|T (p−q)| +∑p|U(p)| +∑p⁄=q|V (p−q)|. Then, one
+can perform phase estimation to sample in the eigenbasis of H with an additive error of at most ϵ in the eigenvalue
+using circuits with a number of T gates scaling as 24
+√
+2πNλ/ϵ +O((λ/ϵ) log(N/ϵ)) and a number of ancilla qubits
+scaling as log(λ3N5/ϵ3) +O(1).
+Theorem 2. Consider the square planar Hubbard model with periodic boundary conditions in a basis of N spin-
+orbitals, H =−t∑⟨p,q⟩,σa†p,σaq,σ + (u/2)∑p,α⁄=βnp,αnp,β where{a†p,α,aq,β} = δpqδαβ are fermionic raising and
+lowering operators and the ⟨p,q⟩ notation implies a summation over nearest-neighboring orbitals on the periodic
+planar lattice. Furthermore, deﬁne λ = 2Nt +Nu/2. Then, one can perform phase estimation to sample in the
+eigenbasis of H with an additive error of at most ϵ in the eigenvalue using circuits with a number of T gates scaling
+as 10
+√
+2πNλ/ϵ +O(λ log(N/ϵ)/ϵ) and a number of ancilla qubits scaling as log(λN3/ϵ) +O(1).
+In Section II we overview the simulation strategy we will use to encode and sample eigenspectra via phase estimation.
+Section II A discusses how one can synthesize ei arccos(H/λ) within the linear combinations of unitaries query model
+requiring two oracle circuits: select and prepare. Section II B introduces a particularly precise variant of phase
+estimation which queries select and prepare oracles to estimate spectra with a precision exceeding the typical
+Holevo variance. Section II C analyzes the various sources of errors which we need to consider in this algorithm and
+then bounds the number of times we must query select and prepare in order to perform phase estimation.
+Section III, Section IV and Section V focus on explicit constructions of select and prepare. Section III introduces
+important primitives for both select and prepare. In Section III A we describe circuits applying controlled unitaries
+such as the mapping |𝓁⟩|ψ⟩ ↦→ |𝓁⟩X𝓁|ψ⟩ with T complexity O(L) where L is the number of possible values of
+𝓁. In Section III B we show how to selectively apply a Majorana fermion operator, a primitive necessary for our
+implementation of select in later sections. In Section III C we use the result of Section III A to show a particularly
+eﬃcient variety of Quantum Read-Only Memory (QROM) which we use for our prepare circuit. In Section III D we
+describe a general technique for implementing prepare in a fashion that keeps λ as small as possible.
+Year Reference Basis Algorithm Oracle T Gates PEA Queries Total T Gates
+2005 Aspuru-Guzik et al. [7] Gaussians Trotterization O(poly(N/ϵ)) O(poly(N/ϵ)) O(poly(N/ϵ))
+2010 Whitﬁeld et al. [37] Gaussians Trotterization O
+(
+N 4 log (1/ϵ)) O (poly (N/ϵ)) O (poly (N/ϵ))
+2013 Wecker et al. [38] Gaussians Trotterization O
+(
+N 4 log (1/ϵ)) O(N 6/ϵ3/2) O(N 10 log(1/ϵ)ϵ3/2 )
+2014 McClean et al. [39] Gaussians Trotterization O
+(
+∼N 2 log (1/ϵ)) O(N 6/ϵ3/2) O(∼ N 8 log(1/ϵ)ϵ3/2 )
+2014 Poulin et al. [40] Gaussians Trotterization O
+(
+N 4 log (1/ϵ)) O(∼N 2/ϵ3/2) O(∼ N 6 log(1/ϵ)ϵ3/2 )
+2014 Babbush et al. [41] Gaussians Trotterization O
+(
+N 4 log (1/ϵ)) O(∼N/ϵ3/2) O(∼ N 5 log(1/ϵ)ϵ3/2 )
+2015 Babbush et al. [42] Gaussians Taylorization ~O(N) O
+(
+N 4 log(N/ϵ)
+ϵ log log(N/ϵ)
+)
+~O(N 5/ϵ)
+2016 Low et al. [25] Gaussians Qubitization ~O (N) O(N 4ϵ + log(N/ϵ)ϵ log log(N/ϵ)) ~O(N 5/ϵ)
+2017 Babbush et al. [43] Plane Waves Taylorization ~O (N) O
+(
+N 8/3 log(N/ϵ)
+ϵ log log(N/ϵ)
+)
+~O(N 11/3/ϵ)
+2017 Berry et al. [26] Plane Waves Qubitization ~O (N) O(N 8/3/ϵ) ~O(N 11/3/ϵ)
+2018 Kivlichan et al. [44] Plane Waves TrotterizationO
+(
+N 2 +N logN log (1/ϵ)) O(∼N 3/2/ϵ3/2) O(∼N 7/2/ϵ3/2)
+2018 This paper Plane Waves Qubitization O (N + log (1/ϵ)) O
+(
+N 2/ϵ) O(N 3+N 2 log(1/ϵ)ϵ )
+TABLE I. Progression of lowest T complexity algorithms for implementing a phase estimation unitary encoding eigenvalues of
+the electronic structure Hamiltonian in second quantization. N is number of spin-orbitals and ϵ is target precision. Here and
+throughout the paper, O(·) indicates an upper bound, ~O(·) indicates an upper bound ignoring polylogarithmic factors, and
+O(∼· ) indicates empirical scaling extrapolated from numerics. “Oracle T Gates” refers to f from Eq. (1) and “PEA Queries”
+refers to the rest of the expression in Eq. (1). The scalings attributed to work on general methods of Hamiltonian simulation
+assume that one uses the best oracles for electronic structure available at that point in time; e.g., the scaling attributed to
+[25] assumes the use of oracles from [42] and the scaling attributed to [26] assumes the use of oracles from [43]. While absent
+from this table since it did not asymptotically reduce T complexity, [45] was ﬁrst to explicitly compile a quantum chemistry
+simulation to Cliﬀord + T gates.
+
+=== PDF PAGE 4 ===
+4
+Year Reference Algorithm Ancillae Oracle T Gates PEA Queries Total T Gates
+1997 Abrams et al. [4] Trotterization O (1) O (N log (1/ϵ)) O (poly (N/ϵ)) O (poly (N/ϵ))
+2015 Wecker et al. [51] Trotterization O (1) O (N log (1/ϵ)) O
+(
+N 2/ϵ3/2
+)
+O
+(
+N 3 log(1/ϵ)
+ϵ3/2
+)
+2015 Babbush et al. [42] TaylorizationO
+(
+log(N/ϵ)
+log log(N/ϵ)
+)
+O (N log (1/ϵ)) O
+(
+N log(N/ϵ)
+ϵ log log(N/ϵ)
+)
+O
+(
+N 2 log(N/ϵ) log(1/ϵ)
+ϵ log log(N/ϵ)
+)
+2016 Low et al. [25] Qubitization O (logN) O (N log (N/ϵ)) O
+(
+N
+ϵ + log(N/ϵ)ϵ log log(N/ϵ)
+)
+O
+(
+N 2 log(N/ϵ)
+ϵ
+)
+2017 Berry et al. [26] Qubitization O (logN) O (N log (N/ϵ)) O (N/ϵ) O
+(
+N 2 log(N/ϵ)
+ϵ
+)
+2017 Poulin et al. [27] Qubitization O (N) O (N + log (1/ϵ)) O (N/ϵ) O
+(
+N 2+N log(1/ϵ)
+ϵ
+)
+2018 Haah et al. [52] Qubitization O (logN) O (N log (N/ϵ)) ~O (1/ϵ) ~O (N/ϵ)
+2018 Kivlichan et al. [44] Trotterization O (logN) O (N + logN log (1/ϵ)) O
+(
+∼ 1/ϵ3/2
+)
+O
+(
+∼N/ϵ3/2
+)
+2018 This paper Qubitization O (logN) O (N + log (1/ϵ)) ~O (1/ϵ) ~O (N/ϵ)
+TABLE II. Progression of lowest T complexity algorithms for implementing a unitary encoding eigenvalues of the Hubbard
+model for phase estimation. N is number of sites and ϵ is target precision. As before, O(·) indicates an upper bound, ~O(·)
+indicates an upper bound ignoring polylogarithmic factors, and O(∼· ) indicates empirical scaling extrapolated from numerics.
+“Oracle T Gates” refers to f from Eq. (1) and “PEA Queries” refers to the rest of the expression in Eq. (1). The scalings
+attributed to work on general methods of Hamiltonian simulation assume that one uses the best oracles for the Hubbard model
+available at that point in time. For instance, the scaling attributed to [25] and [26] assume that one uses the select oracles
+from [42], which also work for the Hubbard model. We assume that the work of [52] would use oracles from [27]. The scalings
+attributed to this work assume our techniques are combined with those from [52] even though we do not focus on that strategy
+in our fault-tolerant analysis since those methods seem less eﬀective for ﬁnite problem sizes near the classically intractable
+regime. Nonetheless, we discuss how our methods can be combined to provide the stated complexity in Section V D.
+Section IV A and Section IV B discuss explicit constructions of select and prepare circuits for the electronic
+structure Hamiltonian. Section V A and Section V B discuss explicit constructions of select and prepare circuits
+for the Hubbard model Hamiltonian. Section IV C and Section V C focus on quantifying the number of T gates and
+ancillae required by the algorithms described in Section IV and Section V. These sections include investigations of the
+ﬁnite-size magnitude of the λ and target precisions required to implement our algorithms for interesting problems. In
+Section V D we discuss how our Hubbard model simulation techniques can be combined with recent results to achieve
+even lower scaling based on the locality of the Hubbard Hamiltonian.
+Finally, Section VI discusses compilation of these routines to surface code fault-tolerant gates and estimates the
+physical resources required for error-correcting these algorithms under realistic assumptions about hardware. We
+conclude in Section VII with an outlook on future directions for quantum simulating correlated electron models.
+II. PHASE ESTIMATING SPECTRA OF HERMITIAN LINEAR COMBINATIONS OF UNITARIES
+The primary contribution of this paper is to demonstrate a particularly eﬃcient method of using quantum computa-
+tion to sample the spectra of correlated electron Hamiltonians. Though details of our implementation are specialized
+to electronic systems, our high-level simulation strategy represents a general framework for spectral estimation. While
+aspects of this approach were introduced recently in [26, 27], the techniques involved emerged from a history of ad-
+vances in Hamiltonian simulation prominently involving Szegedy quantum walks [53], the “linear combination of
+unitaries” (LCU) query model [54], and the method of Hamiltonian simulation known as “qubitization” [25].
+Oracular methods of Hamiltonian simulation assume that information about a Hamiltonian is provided by querying
+“oracle” circuits [55]. These techniques aim to reduce the number of times one must query these oracles in order to
+eﬀect the intended simulation to target accuracy. The techniques in this paper implement oracles from the LCU query
+model introduced in [54]. As the name suggests, this approach begins from the observation that any Hamiltonian can
+be decomposed as a linear combination of unitaries,
+H =
+L−1∑
+𝓁=0
+w𝓁H𝓁 s.t. ( w𝓁∈ R)∧ (w𝓁≥ 0) H2𝓁 = 11 (5)
+wherew𝓁 are scalars andH𝓁 are self-inverse operators which act on qubits; e.g.,H𝓁 could be strings of Pauli operators.
+The convention in this paper is that the w𝓁 are real and non-negative, with any phases included in the H𝓁.
+LCU simulation techniques are formulated in terms of queries to two oracle circuits. The ﬁrst oracle circuit, the
+“preparation oracle”, acts on an empty ancilla register of O(logL) qubits and prepares a particular superposition
+
+=== PDF PAGE 5 ===
+5
+state related to the notation of Eq. (5),
+prepare≡
+L−1∑
+𝓁=0
+√w𝓁
+λ |𝓁⟩⟨0| prepare|0⟩⊗ logL↦→
+L−1∑
+𝓁=0
+√w𝓁
+λ |𝓁⟩≡|L⟩ λ≡
+L−1∑
+𝓁=0
+w𝓁. (6)
+The quantityλ is the same as that in Eq. (3), and turns out to have signiﬁcant ramiﬁcations for the overall algorithm
+complexity. The second oracle circuit we require acts on the ancilla register |𝓁⟩ as well as the system register |ψ⟩ and
+directly applies one of the H𝓁 to the system, controlled on the ancilla register. For this reason, we refer to the ancilla
+register|𝓁⟩ as the “selection register” and name the second oracle the “Hamiltonian selection oracle”,
+select≡
+L∑
+𝓁=0
+|𝓁⟩⟨𝓁|⊗ H𝓁 select|𝓁⟩|ψ⟩↦→| 𝓁⟩H𝓁|ψ⟩. (7)
+Note that the self-inverse nature of the H𝓁 operators implies that they are both Hermitian and unitary, which means
+they can be applied directly to a quantum state.
+A. Encoding Spectra in Szegedy Quantum Walks using Qubitization Oracles
+The essential simulation primitive deployed here (a quantum walk operator based on select and prepare) was
+ﬁrst introduced as a subroutine to the qubitization approach for Hamiltonian time-evolution [25]. However, the direct
+use of this primitive for phase estimation was ﬁrst suggested more recently in [26]. In Section II B and Appendix A,
+we go beyond existing work and prove that so long as the eigenphase of the walk operator is bounded away from zero
+(so that the Hamiltonian is not frustration-free) then this algorithm can in principle learn as quickly as traditional
+phase estimation using the Cram´ er-Rao bound.
+We begin our discussion with the observation that the state |L⟩ from Eq. (6) encodes H as a projection of select
+onto|L⟩
+(⟨L|⊗ 11) select (|L⟩⊗ 11) = 1λ∑𝓁 w𝓁H𝓁 = Hλ. (8)
+This encoding is a general condition for qubitization [25], but the LCU oracles select and prepare, as deﬁned
+in Eq. (7) and Eq. (6), are not necessarily the only constructions that meet this criterion; we refer to the broader
+family of circuits satisfying Eq. (8) as “qubitization oracles”. With this in mind, we discuss a walk operator W that
+encodes the spectrum of H as a function of the eigenphases of W, although the spectrum of W diﬀers from that of
+the propagator e−iHt. One such walk operator W may be constructed as
+W≡R L· select, RL≡ (2|L⟩⟨L|⊗ 11− 11). (9)
+This construction takes the form of a Szegedy walk [53] since it is composed from a product of two reﬂection operations.
+The operationRL is manifestly a reﬂection operation, and it can be seen that select is a reﬂection operation because
+select2 =
+(∑
+𝓁
+|𝓁⟩⟨𝓁|⊗ H𝓁
+)2
+=
+∑
+𝓁
+|𝓁⟩⟨𝓁|⊗ H2𝓁 = 11. (10)
+Figure 1 shows a circuit which implements W controlled on an ancilla.
+The action ofW partitions Hilbert space into a direct sum of two-dimensional irreducible vector spaces. Through
+reasoning about these eigenspaces we can deduce the spectrum of W as well as the eigenvectors. In particular, we
+claim that the state|L⟩|k⟩ and an orthogonal state|φk⟩ span the irreducible two-dimensional space that |L⟩|k⟩ is in
+under the action of W for arbitrary eigenstate|k⟩ of H with eigenvalueEk. This state |φk⟩ is formally deﬁned to be
+the component ofW|L⟩| k⟩ that is orthogonal to |L⟩|k⟩, which can be simpliﬁed using Eq. (8) to
+|φk⟩≡ (11−|L⟩⟨L|⊗| k⟩⟨k|)· select|L⟩|k⟩‖(11−|L⟩⟨L|⊗| k⟩⟨k|)· select|L⟩|k⟩‖ =
+(
+select− Ekλ 11)|L⟩|k⟩√
+1−
+(Ek
+λ
+)2 . (11)
+The matrix elements ofW can be computed for this state. The upper diagonal matrix element follows from Eq. (8),
+⟨k|⟨L|W|L⟩| k⟩ =⟨k|⟨L| select|L⟩|k⟩ = Ek
+λ . (12)
+
+=== PDF PAGE 6 ===
+6
+• • • • Z
+|𝓁⟩ /
+W
+= |𝓁⟩ /
+select RL
+= |𝓁⟩ /
+select
+prepare† prepare
+|ψ⟩ / |ψ⟩ / |ψ⟩ /
+FIG. 1. A circuit realizing the Szegedy quantum walk operator W controlled on an ancilla qubit. The last three gates in the
+circuit on the right constitute the reﬂection RL controlled on an ancilla. Note that the Z gate with the 0-control is actually
+controlled on the zero state of the entire|𝓁⟩ register and not just a single qubit. Accordingly, implementation of that controlled-
+Z has T complexityO(logL) where logL is the size of the |𝓁⟩ register. However, that overhead is always negligible compared
+to the cost of the prepare and select operators in the constructions of this paper.
+The upper transition matrix element between ⟨k|⟨L| and|φk⟩ is given from Eq. (10) and Eq. (11) as
+⟨k|⟨L|W| φk⟩ =⟨k|⟨L|W
+(
+select− Ekλ 11)√
+1−
+(Ek
+λ
+)2 |L⟩|k⟩ = 1−
+(Ek
+λ
+)2
+√
+1−
+(Ek
+λ
+)2 =
+√
+1−
+(Ek
+λ
+)2
+. (13)
+Note that because phase estimation on W projects the system to an eigenstate of W and becauseW andH share an
+eigenbasis, we are only concerned with the action of this operator for eigenstates.
+Eq. (12) and Eq. (13) give the ﬁrst row of the action of W. The remaining entries can be calculated in a similar
+way, giving the action ofW on this irreducible two-dimensional subspace as
+W≡
+
+
+Ek
+λ
+√
+1−
+(Ek
+λ
+)2
+−
+√
+1−
+(Ek
+λ
+)2 Ek
+λ
+
+ =ei arccos(Ek/λ)Y (14)
+where Y is the Pauli-Y operator constrained to this two dimensional space spanned by |L⟩|k⟩ and|φk⟩. Finally, we
+can see that the phases of the eigenvalues ofW in this subspace are± arccos(Ek/λ). Whereas the work of [25] focused
+on transforming the evolution under arccos( H) into evolution under H, the more recent work of [26, 27] made the
+simple observation that by performing phase estimation directly on W one can obtain the spectrum of H as
+spectrum (H) =λ cos (arg (spectrum (W))) (15)
+where arg is the argument function arg( eiφ) =φ.
+B. Heisenberg-Limited Phase Estimation of the Qubitized Quantum Walk
+Since the original work of [6], many approaches have been proposed for estimating eigenphases of a unitary operator.
+Whereas in the past iterative phase estimation approaches have been more popular in quantum simulation, here we
+propose using an entanglement based approach. This has the virtue of requiring a number of applications of the
+unitary that saturates the Heisenberg limit. The ultimate precision that can be reached when one applies phase
+estimation by controlling a unitary when an ancilla is in |1⟩ and applying the identity gate when the ancilla is in |0⟩
+is a Holevo variance of tan 2(π/(2m+1 + 1)) where the total number of applications of the unitary is 2 m+1− 1 and
+m is the number of control qubits used. The Holevo variance is ⟨cos(ˆφ−φ)⟩2− 1 where φ is the phase and ˆφ is the
+estimate of the phase given by the measurement. It is a convenient measure of variance for phase because it enables
+simple analytic results and is close to the mean-square error for narrowly peaked distributions. The states for these
+optimal phase measurements were given in [56]. To apply them to phase estimation of a unitary, one can take the
+control qubits to be in this superposition state, rather than in a uniform superposition of computational basis states.
+We will perform a slight optimization of that approach by applying the inverse unitary instead of the identity for
+the ancilla in the|0⟩ state. Taking|φ⟩ to be an eigenstate of the unitary with eigenvalue eiφ, this means that instead
+of applying |0⟩|φ⟩→| 0⟩|φ⟩ and|1⟩|φ⟩→ eiφ|1⟩|φ⟩ we apply |0⟩|φ⟩→ e−iφ|0⟩|φ⟩ and|1⟩|φ⟩→ eiφ|1⟩|φ⟩. This
+doubles the eﬀective phase diﬀerence and turns out to have the same complexity. As shown in Figure 2, we accomplish
+the controlled inverse by removing controls fromWn and inserting controlled reﬂection operatorsRL into the circuit
+
+=== PDF PAGE 7 ===
+7
+which will cause us to apply either ( W†)n orWn depending on the state of the ancilla. We can see why this works
+by examining the relation
+RL·W n·RL =RL2· (select·RL)n = (select·RL)n =(W†)n (16)
+which holds for any integern as a consequence of the self-inverse nature ofRL andW. Moreover, becauseWn always
+ends with an RL operation, each controlled RL can be combined in the circuit with the Wn, to yield a complexity
+no greater than the complexity of just performing the Wn operations.
+This trick will result in measuring the phase modulo π. To eliminate the π ambiguity, an additional controlled
+W can be performed without this trick. That is shown as the ﬁrst controlled operation in Figure 2. For m control
+qubits the Holevo variance is still tan 2(π/(2m+1 + 1)), but the complexity is reduced by approximately a half to 2 m
+applications of the unitary W.
+|0⟩
+χm
+• ···
+QFT†
+|0⟩ ···
+|0⟩ ···
+... ... ···
+|0⟩ ···
+W RL W RL RL W 2 RL ··· RL W 2m−1 RL
+FIG. 2. Heisenberg limited phase estimation circuit for learning the eigenphase of W with m bits of accuracy with Holevo
+variance π2/22(m+1) where RL is (2|L⟩⟨L|⊗ 11− 11) and χm prepares the resource state from Eq. (17), which was shown
+to be optimal in [56]. Both χm and the inverse quantum Fourier transform (QFT †) have gate complexity ~O(m) which is
+completely negligible compared to the overall gate complexity of phase estimation which scales as O(2m). The controlled RL
+andW =RL· select gates are implemented as shown in Figure 1. As a consequence of Eq. (16) this circuit involves only
+2m− 1 applications of RL and as many applications of select. Note that the ﬁrst unit of RL·W·R L is replaced by W
+controlled on the zero state of an ancilla in order to help disambiguate the outcomes of arccos( Ek/λ) and arccos(Ek/λ) +π.
+As seen in Figure 2, our modiﬁed phase estimation algorithm begins with a unitary χm which prepares the state
+χm|0⟩⊗m↦→
+√
+2
+2m + 1
+2m−1∑
+n=0
+sin
+(π (n + 1)
+2m + 1
+)
+|n⟩. (17)
+To prepare this state with cost ~O(m) we ﬁrst perform Hadamards on m + 1 qubits (initially in the |0⟩ state) to give
+√
+1
+2(m+1)
+2m−1∑
+n=0
+|n⟩⊗ (|0⟩ +|1⟩). (18)
+Next, we perform a series of m controlled rotations with each of the ﬁrst m qubits as control and qubit m + 1 as
+target. For control qubit k, the rotation on the target qubit m + 1 is eiπ2kZ/(2m+1). Perform a further rotation of
+eiπZ/(2m+1) on qubit m + 1, and the resulting state is
+√
+1
+2(m+1)
+2m−1∑
+n=0
+(
+eiπ(n+1)/(2m+1)|n⟩⊗| 0⟩ +e−iπ(n+1)/(2m+1)|n⟩⊗| 1⟩). (19)
+Perform a Hadamard on qubit m + 1 and measure in the computational basis. Measuring |1⟩ gives the state
+i
+√
+1
+2m
+2m−1∑
+n=0
+sin
+(π (n + 1)
+2m + 1
+)
+|n⟩. (20)
+The probability of success is given by the normalization: (1 + 2 −m)/2. The scheme can be made unitary and
+deterministic via a single step of amplitude ampliﬁcation. Clearly, this preparation scheme scaling as ~O(m) will not
+dominate the cost of our overall phase estimation which scales as O(2m), as we will discuss in the next section.
+
+=== PDF PAGE 8 ===
+8
+C. Error Scaling and Query Complexity
+Three sources of error will enter our simulation: error due to performing PEA to ﬁnite precision, ϵpea, error due to
+approximate preparation of the Hamiltonian terms within the implementation of the prepare oracle, ϵprep, and the
+error in synthesizing the inverse QFT, ϵQFT. We will choose to measure error through the root-mean-square error of
+the estimator used within phase estimation, i.e.
+∆φ≡
+√
+E [dist(φest,φ true)2], (21)
+where the distance considered above is the angular distance between the estimated phase and the actual phase.
+Provided phase estimation is performed on a unitary operation, the error in the estimate of the energy is at most
+the error in implementing the unitary [45]. We will break up the estimated phase as the sum of two contributions
+φest =φ +ϵprep +φtrue. Here φ is a random variable with zero mean E(φ) and Holevo variance VH(φ) describing the
+output of phase estimation andϵprep represents the systematic errors in the phase that arise because of gate synthesis.
+In the limit of small variance, we can express this with high probability over the true phase as
+∆φ≈
+√
+E[(φest−φtrue)2]≈
+√
+VH(φ) + (ϵprep +πϵQFT)2≈
+√( π
+2m+1
+)2
++ (ϵprep +πϵQFT)2, (22)
+where m ancillary qubits are used within the phase estimation algorithm. Note that such a division of the error is
+suboptimal since the cost involved in reducing the error for phase estimation is exponentially larger than that involved
+in increasing the accuracy of the circuit synthesis [45]; however, we take the two errors to be equal for simplicity.
+Eq. (15) implies that error in the energy is at most
+∆E =λ∆ cos(φ)≤λ∆φ≈λ
+√( π
+2m+1
+)2
++ (ϵprep +πϵQFT)2. (23)
+That suggests we can choose to estimate the phase to a number of bits given by
+m =
+⌈
+log
+(√
+2πλ
+2∆E
+)⌉
+< log
+(√
+2πλ
+∆E
+)
+(24)
+and the target errors can be chosen as
+ϵprep≤
+√
+2∆E
+4λ ϵQFT≤
+√
+2∆E
+4πλ . (25)
+Thus, using the phase estimation procedure from Section II B we will need at most
+2m <
+√
+2πλ
+∆E (26)
+queries to the select oracle and at most twice as many queries to the prepare oracle in order to estimate spectra
+to within error ∆E. Supposing that the circuit prepare can be applied at gate complexity P and the circuit select
+can be applied at gate complexity S, the gate complexity of our simulation (ignoring for now the cost of χm and the
+cost of the QFT† since they scale as O(m)) is then approximately bounded from above by
+√
+2πλ (S + 2P )
+∆E . (27)
+This paper will discuss implementations of select and prepare that minimize S and P without increasing λ.
+To implement the inverse QFT which appears in Figure 2 we will use the semiclassical algorithm described in [57].
+This version of the QFT requires just m− 1 rotation gates and m Hadamards when implemented on m qubits. Thus,
+the error in each rotation must be at most ϵQFT/(πm), which implies that the inverse QFT will have T complexity
+scaling as O(m log(m/ϵQFT)). As this is an additive cost to other parts of our phase estimation algorithm with T
+complexity scaling asO(2m), the cost of performing the QFT within the required error budget can be safely neglected.
+How errors in the coeﬃcients of the implemented Hamiltonian propagate intoϵprep is slightly harder to bound owing
+to the fact that the error in the eigenphase is a nonlinear function of the error in the Hamiltonian implementation. In
+particular the error can diverge for frustration-free Hamiltonians owing to the singularity of arccos. The main result,
+shown in Appendix A, is that prepare should be implemented so that if ~w𝓁 is the eﬀective coeﬃcient of H𝓁 in the
+approximately implemented Hamiltonian then
+|~w𝓁−w𝓁|≤ δ =
+√
+2∆E
+4L
+(
+1 + ∆E28λ2)
+(
+1−‖H‖2
+λ2
+)
+. (28)
+
+=== PDF PAGE 9 ===
+9
+III. LOW T COMPLEXITY PRIMITIVES FOR LCU ORACLES
+In this section we will introduce three circuit primitives which are helpful for implementing select and prepare
+oracles with low T gate complexity. We use these primitives for electronic structure simulation, but expect them to be
+useful more generally. These primitives enable black box implementations of select and prepare for any problem
+with lower asymptotic complexity than prior constructions in the literature. They also have low T counts at ﬁnite
+size. We will use these constructions extensively in Section IV and Section V of this paper.
+In Section III A, we will introduce a technique for “streaming” bits of an iterator running over a unary register.
+One application is that this technique can be used to coherently apply operations controlled on a register with log L
+qubits in superposition (e.g. the selection register in Eq. (6) and Eq. (7)) using a number of T gates scaling as O(L),
+as opposed to O(L logL) as one might normally expect. However, what is even more important is the versatile way
+that these constructions can be applied.
+In Section III B we show how one can use the results of Section III A to implement a primitive corresponding
+to controlled application of a Majorana fermion operator. This primitive is used directly in our implementation of
+select in Section IV A and Section V A.
+In Section III C, we show a straightforward application of the techniques in Section III A which allow us to develop
+a particularly eﬃcient quantum data lookup which we refer to as “Quantum Read-Only Memory” (QROM). In
+particular, for coherently querying a database with L words our implementation of QROM has T complexity of
+4L−4 with no dependence on the word length, which is an asymptotic and constant-factor improvement over all prior
+literature. We have another paper in preparation which discusses QROM in more detail [58].
+In Section III D, we discuss a technique for initializing a state with L unique coeﬃcients (provided by a classical
+database) with a number of T gates scaling as 4L+O(log(1/ϵ)) whereϵ is the largest absolute error that one can tolerate
+in the prepared amplitudes. This routine improves asymptotically over the gate complexity of prior constructions for
+a black box prepare. It also has the advantage of implementing prepare without increasing the value of λ (from
+Eq. (6)) which has been a frequent problem with other implementations of prepare [42, 43, 59] which attempted to
+obtain scaling sublinear in the number of terms in the linear combinations of unitaries decomposition.
+A. Unary Iteration and Indexed Operations
+Many of the circuits in this paper rely heavily on a technique we refer to as “unary iteration”. The unary iteration
+process gradually produces, and then uncomputes, qubits indicating whether an index register is storing speciﬁc values
+(with respect to the computational basis). We call the process “unary iteration” because the indicator qubits are
+made available one by one (iteration), and they correspond to the one-hot (unary) encoding of the index register
+value. While these techniques were developed independently, we note that a scheme similar to unary iteration is also
+used for implementing select operations in [50]. Compared to [50] we lower the T-count from 6 L− 4 to 4L− 4 and
+explain how to apply the scheme to sizes L that are not powers of 2.
+For an index register storing an index in the interval [0,L ), the space overhead of converting the index register into a
+unary register (as in [27]) would normally be L qubits. By comparison, our unary iteration technique is exponentially
+more eﬃcient in space without any increased T complexity, requiring only log L ancillae. Our unary iteration has a
+T-count of 4L− 4 and can be parallelized if needed without increasing T-count. Despite its eﬃciency, unary iteration
+is still the dominant source of T complexity in our algorithms. We use it for indexed operations, Majorana operators,
+reversible preparation of states, and database lookup; all of which have T-counts that scale like O(L).
+To explain unary iteration, we will ﬁrst focus on how it is used to implement a controlled indexed not operation:
+|c⟩|𝓁⟩|ψ⟩↦→| c⟩|𝓁⟩ (X𝓁)c|ψ⟩ (29)
+where|c⟩ is the control register, |𝓁⟩ is the selection register, |ψ⟩ is the system register, and the subscript 𝓁 on X𝓁
+indicates that the not operation acts on qubit 𝓁 of the system register. From Eq. (7) it should not be surprising that
+this primitive is helpful for our constructions of select.
+A simple (but suboptimal) way to implement Eq. (29) would be to totally control the application of X𝓁 on all
+possible values that could occur in the register |𝓁⟩, as shown in Figure 3. For instance, in order to apply X158 when
+|𝓁⟩ =|158⟩, the total-control approach would place a not gate targeting the qubit 158 in the system register |ψ⟩, but
+with a control on each index bit. The control’s type ( on or off) would be determined by the binary representation
+of 158 (158 10 = 100111102), so there would be a must-be- off control on the low bit of the index register (because
+the low bit of 158 in binary is 0), a must-be- on control on the next bit (because the next bit of 158 in binary is 1),
+and so forth. In order to cover every case, a separate not gate with corresponding controls would be generated for
+every integer from 0 up to L− 1. This would produce L diﬀerent not operations, each targeting a diﬀerent qubit in
+
+=== PDF PAGE 10 ===
+10
+control • • • • • • • • • • •
+𝓁0 • • •
+𝓁1 • • • •
+𝓁2 • • • • •
+𝓁3 • • • • •
+|ψ⟩ / X0 X1 X2 X3 X4 X5 X6 X7 X8 X9 X10
+FIG. 3. Example total control circuit for performing a controlled indexedX𝓁 operation, with 0≤𝓁<L = 11. This is the (naive)
+starting point for producing a unary iteration circuit, before optimizations which asymptotically improve the T complexity.
+When indices outside the speciﬁed range do not occur, the highlighted runs of off-type controls reaching the right hand side
+of the circuit can be removed without aﬀecting the circuit. (There are also other controls which could be removed, but for our
+purposes this would be counterproductive due to interfering with later optimizations.)
+the target register and each having a number of controls equal to the size of the index register (i.e. log L). Thus, it
+takesO(L logL) T gates to apply Eq. (29) using this approach. Unary iteration will improve this T-count to 4 L− 4.
+• • •
+• = • = • •
+|0⟩ |T⟩ T † T T † H S†
+• • •
+• = • = Z
+|0⟩ H •
+FIG. 4. Computing and uncomputing and operations, deﬁned in terms of Toﬀoli gates and in terms of Cliﬀord+T gates [60].
+Computing an and consumes 4 |T⟩ states, and is equivalent to applying a Toﬀoli gate to a target qubit known to be |0⟩.
+Uncomputing an and consumes no|T⟩ states, and is equivalent to applying a Toﬀoli gate to a target qubit guaranteed to end
+up in the|0⟩ state. Drawing and operations as “corners” instead of as ⊕ symbols is a visual cue that the target qubit will be
+(or was) off after (before) the operation. This is worth highlighting because it aﬀects the T-count of synthesizing the operation
+and whether the target is available for reuse as an ancilla in later operations.
+Consider that the controls for the operation targeting the qubit at oﬀset 𝓁 = 158 are almost identical to the controls
+for the operation targeting the qubit at oﬀset 𝓁 = 159. They diﬀer only on the low bit of the index register, where
+158 requires the bit to be off whereas 159 requires the bit to be on. If we combined the log L− 1 other qubits of the
+index register into a single representative qubit that was set if and only if those controls were met, we could use this
+representative qubit once for the 𝓁 = 158 case and again for the 𝓁 = 159 case. Using the representative qubit twice,
+instead of computing it twice, decreases the total amount of work done. Unary iteration is the result of taking this
+kind of representative-reuse idea to its natural limit.
+control • • • • ... • • • •• •• •
+𝓁0 ... • •• •• •
+• • • • ... • • • • • • • •
+𝓁1 ... • •
+• • • • ... • •
+𝓁2 ... • • • •
+• • • • ... • • • • • • •
+𝓁3 • • ... • • • •
+• • ... • • •
+|ψ⟩ X0 X1 ... X7 X8 X9 X10
+FIG. 5. The “sawtooth” circuit resulting from removing unnecessary bits from Figure 3 and then adding and operations from
+Figure 4 to combine the controls for performing a controlled indexed X𝓁 operation with L = 11 possible targets.
+
+=== PDF PAGE 11 ===
+11
+•• • • • • •
+•• → • → • → •
+FIG. 6. When two and operations are adjacent, the uncomputation-and-recomputation can be replaced by cnot and not
+operations. Each such merger saves 4 T gates.
+control • • •
+𝓁0 •
+• • • • • •
+𝓁1 •
+• • • • • •
+𝓁2 • • •
+• • • • • • • • • • • • • • • •
+𝓁3 • • • • •
+• • • • • • • • • •
+|ψ⟩ X0 X1 X2 X3 X4 X5 X6 X7 X8 X9 X10
+FIG. 7. An L = 11 unary iteration circuit which applies X𝓁 to the qubit𝓁 in the system register|ψ⟩, where𝓁 is the value stored
+in the selection register. The circuit is obtained by merging and operations from Figure 5 using the method shown in Figure 6.
+Computes 10 and operations, and so has a T-count of 10 × 4 = 40 = 4L− 4.
+We deﬁne our unary iteration construction by starting with a total-control circuit, and then applying a ﬁxed set
+of simple transformations and optimizations. Figure 3 shows an example starting point, a total-control circuit for
+L = 11. For unary iteration, we require that the index register never store an out-of-range value 𝓁≥L. For example,
+consider what occurs when the X10 operation from Figure 3 is not conditioned on 𝓁0 (the least signiﬁcant bit of the
+index register). This would cause an X10 to be applied to the target when 𝓁 = 11, but this is ﬁne since we know
+𝓁⁄= 11. We use the 𝓁<L condition to omit several controls from the circuit. For each possible 𝓁, we will look at the
+X𝓁 operation and remove the control on the b’th index bit when the following two conditions are true: (i) the b’th bit
+ofL− 1 isn’t set and (ii) setting the b’th bit of 𝓁 would change𝓁 into a value larger than L− 1. Visually, this removes
+“runs” of must-be- off controls that manage to reach the right side of the circuit as highlighted in Figure 3.
+After removing the speciﬁed controls, we expand the remaining controls into nested and operations (the and
+operation is deﬁned in Figure 4), always nesting so that lower controls are inside higher controls. For clarity, we
+consistently place the ancillae associated with an and operation just below its lowest input qubit. The result is the
+“sawtooth” circuit shown in Figure 5. By iteratively optimizing adjacent and operations as shown in Figure 6, the
+sawtooth circuit from Figure 5 is optimized into the circuit shown in Figure 7. This is our unary iteration circuit for
+L = 11. The optimized circuit always ends up with L− 1 and computations (even when L is not a power of 2), each
+and takes 4 T gates to compute, and we have no other T-consuming operations in the circuit. Thus, the T-count of
+this construction is 4L− 4.
+B. Selective Application of Majorana Fermion Operators
+Now that we have described unary iteration, we can begin using it to construct primitives relevant for the select
+oracle. As discussed in detail in Section IV and Section V below, our approach for implementing select will require
+that we have a circuit capable of selectively applying the Majorana fermion operator
+|𝓁⟩|ψ⟩↦→| 𝓁⟩
+(
+a†𝓁−a𝓁
+i
+)
+|ψ⟩ =|𝓁⟩Y𝓁·Z𝓁−1··· Z0|ψ⟩ (30)
+where the last equality holds under the Jordan-Wigner transformation [61]. In this section we describe explicit circuits
+which accomplish the mapping of Eq. (30).
+In Section III A we discussed selectively applying X𝓁 operations as a representative example of how one might use
+unary iteration. However, nothing intrinsic to the unary iteration construction requires that the indexed operation
+be so simple. For example, we could switch from applying X𝓁 to applyingZ𝓁 halfway through the circuit. Or each X𝓁
+
+=== PDF PAGE 12 ===
+12
+could be replaced by multiple Pauli operations targeting multiple qubits. In general, each index could be associated
+with its own unique set of Pauli operators to be applied to various target qubits.
+• control •• • •
+In𝓁
+𝓁2 •
+• • • • • •
+𝓁1 • •
+• • • • • • • • • • • •
+𝓁0 • • • •
+= • • • • • • • •
+accumulator • • • • • • •
+G[0,𝓁)
+|ψ⟩000 G
+|ψ⟩001 G
+|ψ⟩010 G
+|ψ⟩011 G
+|ψ⟩100 G
+|ψ⟩101 G
+|ψ⟩110 G
+|ψ⟩111
+FIG. 8. Ranged operation construction implementing |𝓁⟩|ψ⟩→| 𝓁⟩∏𝓁−1k=0Gk|ψ⟩. Applies the G operation to a range of values,
+instead of to a single value, by using an accumulator. The accumulator is guaranteed to be cleared after the ﬁnal CNOT targeting
+it (drawn as a line merging into an ancilla qubit). This occurs because (unless control is not set and the accumulator simply
+stays unset) exactly one of the unary bits must have been set, and we targeted the accumulator with CNOTs controlled by
+each of those bits in turn. G[p,q) refers to G being applied to every qubit index k satisfying p≤k<q .
+We can also apply transformations to our quantum unary iterators (analogous to transformations of classical
+iterators). Iterators can be mapped, ﬁltered, zipped, aggregated, batched, ﬂattened, grouped, etc. For instance, given
+a classical stream of bits, one can aggregate over it with the⊕ operation. This produces a new iterator, which iterates
+over bits equal to the parity of the values-so-far from the original iterator. It is possible to apply this xor-aggregation
+idea to the quantum unary iteration process. Introduce an “accumulator” qubit and, as each iterated unary qubit is
+produced, cnot it into the accumulator. In eﬀect, if the index register is storing 𝓁 then the accumulator will stay off
+until the 𝓁’th qubit toggles it on. The accumulator will then stay on until the end of the iteration process, where it
+is uncomputed by a cnot from the control qubit. By conditioning X𝓁 on the accumulator qubit, instead of on the
+original unary qubits, eﬃcient ranged operation such as |𝓁⟩|ψ⟩→| 𝓁⟩G𝓁·G𝓁+1··· GL−1|ψ⟩ are produced. We show
+an example of an accumulator-based ranged operation in Figure 8.
+By using both the accumulator qubit and the original unary qubits, we can apply a ranged indexed operation and
+an indexed operation in a single unary iteration which gradually sweeps over the possible target qubits. The resulting
+combined operation, shown in Figure 9, is a crucial part of ourselect circuit, eﬀecting the transformation of Eq. (30).
+
+=== PDF PAGE 13 ===
+13
+• control •• • •
+In𝓁
+𝓁2 •
+• • • • • •
+𝓁1 • •
+• • • • • • • • • • • •
+𝓁0 • • • •
+= • • • • • • • • •
+accumulator • • • • • • •
+− →ZY 𝓁
+|ψ⟩000 Y Z
+|ψ⟩001 Y Z
+|ψ⟩010 Y Z
+|ψ⟩011 Y Z
+|ψ⟩100 Y Z
+|ψ⟩101 Y Z
+|ψ⟩110 Y Z
+|ψ⟩111 Y
+FIG. 9. Application of a selected Majorana fermion operator, |𝓁⟩|ψ⟩↦→| 𝓁⟩Y𝓁·Z𝓁−1··· Z0|ψ⟩ as described in Eq. (30). This is
+accomplished by performing a ranged operation (as shown in Figure 8) and an indexed operation (similar to what is shown in
+Figure 7) with a single pass through the selection register |𝓁⟩. It has a T-count of 4 L− 4, where L is the number of integer
+values that can be held by the selection register |𝓁⟩.
+C. Quantum Read-Only Memory (QROM) for Low T Complexity Data Lookup
+In this section we explain how one can use the techniques of Section III A in order to implement a particular eﬃcient
+form of what we call Quantum Read-Only Memory (QROM) [62], which is useful in the context of the subprepare
+routine, a subroutine of the prepare circuit described in Section IV B (in Figure 16). Many quantum algorithms
+assume the existence of a hypothetical peripheral called “Quantum Random-Access Memory” (QRAM) [63] which
+allows classical or quantum data to be accessed via an index under superposition. The purpose of QROM is to read
+classical data indexed by a quantum register, i.e. to perform the following transformation:
+QROMd·
+L−1∑
+𝓁=0
+α𝓁|𝓁⟩|0⟩ =
+L−1∑
+𝓁=0
+α𝓁|𝓁⟩|d𝓁⟩ (31)
+where 𝓁 is the index to read, α𝓁 is the amplitude of |𝓁⟩, and d𝓁 is the word associated with index 𝓁 in a classical
+list d containing L words. Our implementation of QROM is shown in Figure 10. Note that our notion of QROM is
+unrelated to the discussion of ROM on a quantum computer in Ref. [64].
+The read-only aspect of QROM makes it distinctly diﬀerent from QRAM in that one can read from QROM but
+cannot write to it during the course of a computation. A few algorithms, such as the procedure introduced in [65]
+actually do require that one write to QRAM; thus, for such use cases QROM would not be appropriate. A notable
+diﬀerence between this paper and most previous work on QRAM [63, 66–68] is that we describe the cost of QROM
+in terms of a fault-tolerant cost model: the number of T gates performed and the number of ancilla qubits required.
+Under such cost models, the “bucket brigade” QRAM design of Giovannetti et al. [63, 66] has T complexity (and
+thus, also time complexity under reasonable error-correction models) of O(L) regardless of the fact that it has depth
+O(logL) because implementing it as an error-corrected circuit consumesO(L) T gates andO(L) ancillae qubits. Our
+implementation of QROM consumes only 4 L T gates and log L ancillae, which is a constant-factor improvement in
+T-count and an exponential improvement in space usage over the construction of Giovannetti et al.
+
+=== PDF PAGE 14 ===
+14
+𝓁0
+In𝓁
+•
+𝓁1 • •
+𝓁2 • • • •
+control • • • •
+• • • • • •
+• • • • • • • • • • • •
+= • • • • • • • •
+|0⟩
+data : d𝓁
+? ? ? ? ? ? ? ?
+|0⟩ ? ? ? ? ? ? ? ?
+|0⟩ ? ? ? ? ? ? ? ?
+|0⟩ ? ? ? ? ? ? ? ?
+|0⟩ ? ? ? ? ? ? ? ?
+|0⟩ ? ? ? ? ? ? ? ?
+|0⟩ ? ? ? ? ? ? ? ?
+|0⟩ ? ? ? ? ? ? ? ?
+d0 d1 d2 d3 d4 d5 d6 d7
+FIG. 10. Finite-sized example of the “QROM” database loading scheme used in our implementation of subprepare. If the
+index register contains𝓁, the output register ends up storingd𝓁 where ⃗d is some precomputed data vector used when constructing
+the circuit. The top part of the circuit is performing unary iteration as described in Section III A. The bottom part of the
+circuit is loading classical data associated with each possible index. The classical data is encoded into the presence or absence
+of CNOTs on the data lines. The “?” marks in the diagram indicate that one should decide whether or not to have a cnot
+gate on each line, depending on the value of the data to load. This circuit has T-count of 4 L− 4, which is due entirely to the
+unary iteration. The T gate cost of this circuit is independent of the number of bits used to store each element of the database.
+D. Subsampling the Coeﬃcient Oracle
+In this section we introduce a technique for initializing a state with L unique coeﬃcients (provided by a classical
+database) with a number of T gates scaling as 4 L +O(log(1/ϵ)) where ϵ is the largest absolute error that one can
+tolerate in the prepared amplitudes. This result constitutes a general procedure for implementing prepare such
+that the cost of circuit synthesis is additive, rather than multiplicative (as in most prior schemes). In particular,
+it improves on the database scheme from [42] (based on the procedure of [69]) which requires a number of T gates
+scaling asO(L log(L/ϵ)). Importantly, our scheme does not increase the value of L or λ, which would usually be the
+case for most “on-the-ﬂy” strategies for implementing prepare [23, 42, 59].
+Generalizing the requirements of Eq. (6), we begin with the observation that it would be acceptable to have a
+prepare circuit which initializes the state
+|L⟩≡
+L−1∑
+𝓁=0
+√w𝓁
+λ |𝓁⟩| temp𝓁⟩ (32)
+where|temp𝓁⟩ is an unspeciﬁed junk register entangled with |𝓁⟩. Equivalently, any pure state|L⟩ would suﬃce if
+⟨L| (|𝓁⟩⟨𝓁|⊗ 11)|L⟩ = w𝓁
+λ ∀𝓁∈ [0,L ). (33)
+Because select only uses |𝓁⟩ to control operations, phase error (including entanglement with the junk register) in
+the state produced by prepare will commute across select and be corrected by prepare†. However, select itself
+necessarily introduces entanglement between its target register |ψ⟩ and the index register |𝓁⟩ (plus associated junk
+register). So prepare† will not exactly restore |𝓁⟩ or the junk register. Although we only specify the action of
+prepare on the|0⟩ state, prepare will be applied to other states due to this imperfect uncomputation eﬀect. This
+is accounted for by (i) requiring qubits coming out of prepare† to be kept and fed back into the next prepare
+operation and (ii) the reﬂection step between prepare† and prepare only aﬀecting the|0⟩ state.
+Given the observation that the existence of an entangled junk register is acceptable, we will seek to implement a
+
+=== PDF PAGE 15 ===
+15
+circuit which eﬀects the transformation,
+|0⟩⊗(1+2µ+2 logL)↦→
+L−1∑
+𝓁=0
+√
+~ρ𝓁|𝓁⟩| temp𝓁⟩ (34)
+where ~ρ𝓁≡ ~w𝓁/λ are probabilities characterizing the approximate Hamiltonian we are encoding. Whereas the exact
+Hamiltonian would be associated with probabilities ρ𝓁≡ w𝓁/λ, the value ~ρ𝓁 is a µ-bit binary approximation to ρ𝓁
+such that
+|ρ𝓁−~ρ𝓁| =|w𝓁− ~w𝓁|λ ≤ 12µL≤ δλ =
+√
+2∆E
+4Lλ
+(
+1 + ∆E28λ2)
+(
+1−‖H‖2/λ2
+)
+, (35)
+µ =
+⌈
+log
+(
+2
+√
+2λ
+∆E
+)
++ log
+(
+1 + ∆E2
+8λ2
+)
+− log
+(
+1−‖H‖2
+λ2
+)⌉
+, (36)
+where the expression for δ comes from Eq. (A10) of Appendix A, and bounds the largest acceptable deviation in the
+coeﬃcients of the terms in a Hamiltonian approximating the one we mean to implement. The second log in Eq. (36)
+isO(1), because we do not take ∆ E larger than λ. The Hamiltonians we will be considering will be frustrated, so
+‖H‖/λ is no larger than a constant (less than 1), and the third log in Eq. (36) is O(1) as well.
+|0⟩⊗ logL uniformL In𝓁 × |𝓁⟩
+|0⟩⊗µ H ⊗µ Inσ𝓁 temp
+|0⟩⊗ logL data : alt𝓁 × temp
+|0⟩⊗µ data : keep𝓁 Inkeep𝓁 temp
+|0⟩ ⊕(keep𝓁≤σ𝓁) • temp
+FIG. 11. Generic subprepare circuit for initializing an arbitrary state with L unique amplitudes. Spans 2 µ + 2 logL +O(1)
+qubits and has a T-count of 4(L +µ) +O(logL) where µ is calculated as in Eq. (36). Produces a state ∑L−1𝓁=0 √w𝓁/λ|𝓁⟩|temp𝓁⟩
+where “temp” is temporary garbage data that will be uncomputed when uncomputing the preparation of this state after
+application of select. The data loading parts of this circuit use the QROM implementation described in Figure 10 in
+Section III C. The uniformL circuit is used to initialize the initial superposition over 𝓁.
+The idea behind our scheme will be to create the superposition in an indirect fashion which involves starting in a
+uniform superposition over an initial index 𝓁 then using a precomputed binary representation of a probability (loaded
+from QROM), keep𝓁, to decide whether we should keep 𝓁 or swap it with a classically precomputed alternate index
+alt𝓁 which is also loaded from QROM (see Figure 11). Speciﬁcally, our procedure creates a uniform superposition in
+|𝓁⟩ overL values and then uses QROM (see Figure 10 and Section III C) to load |alt𝓁⟩ and|keep𝓁⟩. Note that if L is
+not a binary power one can prepare the initial superposition using the amplitude ampliﬁcation circuit discussed later
+in Figure 12. The procedure described thus far prepares the state:
+L−1∑
+𝓁=0
+√
+1
+L|𝓁⟩| alt𝓁⟩| keep𝓁⟩. (37)
+We will then construct a circuit which coherently swaps the registers |𝓁⟩ and|alt𝓁⟩ with probability keep𝓁 to create
+the state in Eq. (34). In order to create the state in Eq. (34) from Eq. (37) we will need to introduce one additional
+register of size µ, which we refer to as |σ⟩. We will put this entire register into a uniform superposition, and then
+compare it to the probability represented by keep𝓁. If keep𝓁≤σ, we will swap registers|𝓁⟩ and|alt𝓁⟩. Thus, after the
+procedure is ﬁnished, i.e. in Eq. (34), the garbage register will be in the state
+|temp𝓁⟩ = 1√2µL~ρ𝓁
+
+|alt𝓁⟩| keep𝓁⟩
+keep𝓁−1∑
+σ=0
+|σ⟩| 0⟩ +
+∑
+k|altk=𝓁
+|k⟩| keepk⟩
+2µ−1∑
+σ=keepk
+|σ⟩| 1⟩
+
+ (38)
+
+=== PDF PAGE 16 ===
+16
+where the rightmost qubit is the result of a comparison between keep 𝓁 and σ. For Eq. (34) to give the correct state,
+we need|temp𝓁⟩ to be normalized, which means that we require
+keep𝓁 +∑k|altk=𝓁 (2µ− keepk)
+2µL =~ρ𝓁 = ~w𝓁λ ∀𝓁∈ [0,L ). (39)
+• control • • •
+uniform2kL
+k / = |0⟩⊗k k / H
+log L
+/ |0⟩⊗ log L
+log L
+/ H InA InA H H
+⊕(A < L ) Rz
+(
+arccos 2⌊log L⌋−LL ) ⊕(A < L ) Rz (arccos 2⌊log L⌋−LL )
+FIG. 12. A circuit that uses amplitude ampliﬁcation [70, 71] to conditionally and reversibly prepare the uniform superposition
+(1/
+√
+2kL)∑2kL−1𝓁=0 |𝓁⟩, whereL is odd, starting from the|0⟩ state. The circuit spans k +2 logL+O(1) qubits and has a T-count
+of 2k + 10 logL +O(log(1/ϵ)). If the control is omitted, the T-count drops to 8 log L +O(log(1/ϵ)). If L = 1, the Rz rotations
+are not needed and the T count drops to 2 k. If L = 1 and the control is omitted, the T count is zero.
+We can ﬁnd the values of keep 𝓁 and alt𝓁 from Eq. (39) in a sequential way. At any step, let L denote the set of 𝓁
+for which we have already found these values. Then we can rewrite Eq. (39) as
+keep𝓁 +∑k/∈L|altk=𝓁 (2µ− keepk)
+2µL =~ρ𝓁−
+∑
+k∈L|altk=𝓁 (2µ− keepk)
+2µL = ˜ρ′𝓁. (40)
+This expression involves only known quantities on the right-hand side, which we call ˜ ρ′𝓁 for short. We will show by
+induction that the average of ˜ρ′𝓁 for𝓁 /∈L is 1/L, and the ˜ρ′𝓁 are non-negative. These are clearly true initially, because
+then ˜ρ′𝓁 = ˜ρ𝓁. Now assume that these conditions are true at some step. If the values ˜ ρ′𝓁 are all equal for 𝓁 /∈L ,
+then we can just take alt 𝓁 = 𝓁 and any value of keep 𝓁, and we will satisfy Eq. (40) for all remaining 𝓁. Otherwise,
+there will be one value, 𝓁0, where ˜ρ′𝓁0 is below the average 1/L and another, 𝓁1, where ˜ρ′𝓁1 is above 1/L. For 𝓁0, wechoose keep𝓁0 = 2µL˜ρ′𝓁0 and alt𝓁0 = 𝓁1. Then 𝓁0 is added to the set L and the values of ˜ρ′𝓁 are updated. Accordingto Eq. (40), the only value of ˜ρ′𝓁 that is updated is that for 𝓁 = 𝓁1, where we replace it with ˜ρ′𝓁1 + ˜ρ′𝓁0− 1/L. Thatensures the average value of ˜ρ′𝓁 for 𝓁 /∈L is still 1/L, and since we had ˜ρ′𝓁1 > 1/L, the new value is non-negative.A more intuitive way to understand our approach to preparation is that it is equivalent to classical alias sampling
+[72], which samples 𝓁 with probability ˜ρ𝓁 by the following procedure:
+1. Select 𝓁 uniformly at random from [0,L ).
+2. Look up alt 𝓁 and keep𝓁.
+3. Return 𝓁 with probability keep𝓁/2µ, otherwise return alt𝓁.
+The procedure for determining the alt 𝓁 and keep𝓁 is then to work backwards starting from the distribution ˜ ρ𝓁, and
+update this distribution by shifting probabilities from 𝓁1 to 𝓁0 until we obtain a uniform distribution [73].
+This procedure is illustrated in Figure 13. One starts with a histogram of the desired distribution and looks for a
+bar that is too small, ﬁxes this by transferring probability from a bar that is too high, and so on until all bars have
+the correct height. Each probability transfer permanently solves the bar that was too low, and the remaining bars
+form a smaller instance of the same problem. Thus, it is not possible to get stuck in a loop or a dead-end. See also the
+module utils/_lcu_util.py in version 0.6 of OpenFermion (www.openfermion.org/) [74] for open source python
+code that performs this iterative matching process (and also handles discretizing the distribution) in O(L) time.
+
+=== PDF PAGE 17 ===
+17
+FIG. 13. Depiction of choosing alt 𝓁 and keep𝓁 values for a discretized probability distribution. The left histogram is the input
+probability distribution, after discretization into steps of 1/(23L). The squares must be redistributed so that every column has
+at most two colors and height of 1/L (i.e. 8 squares as indicated by the dashed line) without moving the bottom square of each
+column. The histogram on the right satisﬁes these constraints, and the histogram in the middle is an intermediate distribution.
+Arrows indicate which boxes were moved where. The color of the top square of each column in the histogram on the right
+determines the value of alt𝓁, whereas keep𝓁 is determined by where the color transition is within each column.
+IV. CONSTRUCTIONS FOR THE ELECTRONIC STRUCTURE HAMILTONIAN
+Using the appropriate discretization into a basis of N spin-orbitals, the electronic structure Hamiltonian can be
+written as
+H =
+∑
+p,q,σ
+T (p−q)a†p,σaq,σ +∑
+p,σ
+U(p)np,σ +
+∑
+(p,α)⁄=(q,β)
+V (p−q)np,αnq,β, (41)
+where a†p,σ and ap,σ are fermionic creation and annihilation operators on spatial orbital p∈{ 0,··· ,N/ 2− 1} with
+spinσ∈{↑,↓}, and np,σ =a†p,σap,σ is the number operator. These operators satisfy the canonical fermionic anticom-
+mutation relations{a†p,α,a†q,β} ={ap,α,aq,β} = 0 and{a†p,α,aq,β} =δp,qδα,β.
+Mapping to qubits under the Jordan-Wigner transformation [61, 75], Eq. (41) becomes
+H =
+∑
+p⁄=q,σ
+T (p−q)
+2
+(
+Xp,σ
+− →Z Xq,σ +Yp,σ− →Z Yq,σ) + ∑
+(p,α)⁄=(q,β)
+V (p−q)
+4 Zp,αZq,β (42)
+−
+∑
+p,σ
+(T (0) +U(p) +∑qV (p−q)
+2
+)
+Zp,σ +
+∑
+p
+(
+T (0) +U(p) +
+∑
+q
+V (p−q)
+2
+)
+11
+where we have introduced the notation− →Z which will be used throughout the paper, which we now explain. The tensor
+factors on which Pauli operators act can always be interpreted as some integer. For instance, (p,σ ) is mappable to an
+integer under a particular choice of canonical ordering in the Jordan-Wigner transformation. When placed between
+two Pauli operators the notation Aj
+− →ZAk denotes the operator AjZj+1··· Zk−1Ak. The exact mapping between a
+spin-orbital indexed by (p,σ ) and a qubit indexed by an integer is discussed later on.
+The forms of Eq. (41) and Eq. (42) encompass a wide range of fermionic Hamiltonians including the molecular
+electronic structure (aka “quantum chemistry”) Hamiltonian in any basis that diagonalizes the Coulomb potential
+[43]. The particular coeﬃcients will depend on the discretization scheme and basis functions chosen to represent the
+system. One such representation, derived for use in quantum simulations in [43] prescribes the coeﬃcients
+T (p) =
+∑
+ν
+k2ν cos (kν·rp)
+2N , U (p) =−
+∑
+j,ν⁄=0
+4πζj cos (kν·Rj−kν·rp)
+Ωk2ν , V (p) =
+∑
+ν⁄=0
+2π cos (kν·rp)
+Ωk2ν , (43)
+where each spatial orbital p is associated with an orbital centroid rp =p (2Ω/N)1/3, and Ω is the computational cell
+volume. The momentum modes are deﬁned as kν = 2πν/Ω1/3 with ν∈ [−(N/2)1/3, (N/2)1/3]⊗3. When dealing with
+molecular potentials, Rj and ζj are the position and charge of the jth nucleus, respectively.
+As discussed in [43], the Hamiltonian of Eq. (43) corresponds to discretization in a basis composed of rotated
+plane waves known as the “plane wave dual” basis. The basis set discretization error associated with the dual basis
+is asymptotically equivalent to a Galerkin discretization using any other single-particle basis functions, including
+Gaussian orbitals [43]. Thus, Eq. (43) is a general expression of the electronic structure problem that is asymptoti-
+cally equivalent to any other representation. While well suited for simulating periodic materials, despite asymptotic
+equivalence, this basis set is not particularly compact for the simulation of molecules. Another basis set compatible
+
+=== PDF PAGE 18 ===
+18
+with Eq. (41) and Eq. (42) while being much more appropriate for molecules is the so-called “Gausslet” basis [48].
+Gausslets are derived from a ternary wavelet transformation [76] of Gaussian orbitals and have similar intrinsic basis
+set discretization error to standard Gaussian orbitals [48].
+The simulation procedures here will make use of the structure in Eq. (42). Speciﬁcally, our algorithm will make use
+of the fact that the Hamiltonian consists of only four types of terms: Zp, ZpZq, Xp
+− →Z Xq and Yp− →Z Yq and that there
+are only 3N/2 unique values of the coeﬃcients. Our algorithms do not utilize any particular structure in the dual
+basis Hamiltonian in Eq. (43) beyond the fact that it satisﬁes the form of Eq. (41). This is important since it implies
+that the techniques of this paper are compatible with other representations of the electronic structure Hamiltonian,
+such as the ﬁnite diﬀerence discretization [43], ﬁnite element methods, and Gausslet basis sets [48] which produce
+Hamiltonians consistent with Eq. (41) but not Eq. (43).
+A. Electronic Structure Hamiltonian Selection Oracle
+In order to implement the select and prepare oracles for the electronic structure Hamiltonian of Eq. (41), one
+must ﬁrst deﬁne a scheme for indexing all of the terms. For the case of the general electronic structure Hamiltonian
+in Eq. (41) we will index terms with the registers |θ⟩,|U⟩,|V⟩,|p⟩,|α⟩,|q⟩ and|β⟩. The |p⟩ and|q⟩ registers are
+little-endian binary encodings of integers going from 0 to N/2−1, thus using logN−1 qubits each; the other registers
+are each a single bit which we use to specify the unitary that select should apply to the system register |ψ⟩.
+The|α⟩ and|β⟩ bits are used to specify the spins {↑,↓}, which together with the spatial orbital speciﬁcations p
+and q, index a spin-orbital. Thus, a register set as |p⟩|α⟩|q⟩|β⟩ will be indexing a Hamiltonian term that involves
+action on the spin-orbitals indexed by (p,α ) and (q,β ). Next, whenever|U⟩ =|1⟩, it will be the case (by construction
+of our circuits) that ( p,α ) = ( q,β ) and we will apply the Zp,α terms. If |V⟩ =|1⟩, we will apply the Zp,αZq,β
+terms. If |U⟩|V⟩ =|0⟩| 0⟩ and p < q, it will also be the case that α =β and we will apply the Xp,α
+− →ZXq,α terms; if
+|U⟩|V⟩ =|0⟩| 0⟩ and p>q , it will again be the case that α =β and we apply the Yq,α
+− →ZYp,α terms. Finally, the |θ⟩
+register encodes whether the unitary should have a negative phase (if |θ⟩ =|1⟩). Thus, our select circuit will meet
+the following speciﬁcation (where undefined means this case should not occur):
+selectchem|θ,U,V,p,α,q,β ⟩|ψ⟩ = (−1)θ|θ,U,V,p,α,q,β ⟩⊗
+
+
+
+Zp,α|ψ⟩ U∧¬V∧ ((p,α ) = (q,β ))
+Zp,αZq,β|ψ⟩ ¬ U∧ V∧ ((p,α )⁄= (q,β ))
+Xp,α
+− →ZXq,α|ψ⟩ ¬U∧¬V∧ (p<q )∧ (α =β)
+Yq,α
+− →ZYp,α|ψ⟩ ¬ U∧¬V∧ (p>q )∧ (α =β)
+undefined otherwise.
+(44)
+We present our implementation of selectchem in Figure 14. Our circuit relies on subroutines we describe in
+Section III A which provide a method for selectively applying strings of Pauli operators to a system register of size
+N, with controls on log N qubits. Important notation for these subroutines is also deﬁned in Section III A, and thus
+that section is necessary for understanding the details of Figure 14.
+Since p and q are actually three-dimensional vectors with elements taking integer values p∈ [0, (N/2)1/3− 1] and
+σ∈{↑ ,↓} we should clarify how the spin orbitals ( p,σ ) are mapped to an integer representing qubits. For ease of
+exposition, we will deﬁne the following mapping function for a D dimensional system,
+M≡ (N/2)1/D f(p,σ ) =δσ,↓MD +
+D−1∑
+j=0
+pjMj (45)
+where for chemistry D = 3, for the Hubbard model D = 2. The δ function behaves as one might expect; δ↑,↓ = 0 and
+δ↓,↓ = 1. Thus it should be understood that Xp,σ implies the X operator acting on qubit f(p,σ ).
+
+=== PDF PAGE 19 ===
+19
+control • • • S • •
+θ Inθ Z
+U InU Z
+V InV •• • • Z •
+p
+logN− 1
+/ Inp =
+logN− 1
+/ Inp × ×
+α Inα Inα × ×
+q
+logN− 1
+/ Inq
+logN− 1
+/ × Inq × Inq
+β Inβ × Inβ × Inβ
+|ψ⟩ N/ selectchem N/ − →ZYp,α − →ZXq,β Zq,β
+FIG. 14. selectchem circuit, with a T-count of 12N + 8 logN +O(1), which implements the functionality speciﬁed by Eq. (44),
+conditioned on a “control” qubit. The unitaries performing Majorana and indexed operations (each requiring 4 N T gates) are
+explicitly constructed in Section III A. As described in Figure 9, the unitaries labeled as− →ZAj apply the operationZ0··· Zj−1Aj
+to the target register, depending on the value from the input |p⟩ register. These operations will require an extra log N ancillae,
+so the overall circuit spans N + 3 logN +O(1) qubits. The operation which targets the system register with Zq is a variant of
+Figure 7 with the X𝓁 gate replaced by Z𝓁. All indexed operations reuse the same ancillae.
+B. Electronic Structure Coeﬃcient Preparation Oracle
+We see from Eq. (41) that there are only O(N) unique coeﬃcients in the Hamiltonian, despite the Hamiltonian
+havingO(N2) diﬀerent terms. Based on the indexing in Eq. (44) and deﬁnition in Eq. (6), our prepare initializes
+preparechem|0⟩⊗(3+2 logN)↦→∑
+p,σ
+~U(p)|θp⟩| 1⟩U|0⟩V|p,σ,p,σ ⟩ (46)
++
+∑
+p⁄=q,σ
+~T (p−q)|θ(0)p−q⟩| 0⟩U|0⟩V|p,σ,q,σ ⟩ + ∑
+(p,α)⁄=(q,β)
+~V (p−q)|θ(1)p−q⟩| 0⟩U|1⟩V|p,α,q,β ⟩
+where the values of the coeﬃcients and the state of |θ⟩, related to the coeﬃcients in Eq. (42), are deﬁned as
+~U(p) =
+vuu√⏐⏐⏐T (0) +U(p) +∑qV (p−q)⏐⏐⏐
+2λ , ~T (p) =
+√
+|T (p)|
+λ , ~V (p) =
+√
+|V (p)|
+4λ , (47)
+θp =
+1− sign
+(
+−T (0)−U(p)−∑qV (p−q))
+2 , θ (0)p = 1− sign (T (p))2 , θ (1)p = 1− sign (V (p))2 .
+The T (p) coeﬃcient inside the square root in Eq. (47) diﬀers from the coeﬃcient in Eq. (42) by a factor of two since
+it occurs for each type of term only once depending on whether p<q or p>q .
+To implement prepare we ﬁrst synthesize a unitary referred to as subprepare which acts as follows,
+subprepare|0⟩⊗(2+logN)↦→
+N−1∑
+d=0
+(
+~U(d)|θd⟩| 1⟩U|0⟩T +~T (d)|θ(0)d ⟩| 0⟩U|0⟩V +~V (d)|θ(1)d ⟩| 0⟩U|1⟩V
+)
+|d⟩. (48)
+Since in this step we initialize a state on O(logN) qubits, the techniques of [69] would allow one to implement
+subprepare with a T-count of O(N log(1/ϵ)). However, in Figure 15 we show an even more eﬃcient method for
+synthesizing subprepare with T gate complexityO(N+log(1/ϵ)), based on the techniques introduced in Section III D.
+Using subprepare, we can implement the entire prepare circuit with the same asymptotic T complexity. In our
+subprepare circuit, 𝓁 is really a vector of integers; thus, we use “modular vector indices” such that if v is a 3-
+dimensional vector within a rectangular space with each dimension having M values then the function application
+F (v) should be expanded to F (v) = F (v mod M) = F (vx mod M,vy mod M,vz mod M), consistent with the
+mapping introduced in Eq. (45).
+
+=== PDF PAGE 20 ===
+20
+|0⟩θ
+subprepare(M,D )
+θ |0⟩θ data : θ𝓁 × θ
+|0⟩U U |0⟩U
+uniform3
+In𝓁
+× U
+|0⟩V V = |0⟩V × V
+|0⟩p p |0⟩p
+D logM
+/ uniform⊗DM × p
+|0⟩ data : θalt𝓁 × temp
+|0⟩ data : Ualt𝓁 × temp
+|0⟩ data : Valt𝓁 × temp
+|0⟩
+D logM
+/ data : palt𝓁 × temp
+|0⟩
+µ
+/ H Inσ Inσ temp
+|0⟩
+µ
+/ data : keep𝓁 Inkeep𝓁 Inkeep𝓁 temp
+|0⟩ ⊕(keep𝓁 <σ ) •••• ⊕(keep𝓁 <σ ) |0⟩
+FIG. 15. subprepare circuit for the electronic structure Hamiltonian, as called by Figure 16, with a T-count of 6N+O(µ+logN)
+and a qubit count of 2 µ + 3 logN +O(1) where µ is deﬁned in Eq. (36). The data-loading subroutine is implemented as in
+Figure 10, and has a T-count of 3 × 4M 3− 4 = 6N− 4. The uniform subroutine is implemented as in Figure 12, and has
+a T-count ofO(µ). The compare-and-swap operations have a negligible O(logN) T-count. As in Eq. (45), D denotes system
+dimension (usually D = 3) and M refers to the number of values along each dimension such that N = 2MD. Although we
+only specify the behavior of the circuit when the U, V , and p qubits start in the |0⟩ state, the circuit will also be invoked in
+contexts where this is not the case.
+While applying subprepare to create the state in Eq. (48) we also initialize the |α⟩ qubit in the|+⟩ state with a
+Hadamard. We then use the uniformL circuit from Figure 12 to initialize the |q⟩ register in an equal superposition
+in a way that is controlled on the|U⟩ ancilla qubit being in the state |0⟩U. Subsequent to this step the state becomes
+Eq. (48)↦→
+N/2−1∑
+d=0
+~U(d)|θd⟩| 1⟩U|0⟩V|d⟩| +⟩α|0⟩⊗ logN (49)
++
+N/2−1∑
+d=0
+N/2−1∑
+q=0
+(
+~T (d)|θ(0)d ⟩| 0⟩U|0⟩V +~V (d)|θ(1)d ⟩| 0⟩U|1⟩V
+)
+|d⟩| +⟩α|q⟩| 0⟩.
+The register labeled as |d⟩ in Eq. (48) will ultimately become our |p⟩ register, but immediately after subprepare it
+is more appropriate to think of it as encoding a value |p−q⟩. As we can see in Eq. (46), when |V⟩ =|1⟩ andp =q, it
+is necessarily the case that α⁄=β. The middle part of our prepare circuit is dedicated to correctly initializing this
+tricky part of the superposition. To do it, we use an ancilla to apply a Hadamard gate to |0⟩β only when|V⟩ =|1⟩
+and|d⟩⁄ =|0⟩⊗(logN−1). In the event that |V⟩ =|1⟩ and|d⟩ =|0⟩⊗(logN−1) we apply a CNOT gate with an open
+control on|α⟩ which targets|0⟩β, thus ensuring that|β⟩⁄ =|α⟩ when p−q = 0. Then, we set |β⟩ =|α⟩ for the U and
+T part of the superposition by applying a Toﬀoli gate with regular control on |α⟩ and open control on|V⟩, targeting
+|β⟩. After these operations the state can be expressed as
+Eq. (49)↦→
+N/2−1∑
+d=0
+∑
+σ
+
+~U(d)|θd⟩| 1⟩U|0⟩V|d,σ, 0,σ⟩ +
+N/2−1∑
+q=0
+~T (d)|θ(0)d ⟩| 0⟩U|0⟩V|d,σ,q,σ ⟩
+
+ (50)
++
+∑
+α
+
+~V (0)|θ(1)0 ⟩| 0⟩U|1⟩V|0,α,q, ¬α⟩ +∑
+β
+N/2−1∑
+d=1
+N/2−1∑
+q=0
+~V (d)|θ(1)d ⟩| 0⟩U|1⟩V|d,α,q,β ⟩
+
+.
+The ﬁnal step consists of converting the |d⟩ register to values representing |p⟩. To do this, we must add the |q⟩
+register into the |d⟩ register when|U⟩ =|0⟩ so that|d +q⟩ =|p−q +q⟩ =|p⟩. However, we also want to copy the
+
+=== PDF PAGE 21 ===
+21
+|d⟩ register into the|q⟩ register when|U⟩ =|1⟩; thus, prior to this operation we also implement a Fredkin gate which
+swaps|d⟩ and|q⟩, conditioned on|U⟩ =|1⟩. After the Fredkin gate and the addition of |d⟩ into|q⟩,
+Eq. (50)↦→
+N/2−1∑
+d=0
+∑
+σ
+
+~U(d)|θd⟩| 1⟩U|0⟩V|d,σ,d,σ ⟩ +
+N/2−1∑
+q=0
+~T (d)|θ(0)d ⟩| 0⟩U|0⟩V|d +q,σ,q,σ ⟩
+
+ (51)
++
+∑
+α
+
+~V (0)|θ(1)0 ⟩| 0⟩U|1⟩V|q,α,q, ¬α⟩ +∑
+β
+N/2−1∑
+d=1
+N/2−1∑
+q=0
+~V (d)|θ(1)d ⟩| 0⟩U|1⟩V|d +q,α,q,β ⟩
+
+.
+Then, simply by relabeling d =p−q whenever|U⟩ =|0⟩ andd =p whenever|U⟩ = 1 we see that our state is identical
+to the desired one (from Eq. (46)). We show how to use subprepare to implement preparechem in Figure 16. The
+gate complexity of subprepare isO(N + log(1/ϵ)) and the gate complexity of all other components of this circuit
+areO(logN). Thus, the overall gate complexity of prepare isO(N + log 1/ϵ).
+|0⟩θ
+preparechem(M,D )
+θ |0⟩θ
+subprepare(M,D )
+θ
+|0⟩U U |0⟩U • U
+|0⟩V V |0⟩V • • • V
+|0⟩p p = |0⟩p
+D logM
+/ × +⃗ q(mod M ⊗D) p
+|0⟩α α |0⟩α H • α
+|0⟩q q |0⟩q
+D logM
+/ uniform⊗DM × In⃗ q q
+|0⟩β β |0⟩β H H β
+FIG. 16. prepare circuit for the electronic structure Hamiltonian. Implements the unitary in Eq. (46) with a T count of
+6N +O(µ + logN) where µ is deﬁned in Eq. (36). The subprepare subroutine is the dominant cost, and is implemented
+as in Figure 15. When U is set by subprepare, the Fredkin gates and the addition copy p’s value over q. When V is set,
+uniform superpositions over q and β are prepared except, if p−q = 0, then β is instead set to be opposite to α in order to
+guarantee (p,α )⁄= (q,β ). Beware that this conditional preparation of β doubles the weight of p = q cases (relative to p⁄= q
+cases) and must be accounted for in the LCU coeﬃcients given to subprepare. When neither U nor V is set, α is copied into
+β and a uniform superposition over q is prepared. The remaining operations contribute a negligible O(µ + logN) T gates. The
+uniform⊗DM operation prepares D registers in a uniform superposition of basis states going up to M, as in Figure 12. Controls
+on multi-qubit lines are conditioned on every qubit within the line, e.g. what appears to be a Toﬀoli gate is actually a not
+gate with 1 + D logM controls. The action of our preparechem circuit is only speciﬁed in the case where the inputs are all
+|0⟩. During actual execution this is not the case, because the eﬀects of the select operation will prevent prepare†chem from
+exactly uncomputing the U, V , p, q, α, and β qubits. This is expected behavior and it is accounted for by requiring that the
+potentially-not-uncomputed qubits be kept and used as inputs for the next preparechem circuit.
+C. Resources Required for Electronic Structure Simulation
+The parameter λ from Eq. (6) has signiﬁcant implications for the complexity of our algorithm; as seen in Eq. (27),
+our circuit size will scale linearly in λ. For the case of general electronic structure, we can see from Eq. (41) that λ is
+λ =
+∑
+pq
+|T (p−q)| +
+∑
+p
+|U(p)| +
+∑
+p⁄=q
+|V (p−q)|. (52)
+This expression and the extremely naive assumption that all coeﬃcients are O(1) would imply that λ∈O (N2). For
+the case of quantum chemistry in the dual basis, i.e. Eq. (43), the work of [43] obtains the same bound:
+λ∈O
+(N7/3
+Ω1/3 + N5/3Ω2/3)∈O (N2), (53)
+where the last relation holds when studying electronic structure systems that grow with ﬁxed density N∝ Ω, which is
+the usual situation. For encoding the electronic structure Hamiltonian we also determined thatP = 6N +O(log(N/ϵ))
+
+=== PDF PAGE 22 ===
+22
+andS = 12N +O(logN) in terms of T complexity. Thus, from Eq. (27) we can conclude that the overall T complexity
+of our procedure is roughly
+√
+2πλ (S + 2P )
+∆E ≈ 24
+√
+2πλ
+∆E N (54)
+which for the electronic structure Hamiltonian is rigorously bounded by O(N3/∆E).
+Ancilla required for our electronic structure simulation come from three sources: qubits required for our entanglement-
+based phase estimation (given by Eq. (24)), qubits required to store coeﬃcient values in QROM (given by Eq. (36)),
+and ancilla actually required for our implementation of prepare and select, which for the electronic structure
+Hamiltonian simulation is 5 logN +O(1). Putting these sources together, the total ancillae required are
+log
+(√
+2πλ
+2∆E
+)
++ 2 log
+(
+2
+√
+2λ
+∆E
+)
++ 5 logN +O(1) = log
+(
+4
+√
+2πλ3N5
+∆E3
+)
++O(1) (55)
+where the additive constant is small and can be usually neglected for problem sizes of interest. This expression gives
+the ancilla count in Theorem 1.
+We now estimate resources required for speciﬁc problem instances. In practice, we ﬁnd that λ scales better than
+O(N2), but exactly how much better is system dependent. For a particular material the value of λ can be inﬂuenced
+by a number of factors. These factors include the particulars of the bases used, the geometry and atomic composition
+of the material, and whether one scales toward continuum or thermodynamic limits.
+Perhaps the simplest chemistry system which is classically intractable is a molecule without nuclei: the uniform
+electron gas, also known as jellium. Jellium is a system ofη electrons with real kinetic energy and Coulomb interactions
+conﬁned to a box of ﬁnite volume Ω with periodic boundary conditions. Plane waves are a near-ideal basis for the
+simulation of jellium; the system is naturally expressed using the discretization of Eq. (43) with a constant external
+potential, i.e. ζj = 0. Jellium is an interesting system to simulate on early quantum computers due to its simplicity,
+classical intractability [43], historical signiﬁcance tied to breakthroughs in density functional theory [77] as well as the
+fractional quantum Hall eﬀect [78], and tradition as a benchmark for classical electronic structure calculations.
+The phase diagram of jellium is typically parameterized in terms of the Wigner-Seitz radius which characterizes the
+electron density in three dimensions asrs = (3Ω/(4πη))1/3 whereη is number of electrons. Although the ground state
+of jellium at high densities (metallic, rs∼ 1 Bohr radii per particle) and at very low densities (insulating, rs∼ 100
+Bohr radii per particle) is well known, the phase diagram in the intermediate density regime is less certain [79–84].
+Whereas perturbation theory performs well in the high-density regime [85, 86], quantum Monte Carlo has been the
+102 103
+N Qubits (Fixed Filling; rs = 10)
+100
+101
+102
+103
+ Jellium (1.66)
+FIG. 17. The value λ as a function of number of qubits N for the 3D spinful dual basis jellium Hamiltonian at a Wigner-Seitz
+radius of 10 Bohr radii (assuming the system is initialized at half-ﬁlling so N =⌈2η⌉), which corresponds to an increasing cell
+volume as the number of basis functions increases. This density was chosen for study since it is in the classically challenging
+regime for jellium [43]. The bound is in atomic units of energy (Hartree). The number in parenthesis corresponds to the best
+ﬁt exponent for the trend line (the dotted line) which suggests that λ =O(∼N 5/3).
+
+=== PDF PAGE 23 ===
+23
+Spin-Orbitals λ Value Logical Ancilla Total Logical T Count
+54 5 69 123 1.8× 107
+128 23 82 210 1.9× 108
+250 64 91 341 1.1× 109
+1024 640 112 1136 4.3× 1010
+TABLE III. Resources required for quantum simulation of 3D spinful jellium in the dual basis at Wigner-Seitz radius of 10
+Bohr radii where the cell volume is calculated assuming the system is at half ﬁlling. The units for λ are Hartree. The number
+of logical ancillae is computed as Eq. (55) and the number of T gates is computed using Eq. (54). These estimates assume
+(rather conservatively in comparison to classical limitations) that we should target additive chemical accuracy of ∆ E = 0.0016
+Hartree. These problem sizes are large enough that contemporary classical methods cannot reliably provide unbiased estimates
+with low enough systematic error to resolve competing phases within the ﬁxed-size basis.
+most competitive simulation tool in the low- to intermediate-density regimes [87–90]. For systems with more than ﬁfty
+electrons, quantum Monte Carlo simulations of jellium typically introduce a bias to control the sign problem, such
+as the ﬁxed node approximation, full conﬁguration quantum Monte Carlo with initiators, or auxiliary ﬁeld quantum
+Monte Carlo with a constrained phase bias. The systematic error from these biases is thought to be as large as half
+a percent in the energy [80, 87], which is on a similar scale to the energy diﬀerence between competing phases in the
+intermediate density regime. Even for modest system sizes such as ﬁfty electrons and twice as many spin-orbitals,
+quantum simulations can oﬀer bias-free results that cannot be obtained by quantum Monte Carlo.
+We include numerics in Figure 17 which empirically estimate a tighter bound on λ for jellium in the classically
+challenging regime corresponding to rs = 10 Bohr radii at half-ﬁlling N =⌈2η⌉. Those numerics, shown in Figure 17,
+indicate an empirical scaling of λ =O(∼ N5/3). If we target chemical accuracy of ∆ E = 0.0016 Hartree then from
+Eq. (54) we see that roughly twenty-million T gates would be required for jellium with 54 orbitals, two-hundred million
+T gates would be required for jellium with 128 orbitals, and about a billion T gates would be required for jellium
+with 250 orbitals. While these numbers are promising, for small sizes these simulations require a number of ancilla
+comparable to N. T counts and ancilla resources are tabulated for several jellium problem instances in Table III.
+The dual basis of Eq. (43) is also a natural choice for periodic condensed phase systems (e.g. solids) besides jellium.
+Considering only this basis, there are two parameters that determine the accuracy of the simulation with respect to
+the true material. First, is the number of plane waves used to discretize the cell, which determines the spacing of the
+quasi-points in the dual basis [43]. That is, more plane waves equate to a ﬁner grid and more accurate discretization.
+The second parameter is the size of the supercell, which determines the error one incurs by representing an inﬁnite
+system with a ﬁnite, periodic one, also known as the ﬁnite-size error. There are diﬀerent ways of reducing the ﬁnite-
+size error for a physical system. One common method used in density functional theory utilizes Bloch’s theorem to
+divide the sampling problem into so-called “k-points” within the ﬁrst Brillouin zone [91]. The smoothness of the
+energy with respect to the k-points and additional symmetry provided can oﬀer advantages in certain approaches at
+the cost of increased complexity often resulting in a complex Hamiltonian representation at non-zero k-points. The
+origin k-point, also called the gamma point, maintains a real Hamiltonian for the appropriate basis functions. An
+alternative to k-point sampling is increasing the size of the supercell, which increases the relevance of the gamma
+point. For simplicity, here we only consider the gamma point, so the natural parameter to change is repetitions of
+the unit cell that ﬁx the size of the supercell being simulated. A larger supercell tends to incur less ﬁnite-size error
+as the system is scaled to the thermodynamic limit.
+It is clear that these two parameters are not entirely independent with respect to accuracy of representation of
+the true system. For example, a much larger supercell with the same number of grid points clearly oﬀers a more
+coarse and less accurate representation of the true system. Moreover, in classical methods it is common practice to
+extrapolate along both parameters to increase accuracy for a given computational cost [91]. We do not introduce such
+complexities here, but rather show empirically how the choice of these parameters inﬂuences the parameter λ which
+determines the cost of our algorithms, leaving optimizations such as extrapolation schemes to future work.
+Figure 18 shows the value of λ as a function of the number of qubits being used to discretize the material cell at a
+ﬁxed supercell size for several real materials. The number of qubits here is equal to twice the number of plane waves
+since spin is being treated explicitly. Equal numbers of plane waves along each of the reciprocal lattice vectors of the
+supercell are used, as opposed to the more common spherical energy cutoﬀ schemes [92], as this enables the use of the
+plane wave dual basis [43]. The exponent (slope on the log-log plot) of a least-squares linear regression to the data is
+listed alongside the material, and we see empirically that the value of λ scales just under λ =O(N2) in the number of
+basis functions while keeping the size of the supercell ﬁxed, which matches the analytical bound rather closely. From
+the form of the Hamiltonian in Eq. (43), one can see that at a ﬁxed number of plane waves, increasing the volume
+of the supercell Ω tends to decrease λ such that λ =O(∼ Ω−1/2), due to representing lower frequency modes with
+
+=== PDF PAGE 24 ===
+24
+respect to the plane wave representation of the kinetic energy, despite increasing total nuclei present. We show this
+eﬀect empirically in the center of Figure 18.
+The ﬁrst two panels of Figure 18 leave open the question of the impact on λ of increasing the supercell size while
+maintaining a constant density of dual quasi-points or constant density of plane waves, as we expect impact of the
+last two aspects to compete in some way. Empirically this is shown in the right portion of Figure 18, which plots the
+values ofλ for a ﬁxed density of points in increasing supercell sizes. Note that this scaling is most comparable to past
+studies on single molecules since molecular volume tends to grow as one adds electrons. We observe that the scaling
+in this case is more favorable as a function of the number of qubits than simply reﬁning the grid alone, and in all
+cases is better than λ =O(∼N3/2). From Eq. (54), this numerical data would suggest that the T complexity of our
+overall algorithm is empirically bounded by O(∼N5/2/∆E) when the goal is simulation of real materials.
+101 102 103
+N Qubits
+101
+102
+103
+104
+105
+Li (1.82)
+Diamond (1.95)
+Si (1.85)
+LiH (1.97)
+Graphite (1.86)
+102 103 104 105 106 107
+Cell Volume
+103
+104
+Li (-0.53)
+Diamond (-0.46)
+Si (-0.43)
+LiH (-0.45)
+Graphite (-0.43)
+101 102 103
+N Qubits (Fixed Resolution)
+101
+102
+103
+104
+Li (1.20)
+Diamond (1.46)
+Si (1.43)
+LiH (1.49)
+Graphite (1.38)
+FIG. 18. (Left): A plot of the λ value for one unit cell of the listed material near equilibrium bond length as a function of the
+number of qubits used to discretize the cell. A plane wave dual basis is used with an equal number of points along each of the
+axes. The value given after the material name corresponds to the best ﬁt scaling for that particular material. The materials
+display roughly similar scaling in λ as a function of the number of qubits. (Center): A plot of the λ value as a function of
+the cell volume for a ﬁxed number of qubits, 1024 in this case. We observe that ﬁxing the number of qubits while increasing
+the cell size tends to decrease λ as expected. (Right): A plot of the λ value as a function of the number of qubits where the
+supercell size is scaled proportionally to the number of points along each axis. In this case, two basis functions are used along
+each axis in the unit cell, which is scaled proportionally as the cell volume grows.
+To treat molecules properly one should further consider pseudopotentials [93], methods of extrapolation to con-
+tinuum and thermodynamic limits, and embedding methods [94, 95]. We will leave such a thorough comparison of
+fault-tolerant resources required for speciﬁc instances of real materials other than jellium to future work. However,
+by comparing Figure 17 and the right panel of Figure 18 it is apparent that jellium is a reasonable proxy for other
+materials in that λ values are comparable. As the rest of the simulation circuit is identical up to the particular angles
+of certain single-qubit rotations, one can estimate the cost of simulating these materials from our analysis of the
+fault-tolerant overheads required to simulate jellium in Section VI.
+V. CONSTRUCTIONS FOR THE HUBBARD MODEL
+In this section we described specialized implementations of the select and prepare oracles for simulation of the
+planar repulsive-interaction Fermi-Hubbard model and then estimate the overall T complexity of simulating such
+models. The Hubbard model is a canonical model of a many-electron system often used to model superconductivity
+in cuprate superconductors. Despite its simplicity, the Hubbard model exhibits a wide range of correlated electron
+behavior including superconductivity, magnetism, and interaction-driven metal-insulator transitions [96].
+The Hubbard model is essentially a special case of Eq. (41) when the model is restricted to a planar grid. The
+Hamiltonian can be expressed as
+H =−t
+∑
+⟨p,q⟩,σ
+a†p,σaq,σ + u2 ∑p,α⁄=βnp,αnp,β (56)
+where the notation⟨p,q⟩ implies that terms exist only between sites that are adjacent on a planar lattice with periodic
+
+=== PDF PAGE 25 ===
+25
+boundary conditions. This Hamiltonian can be expressed under the Jordan-Wigner transformation as
+H =−t2 ∑⟨p,q⟩,σ(Xp,σ− →ZXp,σ +Yp,σ− →ZYp,σ) + u8 ∑p,α⁄=βZp,αZp,β− u4∑p,σ Zp,σ + uN4 11. (57)
+We will focus on the Hubbard model with periodic boundary conditions (which is a more typical system to study
+than the Hubbard model with open boundary conditions).
+A. Hubbard Model Hamiltonian Selection Oracle
+We see from Eq. (56) that there are only three unique coeﬃcients in the Hubbard Hamiltonian: the coeﬃcient of
+−XZX and−YZY terms is t/2, the coeﬃcient of ZZ terms is u/8 and the coeﬃcient of local −Z terms is u/4.
+This makes implementation of the prepare circuit exceptionally simple. Ultimately, we will show that the prepare
+circuit for the Hubbard model can be implemented at cost O(log(1/ϵ)). This scaling virtually guarantees that for all
+problem sizes of interest the scaling of the overall algorithms will be dominated by the cost of the select circuit.
+We will index terms in the Hubbard Hamiltonian using the registers |U⟩|V⟩|px⟩|py⟩|α⟩|qx⟩|qy⟩|β⟩. Note that it is
+important for us to explicitly separatepx andpy in our construction of the Hubbard model circuits since this structure
+is fundamental to the eﬃciency of our scheme. Our indexing scheme will be nearly identical to the scheme used for
+the arbitrary chemistry Hamiltonian in Eq. (7) but here we will not need the θ parameter since we know the sign of
+the parameters in advance. Thus, our select circuit for Hubbard will meet the following speciﬁcation:
+selecthub|U,V,p,α,q,β ⟩|ψ⟩ =|U,V,p,α,q,β ⟩⊗
+
+
+
+−Zp,α|ψ⟩ U∧¬V∧ ((p,α ) = (q,β ))
+Zp,αZq,β|ψ⟩ ¬ U∧ V∧ (p =q)∧ (α = 0)∧ (β = 1)
+−Xp,α
+− →ZXq,α|ψ⟩ ¬U∧¬V∧ (p<q )∧ (α =β)
+−Yq,α
+− →ZYp,α|ψ⟩ ¬ U∧¬V∧ (p>q )∧ (α =β)
+undefined otherwise.
+(58)
+where for ease of exposition p =px +pyM and q =qx +qyM, consistent with the convention of Eq. (45) for D = 2.
+By exploiting translational invariance in the Hubbard model we are able to implement selecthub in a slightly more
+eﬃcient fashion, achieving a T count of only 10N +O(logN). We show this more eﬃcient implementation in Figure 19.
+B. Hubbard Model Coeﬃcient Preparation Oracle
+Our prepare circuit for the Hubbard model will have the following speciﬁcation
+preparehub|0⟩⊗(2+2 logN)↦→ (59)
+M−1∑
+px=0
+M−1∑
+py=0
+
+
+√ u
+8λ|0⟩U|1⟩V|px⟩|py⟩| 0⟩α|px⟩|py⟩| 1⟩β +
+√ u
+4λ
+∑
+σ∈{↓,↑}
+|1⟩U|0⟩V|px⟩|py⟩|σ⟩|px⟩|py⟩|σ⟩
++
+√
+t
+2λ
+∑
+σ∈{↓,↑}
+(|0⟩U|0⟩V|px⟩|py⟩|σ⟩|px + 1⟩|py⟩|σ⟩ +|0⟩U|0⟩V|px⟩|py⟩|σ⟩|px⟩|py + 1⟩|σ⟩)
++
+√
+t
+2λ
+∑
+σ∈{↓,↑}
+(|0⟩U|0⟩V|px⟩|py⟩|σ⟩|px− 1⟩|py⟩|σ⟩ +|0⟩U|0⟩V|px⟩|py⟩|σ⟩|px⟩|py− 1⟩|σ⟩)
+
+
+where the ﬁrst line above corresponds to −Z and ZZ terms, the second line corresponds to −X− →ZX terms and the
+ﬁnal line corresponds to the −Y− →ZY terms. Note that we are looking at a Hubbard model with periodic boundary
+conditions so wherever something like|px + 1⟩ appears we really mean|(px + 1) mod M⟩, which we omitted from the
+above equation for clarity. Our implementation of prepare begins for the Hubbard model by initializing a two-qubit
+state containing the three distinct coeﬃcients for the U,V , andT terms. This is done with standard circuit synthesis
+techniques with a T-count of O(log(1/ϵ)) [69]. We then spread these coeﬃcients over the various cases. We depict
+our implementation in Figure 20.
+
+=== PDF PAGE 26 ===
+26
+control • • • S† • •
+U InU Z
+V InV ••• •• • •
+px
+logM
+/ Inpx
+logM
+/ Inpx × ×
+py
+logM
+/ Inpy =
+logM
+/ Inpy × ×
+α Inα Inα × ×
+qx
+logM
+/ Inqx
+logM
+/ × Inqx × Inqx
+qy
+logM
+/ Inqy
+logM
+/ × Inqy × Inqy
+β Inβ × Inα ×
+|ψ⟩ N/ selecthub N/ − →ZYpx,py,α − →ZXqx,qy,β Zqx,qy,1
+FIG. 19. A select circuit for the Hubbard model, with function determined by how p relates to q. Recall from Eq. (45) that
+M =
+√
+N/2 for the Hubbard model. This circuit has a T count of 10 N +O(logN) and spans N + 3 logN +O(1) qubits. If
+control is off, the circuit has no eﬀect. Otherwise, if |U⟩|V⟩ =|1⟩| 0⟩, it will be the case that ( p,α ) = (q,β ), and our circuit
+applies−Zp,α. If |U⟩|V⟩ =|0⟩| 1⟩, we again have that p = q but this time we also have that α = 0 and β = 1 so the circuit
+appliesZp,0Zq,1. If|U⟩|V⟩ =|0⟩| 0⟩ andp<q the circuit performs−Xp,α
+− →ZXq,α but ifp>q the circuit performs−Yp,α− →ZYq,α.
+The larger gates in this circuit are Majorana operators described in Figure 9 and an indexed operation explained in Figure 7
+(except the X𝓁 gate is replaced by a Z𝓁 gate). The Majorana operators each have a T count of 4 N, but the indexed operation
+has no dependence on α and so has a T-count of 2N. All other circuit components have T counts in O(logN).
+|0⟩U
+preparehub(M,D )
+U |0⟩U Ry
+(
+2 arccos
+√
+1
+5
+)
+• U
+|0⟩V V |0⟩V Ry
+(
+2 arccos
+√
+tN
+λ
+)
+• V
+|0⟩px px |0⟩px uniformM Inpx × px
+|0⟩py py = |0⟩py uniformM Inpy × py
+|0⟩α α |0⟩α H Inα × α
+|0⟩qx qx |0⟩qx ⊕px × +1 (mod M ) ×× qx
+|0⟩qy qy |0⟩qy ⊕py × × × qy
+|0⟩β β |0⟩β ⊕α × β
+|0⟩ H • • temp
+|0⟩ H • • • temp
+FIG. 20. preparehub circuit with T-count O(log(N/ϵ)). The Ry operations are used to prepare the three distinct LCU
+coeﬃcients which, including multiplicity, are
+√
+tN/λ (for the 2N T-type terms),
+√
+Nu/(4λ) (for the N = 2M 2 U-type terms),
+and
+√
+Nu/(8λ) (for the N/2 = M 2 V -type terms). We only specify the action of this circuit in the case where the inputs
+are all|0⟩. During actual execution, the eﬀects of the select operation will prevent prepare† from exactly uncomputing the
+U, V , px, py, and α qubits as well as the bottom two ancilla qubits. This is expected behavior and it is required that the
+potentially-not-uncomputed qubits be kept and used as inputs for the next preparehub circuit.
+
+=== PDF PAGE 27 ===
+27
+C. Hubbard Model Resources
+For the case of the planar Hubbard model in Eq. (56) it is readily apparent that
+λ = 2Nt + Nu2 ∈O (N) (60)
+assuming that we are dealing with the spinful model with periodic boundary conditions. We also determined that
+P∈O (log(N/ϵ)) and that S = 10N +O(logN). Thus, the total T cost of the Hubbard algorithm is
+√
+2πλ (S + 2P )
+∆E =
+√
+2π (2t +u/2)N (S + 2P )
+∆E ≈ 20
+√
+2πt + 5
+√
+2πu
+∆E N2. (61)
+Ancillae required for our Hubbard model simulation come from two sources: qubits required for our entanglement-
+based phase estimation (see Eq. (24)) and ancillae actually required for our implementation of prepare and select,
+which for the Hubbard model is 3 log N +O(1). Putting these sources together, the total ancillae required are
+log
+(√
+2πλ
+2∆E
+)
++ 3 logN +O(1) = log
+(√
+2πλN 3
+2∆E
+)
++O(1) (62)
+where the additive constant is small and can usually be neglected for problem sizes of interest. This expression gives
+the ancillae count in Theorem 2.
+While numerically exact solutions to the Hubbard model are available for one-dimensional [97] and inﬁnite-
+dimensional systems [98], no known polynomial time scaling classical methods can provide reliable solutions to the
+planar model in all parts of its phase diagram [96]. For state-of-the-art approximate methods the most challenging
+low temperature phase of the model appears to be the intermediate interaction regime due to the presence of many
+competing phases, around u/t = 4 [96]. Accordingly, we will focus our analysis on this regime. If u = 4t then
+λ = 4Nt. An interesting and classically challenging-to-obtain accuracy (beyond the agreement of state-of-the-art
+numerical methods [96]) for this regime would be in the vicinity of ∆ E≈t/100 [99]; these choices would suggest a T
+complexity of approximately
+40
+√
+2πt
+t/100 N2 <(1.8× 104)N2 (63)
+and an ancilla count of approximately
+log
+(
+8
+√
+2πtN 3
+t/100
+)
+< 12 + 3 logN. (64)
+We summarize these resources for various interesting sizes of Hubbard model simulation in Table IV.
+Dimension Spin-Orbitals Logical Ancilla Total Logical T Count
+6× 6 72 33 105 9.3× 107
+8× 8 128 33 161 2.9× 108
+10× 10 200 36 236 7.1× 108
+20× 20 800 42 842 1.2× 1010
+TABLE IV. Resources required for quantum simulation of planar Hubbard model with periodic boundary conditions and spin,
+as in Eq. (56). The dimension of the system indicates how many sites (spatial orbitals) are in each side of the square model.
+The number of system qubits is thus twice the number of spatial orbitals. The number of logical ancillae is computed as
+Eq. (64). Finally, the number of T gates is computed using Eq. (63) which assumes that u/t = 4 and ∆E =t/100. The ﬁrst
+three problem sizes in the table are near the classically intractable regime.
+D. Exploiting Locality in Simulations of Lattice Hamiltonians
+Looking forward, another way that our circuits can be applied is to accelerate the recent Lieb-Robinson simulation
+method of [52]. Lieb-Robinson bounds reveal an intriguing fact about local Hamiltonians: interactions spread out in a
+
+=== PDF PAGE 28 ===
+28
+light-cone similar in form to the causal diamonds used in relativity to indicate the regions of space-time that can have
+an impact on an event at a point in spacetime [100]. More speciﬁcally, Lieb-Robinson bounds show that information
+propagates at ﬁnite speeds (up to exponentially small error) in systems with nearest-neighbor interactions. The idea
+behind [52] is to exploit this structure to break up the evolution into sub-pieces that can be independently simulated,
+thus reducing the cost of simulation.
+We formalize this by envisioning that we have a lattice ofN sites, Λ, and a Hamiltonian that consists of terms that
+act upon these sites H =∑X⊆ΛhX. Here each hX is local in that if hX and hY act on diﬀerent sites in the lattice
+then [hX,hY ] = 0 and hX only has support on sites that are a constant Euclidean distance away from each other.
+Note that this deﬁnition of locality also incorporates the terms within the Hubbard model. The ﬁnal concept that
+we need to explain the method is that of distance between sites. We assume that for all X,Y ⊆ Λ that dist(X,Y )
+yields the minimum Euclidian distance between any two points within the lattice vectors contained within sets X and
+Y . For example, given a lattice 1D on 10 sites dist( {3, 4, 5},{8, 9, 10}) = 3. The following lemma (a restatement of
+Lemma 6 in [52]) explains the impact that the locality imposed by the Lieb-Robinson bound has on simulation.
+Lemma 3 (Patching Lemma). Let Λ be a lattice on N sites with a Hamiltonian H = ∑X⊆ΛhX where each hX
+is a local bounded Hamiltonian for every X ⊆ Λ. Let A,B,C be subsets of Λ and let HP1···Pq for any sequence
+P :{1,...,q }↦→{ A,B,C}q be for integer q≥ 1 HP1···Pq =∑X∈P1⋃···⋃PqhX (for example, HAB =∑X⊆A⋃BhX.
+There are constants v≥ 0, called the Lieb-Robinson velocity, and µ> 0 such that
+‖‖e−iHABCt−e−iHABteiHBte−iHBCt‖‖∈O
+
+ ∑
+X⊆(A⋃B⋃C)\(A⋃B)\C
+‖hX‖evt−µ dist(A,C)
+
+.
+Note that in the above terminology (A⋃B⋃C)\ (A⋃B)\C is the boundary of the sets AB and C meaning the
+set of all terms within the Hamiltonian that act on sites contained in both A or B and C. Lemma 3 is the core of
+the simulation method. The central idea behind the proof is to use the patching lemma recursively to break up the
+evolution into a product of evolution operators, each of which contains terms that act on one or two of the constituent
+subsets of sites in the problem. This is conceptually similar to a Trotter decomposition; however, as the error in this
+approximation can be made exponentially small by choosing the patches in Lemma 3 to be linearly far apart, the error
+can be controlled in a tighter fashion without requiring short time steps (unlike Trotter decompositions [22, 101]).
+For example, consider regions A,B,C,D . Then we can write
+e−iHABCDt≈e−iHABteiHBte−iHBCDt≈e−iHABteiHBte−iHBCteiHCte−iHCDt. (65)
+In order to achieve scaling that is polylogarithmic in 1 /ϵ, the evolution of each patch needs to be simulated using
+a method with poly-logarithmic scaling in 1 /ϵ such as the truncated Taylor series simulation result [23] or qubitiza-
+tion [52]. Our circuits can be used to optimize this result since qubitization remains the best way to simulate the
+evolution and our select and prepare circuits meet the requirements of qubitization oracles. This result is formally
+given as Theorem 1 of [52], a special case of which is restated below for convenience.
+Theorem 4. Assume the preconditions of Lemma 3 and that for every unit ball in Λ within the Euclidean metric
+space RD at mostO(1) sites are contained within the ball and hX = 0 if the diameter of the set X is greater than 1.
+Additionally, let each hX be eﬃciently computable and have norm at most 1. Then there exists a quantum algorithm
+that simulates the evolution of H for time τ with accuracyϵ that usesO(τN polylog(τN/ϵ )) 2–qubit gates and further
+has gate depth O(τ polylog(τN/ϵ )).
+We claim that our approach can be used to achieve ~O(N/ϵ) scaling for simulating the Hubbard model with nearest-
+neighbor interactions. The Hubbard model satisﬁes the preconditions because each term in the Hamiltonian is local
+on the fermion lattice [52]. By using our constructions for the prepare and select circuits, we can reduce constant
+factors (and some log factors in T complexity) involved in the qubitized simulation, while saturating the ~O(τN )
+scaling of Theorem 4. We then choose τ∈O (1/λ) and apply phase estimation on the result. In order to estimate the
+eigenvalue to within error ϵ with high probability we needO(λ/ϵ) repetitions of the circuit. Thus by multiplying the
+two results gives that the overall scaling for simulating such a Hubbard model is ~O(N/ϵ), as claimed.
+This approach requires some follow-up work in order to determine exact T counts. Speciﬁcally, we need to implement
+a full qubitized simulation (rather than e−i arccos(H/λ)). This transformation is known to be achievable with a poly-
+logarithmic sized circuit [25]. While our work provides a highly optimized method for implementing the oracles needed
+in this process, more work remains to estimate constant factors associated with this simulation.
+
+=== PDF PAGE 29 ===
+29
+VI. RESOURCE ANALYSIS FOR FAULT-TOLERANT IMPLEMENTATION
+Throughout this work, we have focused on the number of T gates as the primary cost model of interest. The reasons
+for this are our focus on hardware consisting of a 2D nearest-neighbor coupled array of qubits, the intention to use
+the surface code [31–35], and the high relative overhead of T gates compared to all others in that context. In this
+section, we shall discuss the overhead of the complete algorithm in detail.
+When using the surface code, each T gate is implemented by ﬁrst preparing a magic state
+|T⟩≡ T|+⟩ =|0⟩ +eiπ/4|1⟩√2 (66)
+that is consumed during the gate. The gate is probabilistic and 50% of the time T † is actually applied instead of T.
+When the gate implemented is not as desired, an S gate must be inserted to correct. Preparing T states requires a
+substantial amount of time and hardware, which we shall make precise below. In an eﬀort to minimize the number of
+physical qubits required, we shall therefore only prepare a single T state at a time. We shall assume the availability
+of a correlated-error minimum weight perfect matching decoder [102] capable of keeping pace with 1 µs rounds of
+surface code error detection, and capable of delivering feedforward in 10–20 µs. We shall calculate the qubit and time
+overhead for physical gate error rates p = 10−3 and p = 10−4.
+The overhead shall be approximated by considering only the overhead of the Majorana operator circuit from Figure 9
+and the data lookup circuit from Figure 10. It is expected that these circuits will account for over 90% of the total
+algorithm overhead. These circuits break down into a number of common pieces, compute ands, uncompute ands,
+naked CNOTs, and active subcircuits. The number of these pieces, in terms of the number of algorithm target qubits
+N, is shown in Table V.
+compute ands uncompute ands naked CNOTs subcircuits
+Figure 9 N− 1 N− 1 0.5N 0.5N
+Figure 10 1.5N− 1 1.5N− 1 0.75N 0.75N
+TABLE V. Breakdown of the various elements that make up the Majorana operator circuit from Figure 9 and the data lookup
+circuit from Figure 10. N is the number of spin orbitals in the system the circuits are being applied to.
+A surface code implementation of compute and Figure 4 is shown in Figure 21. The regular geometric structure
+can be decomposed into plumbing pieces, namely cubic volumes each containing a single small light-colored cube. The
+FIG. 21. a) Canonical surface code and gate computation (Figure 4) circuit. The bottom pair of white lines (coming in from
+the back instead of from the left) represents the injection of a|T⟩ state. Each dark ring is a CNOT. Each dark U-shape labeled
+T* is a random T or T† gate (as determined by a measurement in a location not shown in the diagram connecting to the dark
+U-shape). The boxes labeled S* immediately following each T* are S or S † gates that are included if the random T or T † gate
+results in the incorrect gate. The ﬁnal two boxes are Hadamard and S † operations, respectively. b) Compressed version. The
+ﬁnal three boxes can be compressed to a single box as an arbitrary single-qubit Cliﬀord can be performed inside using twists
+[103] and other techniques [104]. Distinct dark structures can be made to touch provided this occurs in a single place [36].
+
+=== PDF PAGE 30 ===
+30
+FIG. 22. Uncompute and (Figure 4) implemented directly as a Hadamard operation followed by a measurement on the bottom
+qubit. The outcome of this measurement determines if the sequence of operations on the top two qubits (a CZ implemented as
+a CNOT framed by Hadamard operations) are included or omitted.
+compressed [36] version has a depth of 15 plumbing pieces. The circumference of each string-like structure (defect)
+is the surface code distance d, and the minimum separation of defects of the same color is also d. In the temporal
+direction (left-right), each unit of d is a round of error detection. In the spatial directions (plane perpendicular to
+temporal), each unit of d corresponds to two qubits. Note that a single CNOT, after compression, takes depth 1
+plumbing piece as drawn. The overhead of any algorithm ultimately needs to be expressed as some number of qubits
+(space) and seconds (time). A plumbing piece is a convenient device physics and code distance independent measure
+of space-time volume. As described above, the (5 d/4)3 cubic volume of a plumbing piece can easily be converted to
+qubits and seconds given a code distance d and single-round error detection time.
+A plumbing piece depth 8 surface code implementation of uncompute and Figure 4 is shown in Figure 22. This
+could be compressed by performing the measurement diﬀerently so no initial Hadamard would be necessary, but the
+current surface code form is more easily identiﬁed with the original abstract form, and further compression is not
+necessary as the execution time of the algorithm, as we shall see, is limited by our serial preparation of T states.
+An eﬀective plumbing piece depth 5 surface code implementation of the Majorana operator active subcircuit is
+FIG. 23. Surface code implementation of the inner loop of the Majorana operator circuit. Contrast with Figure 9, noting that
+the circuit has been somewhat modiﬁed to reduce its surface code spacetime volume. In particular, the controlled- Y operations
+from Figure 9 have been propagated through the controlled- Z operations, producing cnot operations which are cheaper to
+perform. This creates phase error which must be corrected by an S gate on the control of the entire Majorana operator. Also
+not shown are initial Hadamard gates on every target qubit.
+
+=== PDF PAGE 31 ===
+31
+FIG. 24. Preparing a T state in the surface code. Physical |T⟩0 states are injected into the 16 lower factories in the lower rear
+right, which distill them into less noisy |T⟩1 states. Fifteen of the successful distillations are forwarded to the larger factory
+towards the front and left, which distills them into a|T⟩2 state with low enough error. The output is the top left dark U-shape.
+System Spin-Orbitals (N)W Queries #MajoranaN #MajoranaN/2 #QROM3N/2 Max Qubits
+Hubbard model 72 1.3× 105 2.5× 105 1.3× 105 0 105
+Hubbard model 128 2.3× 105 4.6× 105 2.3× 105 0 161
+Hubbard model 200 3.6× 105 7.2× 105 3.6× 105 0 236
+Hubbard model 800 1.4× 106 2.8× 106 1.4× 106 0 842
+Electronic structure 54 1.4× 104 4.2× 104 0 2.8× 104 123
+Electronic structure 128 6.3× 104 1.9× 105 0 1.3× 105 210
+Electronic structure 250 1.7× 105 5.3× 105 0 3.5× 105 341
+Electronic structure 1024 1.8× 106 5.3× 106 0 3.5× 106 1136
+TABLE VI. Cases for which we will calculate the fault-tolerant overhead, along with numbers relevant to estimating the
+non-negligible components of this overhead. Column 3 contains the number of times that the W oracle is queried. For the
+Hubbard model we consider the system at intermediate coupling (u/t = 4) implying that λ = 4Nt and we consider an accuracy
+of ∆E = t/100. For jellium, values of λ are provided in Table III and we target chemical accuracy which is deﬁned as
+∆E = 0.0016 Hartree. Each call to W includes a call to select, prepare, and prepare† which in turn apply QROM and
+Majorana operations (which are the dominant costs of the algorithm). Columns 4 and 5 estimate the number of times the
+Majorana operator circuit (see Figure 9) must be applied to the entire system or else to half of the system. For electronic
+structure, there are three Majorana operators of size N per query toW (see Figure 14). For Hubbard, there are two Majorana
+operators of size N and one of size N/2 per query to W (see Figure 19). Column 6 estimates the number of times QROM
+lookups (see Figure 10) of size L = 3N/2 are performed. This does not occur in our Hubbard model circuits, but happens
+twice per query to W in our electronic structure circuits (once in prepare and once in prepare†; see Figure 15). The ﬁnal
+column contains the maximum number of data qubits required at any point in the algorithm, which occurs while applying the
+Majorana operations in select. This number does not include space to prepare T states, which will be discussed separately.
+shown in Figure 23. The unusual pair-of-horns structure is to permit an uncompute and circuit to ﬁt in before the
+ﬁnal CNOT. The inner loop of the data circuit (Figure 10) is just a pair of single-control multiple-target CNOTs, and
+a single additional CNOT. This can be implemented in plumbing piece depth 4 and is not shown.
+Preparing a T state is an involved process [105, 106] shown for discussion purposes in Figure 24. The important
+features for our purposes are the fact that this can be tiled vertically (meaning in time) every 6 plumbing pieces, and
+the whole structure occupies an area of 160 plumbing pieces. A signiﬁcant amount of fast classical feedforward is
+required as many T gates are followed potentially by S gates, and the paths of the connections from the ﬁrst (small)
+level of distillation to the second (large) level must be determined based on which succeed. Our assumption of a
+10–20µs latency decoder is suﬃcient to make this work. We are interested in the overhead of solving instances of the
+electronic structure and Hubbard Hamiltonians discussed in prior sections. We must choose a target inaccuracy ϵ to
+ﬁx the number of data logical qubits and gates required. To ﬁrst order, the dependence of the gate count on ϵ can be
+ignored. We shall choose ϵ = 10−3. Table VI summarizes the circuit input parameters we will study.
+
+=== PDF PAGE 32 ===
+32
+problem physical qubits execution time (hours)
+System Spin-Orbitals (N) p = 10−3 p = 10−4 p = 10−3 p = 10−4
+Hubbard model 72 1.4× 106 4.4× 105 4.6 2.6
+Hubbard model 128 2.1× 106 6.6× 105 15 8.4
+Hubbard model 200 3.2× 106 8.9× 105 40 21
+Hubbard model 800 1.4× 107 3.6× 106 6.7× 102 3.7× 102
+Electronic structure 54 1.4× 106 3.9× 105 0.82 0.43
+Electronic structure 128 2.4× 106 8.1× 105 9.9 5.6
+Electronic structure 250 4.4× 106 1.2× 106 58 30
+Electronic structure 1024 2.0× 107 4.8× 106 2.7× 103 1.4× 103
+TABLE VII. Hand calculation of qubit and time overheads of general chemistry and Hubbard circuits assuming gate error rates
+ofp = 10−3 andp = 10−4, a 2D array of nearest-neighbor coupled qubits, and a surface code error detection cycle time of 1 µs.
+The execution time being estimated is the duration of one complete run of the phase estimation process.
+Given Table V, Table VI, and the plumbing piece depths of the various circuit elements, we can calculate the total
+number of data plumbing pieces NdataPP and hence the code distance required to ensure no more than a 1% chance
+of logical error in any data plumbing piece using pL(d,p )≃ 2d(50p)(d+1)/2 < 1/(100NdataPP ). Similarly, knowing the
+compute and circuit contains 4 T gates, and no other part of the data or Majorana operator circuits contain T
+gates, we can calculate the total number of T gates NT and hence the target T state error rate from distillation of
+1/(100NT). We also calculate the total number of T distillation plumbing pieces NTPP and a code distance to ensure
+the chance of T plumbing piece error is below 1 /(100NTPP ). We have elected to keep algorithm error rates low to
+ensure on average only a few repetitions are required. For both p = 10−3 and p = 10−4 and all algorithm instances
+considered, T state distillation of the form in Figure 24 was suﬃcient to achieve the target logical error rate. This
+information is collectively suﬃcient to calculate the qubit and time overheads, shown for all cases in Table VII.
+The previous paragraphs described a manual overhead estimation method. There are a number of approximations
+that go into such an estimate, in particular assuming that it will always be possible to route gates in 3D spacetime
+without overhead beyond that of where the data qubits are stored. In order to strengthen the relevance of the
+presented results, we have also used a software automated approximation method. The software is an improved
+version of the tool from [107]. Automated overhead approximation starts from a Cliﬀord+T representation of the
+circuit to be analyzed (e.g. Figure 8), and ends with a full surface code layout, having each gate translated into a
+corresponding conﬁguration of plumbing pieces. Thus, the automated estimation work ﬂow is similar to the manual
+one. However, certain circuit particularities were analyzed diﬀerently and so similarities and diﬀerences between the
+two methods will be discussed.
+The Cliﬀord+T circuit is prepared according to a worst-case scenario, based on the available hardware restrictions,
+plumbing pieces layout problems and T gate correction mechanisms. The preparation of a single distilled T state at
+a time is a restriction which inﬂuences the resulting surface code layout: the Cliﬀord+T gates have to be scheduled
+(laid out) in such a way that the T gates will be executed as soon as possible, but not earlier than the availability of
+distilled T states. The state distillation form in Figure 24 implies that a T gate can be executed on average every 6
+plumbing pieces along the time axis. Additionally, T gate implementations are probabilistic and S gate corrections
+may be necessary. Thus, our scenario considers that all T gates are followed by the corrective S gate, resulting in
+a synthetic increase of the Cliﬀord+T circuit depth. Circuit preparation is followed by an optimization procedure,
+where as many Cliﬀord gates as possible are scheduled between two subsequent T gates. The software simulates
+the availability of the distilled T states, and places T gates whenever their execution is possible. If no T states are
+available, the T gates are delayed, which will increase later the approximated time overhead.
+Finally, the Cliﬀord+T circuit is translated into the surface code layout. From a resource estimation perspective,
+the complexity of this task is increased because the software currently includes only partially the optimization strategy
+presented in Figure 21b: ﬁnal boxes can be compressed to a single one, but distinct dark structures are not allowed to
+touch (for veriﬁcation/debugging purposes). Due to this fact, the automated approximation used a slightly diﬀerent
+Cliﬀord+T realization of the computing and gate (cf. Figure 4), which had the advantage of being more suitable
+for automatic placement in stairway-structured circuits (i.e. the arrangement of and gates in Figure 9). Automatic
+placement of those Cliﬀord+T sub-circuits resulted in a shorter depth of the generated surface code layouts. Overhead
+of the two basic circuits in units of plumbing pieces can be found in Table VIII. This data converted into qubits
+and time can be found in Table IX. The automatically generated estimations are comparable to the manual, though
+generally slightly higher, exceeding the manual estimates by 10–20%. While the automated method is penalized by
+missing optimization strategies that are possible when analyzing circuits manually, and the need to provide explicit
+
+=== PDF PAGE 33 ===
+33
+FIG. 25. Illustration of the circuit layout used for resource estimation. The ﬁgure shows a portion of a circuit towards the
+outputs (the time axis indicating circuit execution runs from the back to the front). The ﬁgure sketches the arrangement of the
+logical qubits (light gray lines), the CNOTs (dark gray lines), the boxes (green) abstracting the multi-level distillation circuits
+from Figure 24 and the bounding box (black wire-frame) expressing the resources estimated to lay out the circuit.
+System Circuit(N) T-count Area (PP2) Time (PP) Volume (PP3) Braided Volume (PP3)
+Hubbard model Majorana72 284 17 x 16 1,840 500,480 429,624
+Hubbard model Majorana128 508 25 x 16 3,252 1,300,800 1,155,817
+Hubbard model Majorana200 796 36 x 16 5,080 2,926,080 2,637,504
+Hubbard model Majorana800 3,196 123 x 16 20,262 39,875,616 37,451,032
+Electronic structure Majorana54 212 20 x 16 1,382 442,240 365,717
+Electronic structure Majorana128 508 32 x 16 3,252 1,665,024 1,473,563
+Electronic structure Majorana250 996 51 x 16 6,342 5,175,072 4685164
+Electronic structure Majorana1024 4,092 165 x 16 25,932 68,460,480 64,114,531
+Electronic structure QROM 3
+2 54 320 20 x 16 2,068 661,760 558,098
+Electronic structure QROM 3
+2 128 764 32 x 16 4,872 2,494,464 2,273,711
+Electronic structure QROM 3
+2 250 1,496 51 x 16 9,508 7,758,528 7,272,549
+Electronic structure QROM 3
+2 1024 6,140 165 x 16 38,892 102,674,880 100,399,903
+TABLE VIII. Automatically generated resource estimates of the Majorana and QROM circuits (Figure 9 and Figure 10). The
+area width, height, and time columns give the dimensions of bounding box (e.g. Figure 25) in units of plumbing pieces. The
+last column is the number of plumbing pieces estimated to be actively used within the bounding box. The volume numbers
+do not include the volume of the T factory, but do include idle qubits that are present in the algorithm as a whole but not
+the individual circuits. The “braided volume” refers to the amount of actively used volume, i.e. non-empty space with defects
+used to encode qubits and operations. QROM circuits are indexed like QROM 3
+2N because in context the QROM index size L
+is always 50% larger than the number of orbitals N.
+communication paths for long-range gates, some of this penalty is canceled by using algorithmic methods too complex
+to perform manually. The fact that both approximation methods lead to such comparable qubit and time overheads
+strengthens our conﬁdence in these estimates. The time estimates, in particular, are practically identical.
+The data is highly encouraging, with physical qubit counts of order a million and times in hours for all but the
+largest cases considered. Signiﬁcant further reduction is expected to be possible. For example, the N qubits in the
+|ψ⟩ register are only operated on by the Majorana operator circuit and this circuit targets just one of these qubits
+at a time. This implies the remainder can be stored more compactly in square surface code patches while not being
+interacted with. This could easily reduce the overhead of these N qubits, which account for 70–80% of the physical
+qubits, by a factor of six. This would conservatively lower overall physical qubit requirements by a factor of two.
+
+=== PDF PAGE 34 ===
+34
+problem physical qubits execution time (hours)
+System N Spin-Orbitals p = 10−3 p = 10−4 p = 10−3 p = 10−4
+Hubbard model 72 1.7× 106 5.3× 105 4.6 2.6
+Hubbard model 128 2.4× 106 7.8× 105 15 8.4
+Hubbard model 200 3.8× 106 1.0× 106 40 21
+Hubbard model 800 1.5× 107 4.2× 106 6.7× 102 3.7× 102
+Electronic structure 54 1.7× 106 4.7× 105 0.85 0.44
+Electronic structure 128 2.9× 106 9.5× 105 10 5.7
+Electronic structure 250 5.1× 106 1.4× 106 58 30
+Electronic structure 1024 2.3× 107 5.6× 106 2.8× 103 1.4× 103
+TABLE IX. Automatically generated qubit and time overheads of general chemistry and Hubbard circuits assuming gate error
+rates of p = 10−3 and p = 10−4, a 2D array of nearest-neighbor coupled qubits, and a surface code error detection cycle time
+of 1µs. The execution time being estimated is the duration of one complete run of the phase estimation process.
+VII. CONCLUSION
+In this work we introduced especially eﬃcient fault-tolerant quantum circuits for using phase estimation to estimate
+the spectra of electronic Hamiltonians. Unlike past work which has focused on realizing phase estimation unitaries
+encoding e−iHτ , corresponding to time-evolution under H for duration τ, we focused on a recent idea that one might
+more cheaply realize phase estimation unitaries encoding the quantum walkei arccos(H/λ) whereλ is a parameter closely
+related to the induced 1-norm of the system Hamiltonian [26, 27]. We construct explicit quantum circuits for realizing
+this quantum walk with T complexity linear in basis size for both the planar Hubbard model and electronic structure
+Hamiltonians in second quantization. We showed that phase estimation projects these systems to an eigenstate and
+estimates the associated eigenvalue to within additive error ϵ by querying the quantum walk operator an optimal
+number of times scaling asO(λ/ϵ). To accomplish this we introduced general techniques that we conjecture are near-
+optimal for streaming bits of a unary register and for implementing a quantum read-only memory. We introduced
+a new form of Heisenberg limited phase estimation specialized to linear combinations of unitaries based simulations
+and provided bounds on T complexity and ancilla count which remain tight even at small ﬁnite sizes.
+In addition to providing explicit Cliﬀord + T circuits we compiled the bottleneck components of these simulations
+to fault-tolerant surface code gates in order to rigorously determine the resources that would be required for error
+correcting interesting problem instances. We performed this compilation both by hand and by using automatic tools
+and found similar overheads in both cases. We found that classically intractable instances of jellium and the Fermi-
+Hubbard model could be simulated with under one-hundred million T gates and would require about one million
+physical qubits in the surface code with two-qubit error-rates on the order of 10 −3. At error rates of 10 −4 about an
+order of magnitude fewer physical qubits would be required. We also priced out simulations of realistic solid-state
+materials such as diamond, graphite, silicon, metallic lithium and crystalline lithium hydride and found that only
+slightly more than one billion T gates and a few million physical qubits would be required.
+Despite focusing on diﬀerent systems, our results are most readily comparable to the previous state-of-the-art
+results from [45]. Even though [45] sought empirical estimates of the T complexity rather than rigorous upper bounds
+as we did, they estimated that approximately 10 15− 1016 T gates would be required for a 108 qubit simulation
+of the FeMoco molecule active space. By comparison, our upper bounds on the T complexity required to solve
+the classically intractable electronic structure problems studied here were roughly a million times less. The low T
+complexity is the result of designing a lean algorithm from the ground up with insights matched to the Hamiltonian
+and with innovative algorithmic subroutines. The improvements are distributed across several parts of our approach,
+each of which provides one or two orders of magnitude improvement. Because our simulations require only a few times
+more physical qubits than is required by a single T factory, it is reasonable to expect that the simulations we outline
+here will become practical on the ﬁrst universal fault-tolerant quantum devices, many years before the simulations
+discussed in [45] would be viable.
+Several important directions for future research pertain to the extension of these simulation techniques to repre-
+sentations that would be more eﬀective for single molecules. While the dual basis described in [43] is well suited
+to treating solid-state materials such as the ones explored here (e.g. jellium, solid-state silicon, graphite, diamond,
+lithium and lithium hydride), by combining our techniques with the “Gausslet” basis sets of [48], we should also be
+able to simulate single molecules with similar resolution to Gaussian orbitals – thus extending our results to systems
+such as FeMoco with similar overheads to those observed in this work. However, deploying the Gausslet basis func-
+tions to systems with large atomic nuclei such as iron (as in FeMoco) will require further research. If basis errors
+
+=== PDF PAGE 35 ===
+35
+are a concern, then future work should combine results from this paper, [108] and [26] in order to determine the cost
+of encoding ﬁrst-quantized electronic spectra in quantum circuits; in ﬁrst quantization, basis errors are suppressed
+exponentially in the number of qubits used to represent the system.
+Another remaining challenge is to compute a tighter upper bound on the number of physical qubits required by the
+algorithm. At the ﬁrst moment that it becomes technologically possible to distill magic states, the number of physical
+qubits available on one machine will still be extremely limited. Getting a meaningful computation to ﬁt at all will be
+diﬃcult. Fortunately, the qubit count estimates of this paper were fairly conservative; in this paper we only explored
+surface code constructions which we were able to validate and implement in software; these constructions are not
+necessarily optimal. For example, the logical qubit representation used in lattice surgery [109] requires fewer physical
+qubits than the double-defect representation used in the estimates of this paper. Furthermore, there are several places
+in our circuits where we preferred small multiplicative improvements in T-count over small additive improvements in
+logical qubit count. For example, we delay uncomputing QROM lookups in order to avoid recomputation and, when
+performing phase estimation, we minimize the number of oracle queries by using a full-size phase register instead of a
+single phase qubit. Since we have managed to show that with error rates of 10 −3 one can solve interesting problems
+in chemistry using on the order of a million physical qubits within the surface code, a next natural goal would be to
+try to further reduce the resources required to be on the order of a hundred-thousand physical qubits.
+Acknowledgements
+The authors thank Yuval Sanders, Artur Scherer, M´ aria Kieferov´ a and Guang Hao Low for helpful discussions
+about linear combinations of unitaries based simulation methods. We thank Garnet Kin-Lic Chan and Kostyantyn
+Kechedzhi for discussions pertaining to the regimes in which the Hubbard model would be interesting to simulate.
+We thank Ian Kivlichan, Zhang Jiang and Dave Bacon for helpful comments on an early version of this manuscript.
+Dominic Berry is funded by an Australian Research Council Discovery Project (Grant No. DP160102426).
+[1] R. P. Feynman, “Simulating physics with computers,” International Journal of Theoretical Physics 21, 467 (1982).
+[2] R. P. Feynman, “Quantum mechanical computers,” Foundations of Physics 16, 507 (1986).
+[3] S. Lloyd, “Universal Quantum Simulators,” Science 273, 1073 (1996).
+[4] D. S. Abrams and S. Lloyd, “Simulation of Many-Body Fermi Systems on a Universal Quantum Computer,” Physical
+Review Letters 79, 4 (1997).
+[5] D. S. Abrams and S. Lloyd, “Quantum Algorithm Providing Exponential Speed Increase for Finding Eigenvalues and
+Eigenvectors,” Physical Review Letters 83, 5162 (1999).
+[6] A. Y. Kitaev, “Quantum measurements and the Abelian Stabilizer Problem,” arXiv:9511026 (1995).
+[7] A. Aspuru-Guzik, A. D. Dutoi, P. J. Love, and M. Head-Gordon, “Simulated Quantum Computation of Molecular
+Energies,” Science 309, 1704 (2005).
+[8] E. Farhi, J. Goldstone, S. Gutmann, J. Lapan, A. Lundgren, and D. Preda, “A Quantum Adiabatic Evolution Algorithm
+Applied to Random Instances of an NP-Complete Problem,” Science 292, 472 (2001).
+[9] L.-A. Wu, M. S. Byrd, and D. A. Lidar, “Polynomial-Time Simulation of Pairing Models on a Quantum Computer,”
+Physical Review Letters 89, 057904 (2002).
+[10] R. Babbush, P. J. Love, and A. Aspuru-Guzik, “Adiabatic Quantum Simulation of Quantum Chemistry,” Scientiﬁc
+Reports 4, 1 (2014).
+[11] A. Peruzzo, J. McClean, P. Shadbolt, M.-H. Yung, X.-Q. Zhou, P. J. Love, A. Aspuru-Guzik, and J. L. O’Brien, “A
+Variational Eigenvalue Solver on a Photonic Quantum Processor,” Nature Communications 5, 1 (2014).
+[12] P. J. J. O’Malley, R. Babbush, I. D. Kivlichan, J. Romero, J. R. McClean, R. Barends, J. Kelly, P. Roushan, A. Tranter,
+N. Ding, B. Campbell, Y. Chen, Z. Chen, B. Chiaro, A. Dunsworth, A. G. Fowler, E. Jeﬀrey, A. Megrant, J. Y. Mutus,
+C. Neill, C. Quintana, D. Sank, A. Vainsencher, J. Wenner, T. C. White, P. V. Coveney, P. J. Love, H. Neven, A. Aspuru-
+Guzik, and J. M. Martinis, “Scalable Quantum Simulation of Molecular Energies,” Physical Review X 6, 31007 (2016).
+[13] A. Kandala, A. Mezzacapo, K. Temme, M. Takita, J. M. Chow, and J. M. Gambetta, “Hardware-eﬃcient Quantum
+Optimizer for Small Molecules and Quantum Magnets,” Nature 549, 242 (2017).
+[14] J. I. Colless, V. V. Ramasesh, D. Dahlen, M. S. Blok, J. R. McClean, J. Carter, W. A. de Jong, and I. Siddiqi, “Robust
+Determination of Molecular Spectra on a Quantum Processor,” Physical Review X 8, 011021 (2018).
+[15] C. Hempel, C. Maier, J. Romero, J. McClean, T. Monz, H. Shen, P. Jurcevic, B. Lanyon, P. Love, R. Babbush, A. Aspuru-
+Guzik, R. Blatt, and C. Roos, “Quantum Chemistry Calculations on a Trapped-Ion Quantum Simulator,” Physical Review
+X 8, 031022 (2018).
+[16] J. R. McClean, J. Romero, R. Babbush, and A. Aspuru-Guzik, “The Theory of Variational Hybrid Quantum-Classical
+Algorithms,” New Journal of Physics 18, 23023 (2016).
+
+=== PDF PAGE 36 ===
+36
+[17] J. R. McClean, S. Boixo, V. N. Smelyanskiy, R. Babbush, and H. Neven, “Barren Plateaus in Quantum Neural Network
+Training Landscapes,” arXiv:1803.11173 (2018).
+[18] D. Wecker, M. B. Hastings, and M. Troyer, “Progress Towards Practical Quantum Variational Algorithms,” Physical
+Review A 92, 42303 (2015).
+[19] I. D. Kivlichan, J. McClean, N. Wiebe, C. Gidney, A. Aspuru-Guzik, G. K.-L. Chan, and R. Babbush, “Quantum
+Simulation of Electronic Structure with Linear Depth and Connectivity,” Physical Review Letters 120, 110501 (2018).
+[20] J. Romero, R. Babbush, J. McClean, C. Hempel, P. Love, and A. Aspuru-Guzik, “Strategies for Quantum Computing
+Molecular Energies using the Unitary Coupled Cluster Ansatz,” arXiv:1701.02691 (2017).
+[21] P.-L. Dallaire-Demers, J. Romero, L. Veis, S. Sim, and A. Aspuru-Guzik, “Low-Depth Circuit Ansatz for Preparing
+Correlated Fermionic States on a Quantum Computer,” arXiv:1801.01053 (2018).
+[22] M. Suzuki, “Improved Trotter-Like Formula,” Physics Letters A 180, 232 (1993).
+[23] D. W. Berry, A. M. Childs, R. Cleve, R. Kothari, and R. D. Somma, “Simulating Hamiltonian Dynamics with a Truncated
+Taylor Series,” Physical Review Letters 114, 90502 (2015).
+[24] G. H. Low and I. L. Chuang, “Optimal Hamiltonian Simulation by Quantum Signal Processing,” Physical Review Letters
+118, 010501 (2017).
+[25] G. H. Low and I. L. Chuang, “Hamiltonian Simulation by Qubitization,” arXiv:1610.06546 (2016).
+[26] D. W. Berry, M. Kieferov´ a, A. Scherer, Y. R. Sanders, G. H. Low, N. Wiebe, C. Gidney, and R. Babbush, “Improved
+Techniques for Preparing Eigenstates of Fermionic Hamiltonians,” npj Quantum Information 4, 22 (2018).
+[27] D. Poulin, A. Y. Kitaev, D. Steiger, M. Hastings, and M. Troyer, “Fast Quantum Algorithm for Spectral Properties,”
+Physical Review Letters 121, 010501 (2017).
+[28] A. Dunsworth, A. Megrant, R. Barends, Y. Chen, Z. Chen, B. Chiaro, A. Fowler, B. Foxen, E. Jeﬀrey, J. Kelly, P. V.
+Klimov, E. Lucero, J. Y. Mutus, M. Neeley, C. Neill, C. Quintana, P. Roushan, D. Sank, A. Vainsencher, J. Wenner, T. C.
+White, H. Neven, and J. M. Martinis, “Low loss multi-layer wiring for superconducting microwave devices,” Applied
+Physics Letters 112, 063502 (2018).
+[29] X. Fu, M. A. Rol, C. C. Bultink, J. van Someren, N. Khammassi, I. Ashraf, R. F. L. Vermeulen, J. C. de Sterke,
+W. J. Vlothuizen, R. N. Schouten, C. G. Almudever, L. DiCarlo, and K. Bertels, “An experimental microarchitecture
+for a superconducting quantum processor,” Proceedings of the 50th Annual IEEE/ACM International Symposium on
+Microarchitecture , 813 (2017).
+[30] N. T. Bronn, V. P. Adiga, S. B. Olivadese, X. Wu, J. M. Chow, and D. P. Pappas, “High coherence plane breaking
+packaging for superconducting qubits,” Quantum Science and Technology 3, 024007 (2018).
+[31] S. B. Bravyi and A. Y. Kitaev, “Quantum codes on a lattice with boundary,” quant-ph/9811052 (1998).
+[32] E. Dennis, A. Y. Kitaev, A. Landahl, and J. Preskill, “Topological quantum memory,” Journal of Mathematical Physics
+43, 4452 (2002).
+[33] R. Raussendorf and J. Harrington, “Fault-tolerant quantum computation with high threshold in two dimensions,” Physical
+Review Letters 98, 190504 (2007).
+[34] R. Raussendorf, J. Harrington, and K. Goyal, “Topological fault-tolerance in cluster state quantum computation,” New
+Journal of Physics 9, 199 (2007).
+[35] A. G. Fowler, M. Mariantoni, J. M. Martinis, and A. N. Cleland, “Surface codes: Towards practical large-scale quantum
+computation,” Physical Review A 86, 032324 (2012).
+[36] A. G. Fowler and S. J. Devitt, “A bridge to lower overhead quantum computation,” arXiv:1209.0510 (2012).
+[37] J. D. Whitﬁeld, J. Biamonte, and A. Aspuru-Guzik, “Simulation of electronic structure Hamiltonians using quantum
+computers,” Molecular Physics 109, 735 (2011).
+[38] D. Wecker, B. Bauer, B. K. Clark, M. B. Hastings, and M. Troyer, “Gate-count estimates for performing quantum
+chemistry on small quantum computers,” Physical Review A 90, 1 (2014).
+[39] J. R. McClean, R. Babbush, P. J. Love, and A. Aspuru-Guzik, “Exploiting Locality in Quantum Computation for
+Quantum Chemistry.” The Journal of Physical Chemistry Letters 5, 4368 (2014).
+[40] D. Poulin, M. B. Hastings, D. Wecker, N. Wiebe, A. C. Doherty, and M. Troyer, “The Trotter Step Size Required for
+Accurate Quantum Simulation of Quantum Chemistry,” Quantum Information & Computation 15, 361 (2015).
+[41] R. Babbush, J. McClean, D. Wecker, A. Aspuru-Guzik, and N. Wiebe, “Chemical Basis of Trotter-Suzuki Errors in
+Chemistry Simulation,” Physical Review A 91, 22311 (2015).
+[42] R. Babbush, D. W. Berry, I. D. Kivlichan, A. Y. Wei, P. J. Love, and A. Aspuru-Guzik, “Exponentially More Precise
+Quantum Simulation of Fermions in Second Quantization,” New Journal of Physics 18, 33032 (2016).
+[43] R. Babbush, N. Wiebe, J. McClean, J. McClain, H. Neven, and G. K.-L. Chan, “Low-Depth Quantum Simulation of
+Materials,” Physical Review X 8, 011044 (2018).
+[44] I. Kivlichan, N. Wiebe, C. Gidney, J. McClean, W. Sun, V. Denchev, A. Fowler, A. Aspuru-Guzik, and R. Babbush,
+“Low T Gate Trotter-Based Quantum Simulation of Correlated Electrons,” Unpublished (2018).
+[45] M. Reiher, N. Wiebe, K. M. Svore, D. Wecker, and M. Troyer, “Elucidating Reaction Mechanisms on Quantum Com-
+puters,” Proceedings of the National Academy of Sciences 114, 7555 (2017).
+[46] J. Hubbard, “Electron Correlations in Narrow Energy Bands,” Proceedings of the Royal Society A: Mathematical, Physical
+and Engineering Sciences 276, 238 (1963).
+[47] T. Helgaker, P. Jorgensen, and J. Olsen, Molecular Electronic Structure Theory (Wiley, 2002).
+[48] S. R. White, “Hybrid grid/basis set discretizations of the Schr¨ odinger equation,” The Journal of Chemical Physics 147,
+244102 (2017).
+
+=== PDF PAGE 37 ===
+37
+[49] N. Cody Jones, J. D. Whitﬁeld, P. L. McMahon, M.-H. Yung, R. V. Meter, A. Aspuru-Guzik, and Y. Yamamoto, “Faster
+quantum chemistry simulation on fault-tolerant quantum computers,” New Journal of Physics 14, 115023 (2012).
+[50] A. M. Childs, D. Maslov, Y. Nam, N. J. Ross, and Y. Su, “Toward the ﬁrst quantum simulation with quantum speedup,”
+arXiv:1711.10980 (2017).
+[51] D. Wecker, M. B. Hastings, N. Wiebe, B. K. Clark, C. Nayak, and M. Troyer, “Solving strongly correlated electron
+models on a quantum computer,” Physical Review A 92, 62318 (2015).
+[52] J. Haah, M. B. Hastings, R. Kothari, and G. H. Low, “Quantum algorithm for simulating real time evolution of lattice
+Hamiltonians,” arXiv:1801.03922 (2018).
+[53] M. Szegedy, “Quantum Speed-Up of Markov Chain Based Algorithms,” in 45th Annual IEEE Symposium on Foundations
+of Computer Science (IEEE, 2004) pp. 32–41.
+[54] A. M. Childs and N. Wiebe, “Quantum Information & Computation,” Quantum Information & Computation 12, 901
+(2012).
+[55] D. Aharonov and A. Ta-Shma, “Adiabatic quantum state generation and statistical zero knowledge,” in Proceedings of
+the thirty-ﬁfth ACM symposium on Theory of computing - STOC ’03 (ACM Press, New York, New York, USA, 2003)
+p. 20.
+[56] A. Luis and J. Peˇ rina, “Optimum phase-shift estimation and the quantum description of the phase diﬀerence,” Physical
+Review A 54, 4564 (1996).
+[57] R. B. Griﬃths and C.-S. Niu, “Semiclassical Fourier Transform for Quantum Computation,” Physical Review Letters 76,
+3228 (1996).
+[58] C. Gidney and R. Babbush, “Quantum Read-Only Memory for Implement Eﬃcient Fault-Tolerant Quantum Oracles,”
+In preparation (2018).
+[59] R. Babbush, D. W. Berry, Y. R. Sanders, I. D. Kivlichan, A. Scherer, A. Y. Wei, P. J. Love, and A. Aspuru-Guzik,
+“Exponentially More Precise Quantum Simulation of Fermions in the Conﬁguration Interaction Representation,” Quantum
+Science and Technology 3, 015006 (2018).
+[60] C. Gidney, “Halving the cost of quantum addition,” arXiv:1709.06648 (2017).
+[61] R. D. Somma, G. Ortiz, J. E. Gubernatis, E. Knill, and R. Laﬂamme, “Simulating physical phenomena by quantum
+networks,” Physical Review A 65, 17 (2002).
+[62] C. Gidney, R. Babbush, M. Mohseni, and H. Neven, “Quantum read-only memory for implementing eﬃcient fault-tolerant
+quantum oracles,” In Preparation (2018).
+[63] V. Giovannetti, S. Lloyd, and L. Maccone, “Quantum random access memory,” Physical review letters 100, 160501
+(2008).
+[64] B. C. Travaglione, M. A. Nielsen, H. M. Wiseman, and A. Ambainis, “ROM-based computation: quantum versus
+classical,” Quantum Information & Computation 2, 324 (2001).
+[65] I. Kerenidis and A. Prakash, “Quantum Recommendation Systems,” arXiv:1603.08675 (2016).
+[66] V. Giovannetti, S. Lloyd, and L. Maccone, “Architectures for a quantum random access memory,” Physical Review A
+78, 052310 (2008).
+[67] F.-Y. Hong, Y. Xiang, Z.-Y. Zhu, L.-Z. Jiang, and L.-N. Wu, “Robust quantum random access memory,” Physical Review
+A 86, 010306 (2012).
+[68] S. Arunachalam, V. Gheorghiu, T. Jochym-O’Connor, M. Mosca, and P. V. Srinivasan, “On the robustness of bucket
+brigade quantum ram,” New Journal of Physics 17, 123010 (2015).
+[69] V. V. Shende, S. S. Bullock, and I. L. Markov, “Synthesis of quantum-logic circuits,” IEEE Transactions on Computer-
+Aided Design of Integrated Circuits and Systems 25, 1000 (2006).
+[70] L. K. Grover, “Synthesis of quantum superpositions by quantum computation,” Physical Review Letters 85, 1334 (2000).
+[71] P. Høyer, “Arbitrary phases in quantum amplitude ampliﬁcation,” Physical Review A 62, 052304 (2000).
+[72] A. Walker, “New fast method for generating discrete random numbers with arbitrary frequency distributions,” Electronics
+Letters 10, 127 (1974).
+[73] M. Vose, “A linear algorithm for generating random numbers with a given distribution,” IEEE Transactions on Software
+Engineering 17, 972 (1991).
+[74] J. R. McClean, I. D. Kivlichan, K. J. Sung, D. S. Steiger, Y. Cao, C. Dai, E. S. Fried, C. Gidney, B. Gimby, T. H¨ aner,
+T. Hardikar, V. Havl´ ıˇ cek, C. Huang, Z. Jiang, M. Neeley, T. O’Brien, I. Ozﬁdan, M. D. Radin, J. Romero, N. Rubin,
+N. P. D. Sawaya, K. Setia, S. Sim, M. Steudtner, W. Sun, F. Zhang, and R. Babbush, “OpenFermion: The Electronic
+Structure Package for Quantum Computers,” arXiv:1710.07629 (2017).
+[75] P. Jordan and E. Wigner, “¨ uber das paulische ¨ aquivalenzverbot,” Zeitschrift f¨ ur Physik47, 631 (1928).
+[76] G. Evenbly and S. R. White, “Representation and design of wavelets using unitary circuits,” arXiv:1605.07312 (2016).
+[77] P. Hohenberg and W. Kohn, “Inhomogeneous Electron Gas,” Physical Review 136, B864 (1964).
+[78] M. Stone, Quantum Hall Eﬀect (World Scientiﬁc, 1992).
+[79] D. M. Ceperley and B. J. Alder, “Ground state of the electron gas by a stochastic method,” Physical Review Letters 45,
+566 (1980).
+[80] B. Tanatar and D. M. Ceperley, “Ground state of the two-dimensional electron gas,” Physical Review B 39, 5005 (1989).
+[81] F. H. Zong, C. Lin, and D. M. Ceperley, “Spin polarization of the low-density three-dimensional electron gas,” Physical
+Review E 66, 36703 (2002).
+[82] C. Attaccalite, S. Moroni, P. Gori-Giorgi, and G. B. Bachelet, “Correlation energy and spin polarization in the 2D
+electron gas,” Physical Review Letters 88, 256601 (2002).
+
+=== PDF PAGE 38 ===
+38
+[83] N. D. Drummond and R. J. Needs, “Phase diagram of the low-density two-dimensional homogeneous electron gas,”
+Physical Review Letters 102, 126402 (2009).
+[84] G. G. Spink, R. J. Needs, and N. D. Drummond, “Quantum Monte Carlo study of the three-dimensional spin-polarized
+homogeneous electron gas,” Physical Review B 88, 85121 (2013).
+[85] M. Gell-Mann and K. A. Brueckner, “Correlation energy of an electron gas at high density,” Physical Review 106, 364
+(1957).
+[86] D. L. Freeman, “Coupled-cluster expansion applied to the electron gas: Inclusion of ring and exchange eﬀects,” Physical
+Review B 15, 5512 (1977).
+[87] J. J. Shepherd, G. Booth, A. Gr¨ uneis, and A. Alavi, “Full conﬁguration interaction perspective on the homogeneous
+electron gas,” Physical Review B 85, 81103 (2012).
+[88] J. J. Shepherd, G. H. Booth, and A. Alavi, “Investigation of the full conﬁguration interaction quantum Monte Carlo
+method using homogeneous electron gas models,” The Journal of Chemical Physics 136, 244101 (2012).
+[89] M. T. Wilson and B. L. Gyorﬀy, “A constrained path auxiliary-ﬁeld quantum Monte Carlo method for the homogeneous
+electron gas,” Journal of Physics: Condensed Matter 7, L371 (1995).
+[90] M. Motta, D. E. Galli, S. Moroni, and E. Vitali, “Imaginary time density-density correlations for two-dimensional electron
+gases at high density,” The Journal of Chemical Physics 143, 164108 (2015).
+[91] R. Martin, Electronic Structure (Cambridge University Press, Cambridge, U.K., 2004).
+[92] R. Martin, L. Reining, and D. Ceperley, Interacting Electrons (Cambridge Univesity Press, Cambridge, U.K., 2016).
+[93] S. Tosoni, C. Tuma, J. Sauer, B. Civalleri, and P. Ugliengo, “A comparison between plane wave and Gaussian-type
+orbital basis sets for hydrogen bonded systems: Formic acid as a test case,” The Journal of Chemical Physics 127, 154102
+(2007).
+[94] G. Knizia and G. K.-L. Chan, “Density Matrix Embedding: A Simple Alternative to Dynamical Mean-Field Theory,”
+Physical Review Letters 109, 186404 (2012).
+[95] B. Bauer, D. Wecker, A. J. Millis, M. B. Hastings, and M. Troyer, “Hybrid Quantum-Classical Approach to Correlated
+Materials,” Physical Review X 6, 31045 (2016).
+[96] J. P. F. LeBlanc, A. E. Antipov, F. Becca, I. W. Bulik, G. K.-L. Chan, C.-M. Chung, Y. Deng, M. Ferrero, T. M.
+Henderson, C. A. Jim´ enez-Hoyos, E. Kozik, X.-W. Liu, A. J. Millis, N. V. Prokofev, M. Qin, G. E. Scuseria, H. Shi,
+B. V. Svistunov, L. F. Tocchio, I. S. Tupitsyn, S. R. White, S. Zhang, B.-X. Zheng, Z. Zhu, and E. Gull, “Solutions of
+the Two-Dimensional Hubbard Model: Benchmarks and Results from a Wide Range of Numerical Algorithms,” Physical
+Review X 5, 041041 (2015).
+[97] E. H. Lieb and F. Y. Wu, “Absence of Mott Transition in an Exact Solution of the Short-Range, One-Band Model in
+One Dimension,” Physical Review Letters 20, 1445 (1968).
+[98] W. Metzner and D. Vollhardt, “Correlated Lattice Fermions in Inﬁnity Dimensions,” Physical Review Letters 62, 324
+(1989).
+[99] Z. Jiang, K. J. Sung, K. Kechedzhi, V. N. Smelyanskiy, and S. Boixo, “Quantum algorithms to simulate many-body
+physics of correlated fermions,” Physical Review Applied 9, 044036 (2018).
+[100] E. H. Lieb and D. W. Robinson, “The ﬁnite group velocity of quantum spin systems,” in Statistical Mechanics (Springer,
+1972) pp. 425–431.
+[101] N. Wiebe, D. W. Berry, P. Hoyer, and B. C. Sanders, “Higher Order Decompositions of Ordered Operator Exponentials,”
+Journal of Physics A: Mathematical and Theoretical 43, 1 (2010).
+[102] A. G. Fowler, “Optimal complexity correction of correlated errors in the surface code,” arXiv:1310.0863 (2013).
+[103] B. J. Brown, K. Laubscher, M. S. Kesselring, and J. R. Wootton, “Poking holes and cutting corners to achieve cliﬀord
+gates with the surface code,” Physical Review X 7, 021029 (2017).
+[104] A. G. Fowler, “Low-overhead surface code logical H,” Quantum Information & Computation 12, 970 (2012).
+[105] S. Bravyi and A. Y. Kitaev, “Universal quantum computation with ideal Cliﬀord gates and noisy ancillas,” Physical
+Review A 71, 022316 (2005).
+[106] B. W. Reichardt, “Quantum universality from magic states distillation applied to CSS codes,” Quantum Information
+Processing 4, 251 (2005).
+[107] A. Paler, A. G. Fowler, and R. Wille, “Synthesis of arbitrary quantum circuits to topological assembly: Systematic,
+online and compact,” Scientiﬁc Reports 7, 10414 (2017).
+[108] I. D. Kivlichan, N. Wiebe, R. Babbush, and A. Aspuru-Guzik, “Bounding the costs of quantum simulation of many-body
+physics in real space,” Journal of Physics A: Mathematical and Theoretical 50, 305301 (2017).
+[109] C. Horsman, A. G. Fowler, S. Devitt, and R. V. Meter, “Surface code quantum computing by lattice surgery,” New
+Journal of Physics 14, 123011 (2012).
+Appendix A: Propagating Errors from Hamiltonian Coeﬃcients into Phase Estimate
+In this appendix we address the question of how accurately coeﬃcients of the Hamiltonian must be prepared in
+the prepare oracle in order to estimate the Hamiltonian eigenvalues to precision ϵ. As discussed in Section II A,
+our phase estimation scheme involves estimating the phases induced by the operator ei arccos(H/λ). If one is near the
+
+=== PDF PAGE 39 ===
+39
+singularity of arccos then a small error in the Hamiltonian can have a signiﬁcant impact on the phase. Let us deﬁne
+~H≡
+L−1∑
+𝓁=0
+~w𝓁H𝓁 (A1)
+for our approximate encoding of H. Using the state preparation technique in Section III D, we obtain
+λ =
+L−1∑
+𝓁=0
+~w𝓁. (A2)
+We denote by δ an upper bound on the approximation in any of the ~w𝓁, so
+δ≥| ~w𝓁−w𝓁|. (A3)
+Next note that the error in the eigenphase obeys
+ϵprep≤
+‖‖‖ei arccos(H/λ)−ei arccos(~H/λ)‖‖‖≤ ‖‖‖arccos(H/λ)− arccos(~H/λ)‖‖‖ (A4)
+≤
+∞∑
+p=0
+(2p− 1)!!
+λ2p+1(2p + 1)(2p)!!
+‖‖‖H2p+1− ~H2p+1‖‖‖
+where !! is the double factorial z!! =z· (z− 2)· (z− 4)··· 1 assuming z is a natural number. It is straightforward to
+show inductively that for any p> 0
+‖‖‖H2p+1− ~H2p+1‖‖‖≤ (2p + 1)(max{‖H‖,‖‖‖~H‖‖‖})2p‖‖‖H− ~H‖‖‖. (A5)
+We then have from Eq. (A1) that
+‖‖‖H− ~H‖‖‖≤ L−1∑
+𝓁=0
+|w𝓁− ~w𝓁|≤ Lδ. (A6)
+We further have that
+max
+{
+‖H‖,
+‖‖‖~H‖‖‖}≤‖H‖ +Lδ. (A7)
+Substituting these equations into Eq. (A4) then gives
+ϵprep≤
+∞∑
+p=0
+(2p− 1)!!
+λ2p+1(2p)!!(‖H‖ +Lδ)2pLδ
+= Lδλ
+∞∑
+p=0
+(2p− 1)!!
+(2p)!!
+(‖H‖ +Lδ
+λ
+)2p
+= Lδλ
+[
+1−
+(‖H‖ +Lδ
+λ
+)2]−1/2
+. (A8)
+This inequality can be solved for δ to give
+δ≥ ϵprep
+(1 +ϵ2prep)L
+(√
+λ2(1 +ϵ2prep)−‖H‖2−ϵprep‖H‖
+)
+≥ ϵprepλ(1 +ϵ2prep)L(1−‖H‖2/λ2). (A9)
+If we require that ϵprep≤
+√
+2∆E/(4λ) as in Eq. (25), then this can be obtained by choosing
+δ =
+√
+2∆E
+4L
+(
+1 + ∆E28λ2)
+(
+1−‖H‖2/λ2
+)
+. (A10)

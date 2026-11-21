@@ -1,0 +1,1192 @@
+=== PDF PAGE 1 ===
+Optimizing Quantum Circuits for Arithmetic
+Thomas H¨ aner∗
+Microsoft Quantum, Microsoft, Redmond, WA 98052, USA and
+Institute for Theoretical Physics, ETH Zurich, 8093 Zurich, Switzerland
+Martin Roetteler† and Krysta M. Svore ‡
+Microsoft Quantum, Microsoft, Redmond, WA 98052, USA
+(Dated: June 1, 2018)
+Many quantum algorithms make use of oracles which evaluate classical functions on a superpo-
+sition of inputs. In order to facilitate implementation, testing, and resource estimation of such
+algorithms, we present quantum circuits for evaluating functions that are often encountered in the
+quantum algorithm literature. This includes Gaussians, hyperbolic tangent, sine/cosine, inverse
+square root, arcsine, and exponentials. We use insights from classical high-performance computing
+in order to optimize our circuits and implement a quantum software stack module which allows
+to automatically generate circuits for evaluating piecewise smooth functions in the computational
+basis. Our circuits enable more detailed cost analyses of various quantum algorithms, allowing to
+identify concrete applications of future quantum computing devices. Furthermore, our resource es-
+timates may guide future research aiming to reduce the costs or even the need for arithmetic in the
+computational basis altogether.
+I. INTRODUCTION
+Quantum computers are expected to excel at certain
+computational tasks with an asymptotic advantage over
+their classical counterparts. Examples for such tasks in-
+clude factoring [1] and the simulation of quantum chem-
+ical processes [2, 3]. While new quantum algorithms
+tackling these problems oﬀer favorable asymptotic be-
+havior, exact runtime estimates are often lacking due to
+the absence of reversible implementations for functions
+such as the ones considered in this paper. However, the
+implementation details of these functions greatly inﬂu-
+ence the constant overheads involved and, thus, also the
+crossover points at which the choice of quantum/classical
+algorithm changes.
+We address this issue by presenting circuits for arith-
+metic which can be added to a quantum software stack
+such as LiQUi|⟩ [4], Quipper [5], ScaﬀCC [6], Q# [7],
+and ProjectQ [8] to name a few. In particular, we dis-
+cuss the implementation of general smooth functions via
+a piecewise polynomial approximation, followed by func-
+tions that are used in speciﬁc applications. Namely,
+we analyze the costs of implementing an inverse square
+root (1/√x) using a reversible ﬁxed-point version of the
+method used in the computer game Quake III Arena [9]
+and we then combine this with our evaluation scheme for
+smooth functions in order to arrive at an implementation
+of arcsin(x).
+Having reversible implementations of these functions
+available enables more detailed cost analyses of various
+quantum algorithms such as HHL [10], where the in-
+verse square root can be used to arrive at x↦→ 1/x and
+∗ haenert@phys.ethz.ch
+† martinro@microsoft.com
+‡ ksvore@microsoft.com
+arcsin(x) can be used to get 1/x from the computational
+basis state into the amplitude. Similar use cases arise in
+Quantum Metropolis sampling [11], Gibbs state prepa-
+ration [12] and in the widely applicable framework of
+Quantum Rejection Sampling [13] to transform one or
+more samples of a given quantum state into a quantum
+state with potentially diﬀerent amplitudes, while main-
+taining relative phases. In all these examples the com-
+putation of arcsin(x) is useful for the rejection sampling
+step. Further applications of numerical functions can be
+anticipated in quantum machine learning, where sigmoid
+functions may need to be evaluated on a superposition of
+values employing tanh(x), and 1/√x can be used for (re-
+)normalization of intermediate results [14]. In quantum
+algorithms for chemistry, further examples for numerical
+functions arise for on-the-ﬂy computation of the one- and
+two-body integrals [3]. There, 1 /√x as well as the eval-
+uation of smooth functions such as Gaussians is needed.
+Similarly, on-the-ﬂy computation of ﬁnite element matrix
+elements often involves the evaluation of functions such
+as sin(x) and cos(x) [15].
+Related work. As a result of the large impact that
+the implementation details of such functions may have
+on the practicality of a given quantum algorithm, there
+is a vast amount of literature available which provides
+circuits for various low-level arithmetic functions such as
+addition [16–19]. Furthermore, Refs. [20–22] discuss im-
+plementations of higher-level arithmetic functions such
+as sin(x), arcsin(x) and √x which we also consider in
+the present work, although using diﬀerent approaches.
+In particular, our piecewise polynomial evaluation circuit
+enables evaluating piecewise smooth functions to high ac-
+curacy using polynomials of very low degree. As a result,
+we require only a small number of additions and multipli-
+cations, and few quantum registers to hold intermediate
+results in order to achieve reversibility. While Ref. [20]
+employs several evaluations of the sin(x) function in order
+arXiv:1805.12445v1  [quant-ph]  31 May 2018
+
+=== PDF PAGE 2 ===
+2
+to hone in on the actual value of its inverse, our imple-
+mentation of arcsin(x) features costs that are similar to
+just one invocation of sin( x) for x∈ [−0.5, 0.5]. Oth-
+erwise, if x∈ [−1, 1], our implementation also requires
+an evaluation of the square root. For evaluating inverse
+square roots, we optimize the initial guess which was also
+used in [21] in order to reduce the number of required
+Newton iterations by 1 (which corresponds to a reduc-
+tion by 20-25%). In contrast to the mentioned works,
+we implement all our high-level arithmetic functions at
+the level of Toﬀoli gates in the quantum programming
+language LIQUi|⟩. As a result, we were able to test our
+circuits on various test vectors using a Toﬀoli circuit sim-
+ulator, ranging up to several hundreds of qubits.
+Throughout this paper, we adapt ideas from classical
+high-performance computing in order to reduce the re-
+quired resources in the quantum setting. While these
+methods allow to reduce the Toﬀoli and qubit counts sig-
+niﬁcantly, the resulting circuits are still quite expensive,
+especially in terms of the number of gates that are re-
+quired. We hope that this highlights the fact that more
+research in the implementation of quantum algorithms is
+necessary in order to further reduce the cost originating
+from arithmetic in the computational basis.
+II. LEARNING FROM CLASSICAL
+ARITHMETIC LIBRARIES
+While there is no need for computations to be re-
+versible when using classical computers, a signiﬁcant
+overlap of techniques from reversible computing can be
+found in vectorized high-performance libraries. In quan-
+tum computing, having an if-statement collapses the
+state vector, resulting in a loss of all potential speedup.
+Similarly, if-statements in vectorized code require a read-
+out of the vector, followed by a case distinction and a
+read-in of the handled values, which incurs a tremendous
+overhead and results in a deterioration of the expected
+speedup or even an overall slowdown. Analogous con-
+siderations have to be taken into account when dealing
+with, e.g., loops. Therefore, classical high-performance
+libraries may oﬀer ideas and insights applicable to quan-
+tum computing, especially for mathematical functions
+such as (inverse) trigonometric functions, exponentials,
+logarithms, etc., of which highly-optimized implementa-
+tions are available in, e.g., the Cephes math library [23] or
+games such as Quake III Arena (their fast inverse square
+root [9] is reviewed in [24]).
+Although some of these implementations rely on a
+ﬂoating-point representation, many ideas carry over to
+the ﬁxed-point domain, and remain eﬃcient enough even
+when requiring reversibility. Speciﬁcally, we adapt im-
+plementations of the arcsine function from [23] and the
+fast inverse square root from [24] to the quantum domain
+by providing reversible low-level implementations. Fur-
+thermore, we describe a parallel version of the classical
+Horner scheme [25], which enables the conditional eval-
+uation of many polynomials in parallel and, therefore,
+eﬃcient evaluation of piecewise polynomial approxima-
+tions.
+III. EVALUATION OF PIECEWISE
+POLYNOMIAL APPROXIMATIONS
+A basic scheme to evaluate a single polynomial on a
+quantum computer in the computational basis is the clas-
+sical Horner scheme, which evaluates
+P (x) =
+d∑
+i=0
+aixi
+by iteratively performing a multiplication by x, followed
+by an addition ofai fori∈{d,d−1,..., 0}. This amounts
+to performing the following operations:
+adx +ad−1↦→adx2 +ad−1x +ad−2
+···
+↦→adxd +··· +a0 .
+A reversible implementation of this scheme simply
+stores all intermediate results. At iteration i, the last
+iterate yi−1 is multiplied by x into a new register yi,
+followed by an addition by the (classically-known) con-
+stant ai, which may make use, e.g., the addition circuit
+by Takahashi [16] (if there is an extra register left), or
+the in-place constant adder by H¨ aner et al. [26], which
+does not require an ancilla register but is more costly
+in terms of gates. Due to the linear dependence of suc-
+cessive iterates, a pebbling strategy can be employed in
+order to optimize the space/time trade-oﬀs according to
+some chosen metric [27].
+Oftentimes, the degree d of the minimax approxima-
+tion over a domain Ω must be chosen to be very high in
+order to achieve a certain L∞(Ω)-error. In such cases, it
+makes sense to partition Ω, i.e., ﬁnd Ω i such that
+Ω =
+M⋃
+i=0
+Ωi , Ωi∩ Ωj =∅∀i⁄=j ,
+and to then perform a case distinction for each input,
+evaluating a diﬀerent polynomial for x ∈ Ωi than for
+y ∈ Ωj if i⁄= j. A straight-forward generalization of
+this approach to the realm of quantum computing would
+loop over all subdomains Ω i and, conditioned on a case-
+distinction or label register |l⟩, evaluate the correspond-
+ing polynomial. Thus, the cost of this ineﬃcient ap-
+proach grows linearly with the number of subdomains.
+In order to improve upon this approach, one can paral-
+lelize the polynomial evaluation if the degreed is constant
+over the entire domain Ω. Note that merely adding the
+label register|l⟩ mentioned above and performing
+|yl,i−1x⟩| 0⟩|l⟩↦→| yl,i−1x⟩|al,i⟩|l⟩ (1)
+↦→|yl,i−1x +al,i⟩|al,i⟩|l⟩ (2)
+↦→|yl,i⟩| 0⟩|l⟩ , (3)
+
+=== PDF PAGE 3 ===
+3
+|0⟩
+|0⟩
+|x⟩
+L
+A
+B
+E
+L
+|l⟩
+|0⟩
+|x⟩
+≡
+|0⟩
+|0⟩
+|x⟩
+P1
+SET1
+P †1 P2
+SET2
+P †2
+...
+...
+PM
+SETM...
+P †M
+|l⟩
+|0⟩
+|x⟩
+Figure 1. The LABEL gate initializes the label register |l⟩, which consists of ⌈log2(M)⌉ qubits, to indicate the subdomain Ω l
+to which x belongs. Pi computes the predicate indicating whether x∈ Ωi into the ancilla qubit. Conditioned on this result,
+the label is then initialized to the value chosen to represent the i-th interval.
+|x⟩
+|yl,i−1⟩
+|0⟩
+|al,i−1⟩
+|l⟩
+MUL
+NEXTa
+ADD
+|x⟩
+|yl,i−1⟩
+|yl,i⟩
+|al,i⟩
+|l⟩
+Figure 2. Our parallel polynomial evaluation circuit. NEXT a
+changes the register to hold the next set of coeﬃcients (in
+superposition) ∑l|l⟩| al,i−1⟩↦→ ∑l|l⟩| al,i⟩. MUL and ADD
+perform a multiplication and an addition, respectively. The
+small triangle indicates the output of the ADD and MUL
+gates.
+enables the evaluation of multiple polynomials in paral-
+lel. The impact on the circuit size is minor, as will be
+shown in Appendix B. The depth of the circuit remains
+virtually unaltered, since the initialization step (1) can be
+performed while multiplying the previous iterate yi−1 by
+x, see Fig. 2. An illustration of the circuit computing the
+label register|l⟩ can be found in Fig. 1. A slight drawback
+of this parallel evaluation is that it requires one extra
+ancilla register for the last iteration, since the in-place
+addition circuit [26] can no longer be used. Resource
+estimates of a few functions which were implemented us-
+ing this approach can be found in Table II. The small
+overhead of using many intervals allows to achieve good
+approximations already for low-degree polynomials (and
+thus using few qubit registers).
+Using reversible pebble games [28], it is possible to
+trade the number of registers needed to store the iterates
+with the depth of the resulting circuit. The parameters
+are: the number n of bits per register, the total number
+m of these n-qubit registers, the number r of Horner it-
+erations, and the depth d of the resulting circuit. The
+m\r 1 2 3 4 5 6 7 8 16 32 64
+1 1 ∞ ∞ ∞ ∞ ∞ ∞ ∞ ∞ ∞ ∞
+2 1 3 ∞ ∞ ∞ ∞ ∞ ∞ ∞ ∞ ∞
+3 1 3 5 9 ∞ ∞ ∞ ∞ ∞ ∞ ∞
+4 1 3 5 7 11 15 19 25 ∞ ∞ ∞
+5 1 3 5 7 9 13 17 21 71 ∞ ∞
+6 1 3 5 7 9 11 15 19 51 193 ∞
+7 1 3 5 7 9 11 13 17 49 145 531
+8 1 3 5 7 9 11 13 15 47 117 369
+Table I. Optimal pebbling strategies for ﬁxed number m of
+registers and ﬁxed number r of sequential iterations. This
+table can be used for both the Horner scheme for polynomial
+evaluation, where r corresponds to the polynomial degree,
+and for Newton’s method, where r denotes the number of
+iterations. The number for entry ( m, r) denotes how many
+pebbling steps it takes to compute the entire sequence. The
+circuit width and depth can be obtained from these numbers.
+trade-space we consider involvesm,r, and d. In particu-
+lar, we consider the question of what the optimal circuit
+depth is for a ﬁxed number m of registers and a ﬁxed
+number r of iterations. As in [29, 30] we use dynamic
+programming to construct the optimal strategies as the
+dependency graph is just a line which is due to the se-
+quential nature of Horner’s method (the general pebbling
+problem is much harder to solve, in fact ﬁnding the opti-
+mal strategy for general graphs is known to be PSPACE
+complete [31]). The optimal number of pebbling steps as
+a function of m and r can be found in Table I.
+IV. SOFTWARE STACK MODULE FOR
+PIECEWISE SMOOTH FUNCTIONS
+In order to enable automatic compilation of an oracle
+which implements a piecewise smooth function, the Re-
+mez algorithm [32] can be used in a subroutine to deter-
+mine a piecewise polynomial approximation, which can
+then be implemented using the circuit described in the
+previous section.
+In particular, we aim to implement the oracle with a
+given precision, accuracy, and number of available quan-
+tum registers (or, equivalently, the polynomial degree d
+
+=== PDF PAGE 4 ===
+4
+if no pebbling is employed) over a user-speciﬁed inter-
+val Ω = [ a,a +L). Our algorithm proceeds as follows:
+In a ﬁrst step, run the Remez algorithm which, given a
+function f(x) over a domain Ω ⊂ R and a polynomial
+degreed, ﬁnds the polynomial P (x) which approximates
+f(x) with minimal L∞(Ω)-error, and check whether the
+achieved error is low enough. If it is too large, reduce
+the size of the domain Ω 1 := [a,a + L2 ) and check again.
+Repeating this procedure and carrying out binary search
+on the right interval border will eventually lead to the
+ﬁrst subdomain Ω 1 = [a,b 1) which is the largest interval
+such that the corresponding degreed polynomial achieves
+the desired accuracy. Next, one determines the next sub-
+domain Ω 2 = [b1,b 2) using the same procedure. This
+is iterated until bi≥ b, meaning that all required sub-
+domains and their corresponding polynomials have been
+determined and f(x) can be implemented using a par-
+allel polynomial evaluation circuit. This algorithm was
+implemented and then run for various functions, target
+accuracies, and polynomial degrees in order to determine
+approximate resource estimates for these parameters, see
+Table II in the appendix.
+V. INVERSE SQUARE ROOT
+For quantum chemistry or machine learning applica-
+tions, also non-smooth functions are required. Most no-
+tably, the inverse square root can be used in both ex-
+amples, namely for the calculation of the Coulomb po-
+tential and to determine the reciprocal when employing
+HHL [10] for quantum machine learning.
+In classical computing, inverse square roots appear
+in computer graphics and the term “fast inverse square
+root” is often used: It labels the procedure to approxi-
+mate the inverse square root using bit-operations on the
+ﬂoating-point representation of the input, as it was done
+in Quake III Arena [9] (see [24] for a review). The code ul-
+timately performs a Newton-Raphson iteration in order
+to improve upon a pretty accurate initial guess, which
+it ﬁnds using afore-mentioned bit-operations. Loosely
+speaking, the bit-operations consist of a bit-shift to di-
+vide the exponent by two in order to approximate the
+square root, followed by a subtraction of this result from
+a magic number , eﬀectively negating the exponent and
+correcting the mantissa, which was also shifted together
+with the exponent. The magic number can be chosen
+using an auto-tuning procedure and varies depending on
+the objective function being used [24]. This provides an
+extremely good initial guess for the Newton iteration at
+very low cost.
+In our reversible implementation, we use a similar pro-
+cedure to compute the inverse square root using ﬁxed-
+point arithmetic. While we cannot make use of the
+ﬂoating-point representation, we can still ﬁnd a low-cost
+initial guess which allows for a small number of Newton
+iterations to be suﬃcient (i.e., 2-4 iterations). This in-
+cludes determining the position of the ﬁrst one in the
+10−16
+10−14
+10−12
+10−10
+10−8
+10−6
+10−4
+10−2
+100
+0 0 .5 1 1 .5 2 2 .5 3 3 .5 4 4 .5 5
+Absolute error
+x
+m = 2, n = 25
+m = 3, n = 35
+m = 4, n = 55
+(a)Before constant-tuning.
+10−16
+10−14
+10−12
+10−10
+10−8
+10−6
+10−4
+10−2
+100
+0 0 .5 1 1 .5 2 2 .5 3 3 .5 4 4 .5 5
+Absolute error
+x
+m = 2, n = 25
+m = 3, n = 35
+m = 4, n = 55
+(b)After constant-tuning.
+Figure 3. Absolute errors of the inverse square root before
+and after tuning the constants (see Eqn. C2). The errors
+were evaluated for N = 2000 (equidistant) points in the in-
+terval [ 1N , 5] using m∈{ 2, 3, 4} Newton iterations and corre-
+sponding bit sizes n∈{ 25, 35, 55}. The ﬁxed-point position
+is p = 12, in order to ensure that no overﬂow occurs for small
+inputs.
+bit-representation of the input, followed by an initializa-
+tion which involves a case distinction on the magic num-
+ber to use. Our three magic constants (see Appendix C)
+were tuned such that the error peaks near powers of two
+in Fig. 3(a) vanish. The peaks appear due to the fact
+that the initial guess takes into account the location of
+the ﬁrst one but completely ignores the actual magnitude
+of the input. For example, all inputs in [1 , 2) yield the
+same initial guess. The error plot with tuned constants
+is depicted in Fig. 3(b). One can clearly observe that an
+entire Newton iteration can be saved when aiming for a
+givenL∞-error.
+
+=== PDF PAGE 5 ===
+5
+10−16
+10−14
+10−12
+10−10
+10−8
+10−6
+10−4
+10−2
+0 0 .1 0 .2 0 .3 0 .4 0 .5 0 .6 0 .7 0 .8 0 .9 1
+Absolute error
+x
+m = 3, n = 35
+m = 4, n = 50
+m = 5, n = 55
+Figure 4. Absolute error on [0 , 1] for N = 2000 points of our
+reversible implementation of the arcsine using m∈{ 3, 4, 5}
+Newton iterations for calculating the inverse square root. The
+ﬁxed-point position is chosen to be p = 2 and total bit size n
+was chosen to be in {35, 50, 55}.
+VI. ARCSINE
+Following the implementation used in the classical
+math library Cephes [23], an arcsine can be implemented
+as a combination of polynomial evaluation and the square
+root. Approximating the arcsine using only a polynomial
+allows for a good approximation in [ −0.5, 0.5], but not
+near±1 (where it diverges). The Cephes math library
+remedies this problem by adding a case distinction, em-
+ploying a “double-angle identity” for |x|≥ 0.5. This re-
+quires computing the square root, which can be achieved
+by ﬁrst calculating the inverse square root, followed by
+x· 1√x =√x. Alternatively, the new square root circuit
+from Ref. [22] can be used.
+We have implemented our circuit for arcsine and we
+show the resulting error plot in Fig. 4. The oscillations
+stem from the minimax polynomial which is used to ap-
+proximate the arcsine on [−0.5, 0.5]. More implementa-
+tion details and resource estimates can be found in Ap-
+pendix D.
+Note that certain applications may allow to trade oﬀ
+error in the arcsine with, e.g., probability of success by
+rescaling the input such that the arcsine needs to be com-
+puted only for values in [−0.5, 0.5]. This would allow one
+to remove the case-distinction and the subsequent calcu-
+lation of the square root: One could evaluate the arcsine
+at a cost that is similar to the implementation costs of
+sin/cos. Estimates for the Toﬀoli and qubit counts for
+this case can also be found in the appendix, see Table II.
+VII. SUMMARY AND OUTLOOK
+We have presented eﬃcient quantum circuits for the
+evaluation of many mathematical functions, including
+(inverse) square root, Gaussians, hyperbolic tangent, ex-
+ponential, sine/cosine, and arcsine. Our circuits can be
+used to obtain accurate resource estimates for various
+quantum algorithms and the results may help to identify
+the ﬁrst large-scale applications as well as bottlenecks in
+these algorithms where more research is necessary in or-
+der to make the resource requirements practical. When
+embedded in a quantum compilation framework, our gen-
+eral parallel polynomial evaluation circuit can be used for
+automatic code generation when compiling oracles that
+compute piecewise smooth mathematical functions in the
+computational basis. This tremendously facilitates the
+implementation of quantum algorithms which employ or-
+acles that compute such functions on a superposition of
+inputs.
+[1] Peter W Shor. Algorithms for quantum computation:
+Discrete logarithms and factoring. In Foundations of
+Computer Science, 1994 Proceedings., 35th Annual Sym-
+posium on, pages 124–134. IEEE, 1994.
+[2] Markus Reiher, Nathan Wiebe, Krysta M Svore, Dave
+Wecker, and Matthias Troyer. Elucidating reaction mech-
+anisms on quantum computers. PNAS, 114:7555–7560,
+2017.
+[3] Ryan Babbush, Dominic W Berry, Ian D Kivlichan, An-
+nie Y Wei, Peter J Love, and Al´ an Aspuru-Guzik. Expo-
+nentially more precise quantum simulation of fermions
+in second quantization. New Journal of Physics ,
+18(3):033032, 2016.
+[4] Dave Wecker and Krysta M Svore. LIQ U i|⟩: A soft-
+ware design architecture and domain-speciﬁc language
+for quantum computing. arXiv preprint arXiv:1402.4467,
+2014.
+[5] Alexander S Green, Peter LeFanu Lumsdaine, Neil J
+Ross, Peter Selinger, and Benoˆ ıt Valiron. Quipper: a
+scalable quantum programming language. In ACM SIG-
+PLAN Notices, volume 48, pages 333–342. ACM, 2013.
+[6] Ali JavadiAbhari, Shruti Patil, Daniel Kudrow, Jeﬀ
+Heckey, Alexey Lvov, Frederic T Chong, and Margaret
+Martonosi. Scaﬀcc: a framework for compilation and
+analysis of quantum computing programs. In Proceed-
+ings of the 11th ACM Conference on Computing Fron-
+tiers, page 1. ACM, 2014.
+[7] Krysta Svore, Alan Geller, Matthias Troyer, John
+Azariah, Christopher Granade, Bettina Heim, Vadym
+Kliuchnikov, Mariia Mykhailova, Andres Paz, and Mar-
+tin Roetteler. Q#: Enabling scalable quantum comput-
+ing and development with a high-level dsl. In Proceedings
+of the Real World Domain Speciﬁc Languages Workshop
+2018, page 7. ACM, 2018.
+[8] Damian S Steiger, Thomas H¨ aner, and Matthias Troyer.
+ProjectQ: an open source software framework for quan-
+tum computing. Quantum, 2:49, 2018.
+[9] Quake III source code. https://github.com/
+id-Software/Quake-III-Arena/blob/master/code/
+game/q_math.c.
+
+=== PDF PAGE 6 ===
+6
+[10] Aram W Harrow, Avinatan Hassidim, and Seth Lloyd.
+Quantum algorithm for linear systems of equations.
+Physical Review Letters, 103(15):150502, 2009.
+[11] Kristan Temme, Tobias J. Osborne, Karl Gerd Voll-
+brecht, David Poulin, and Frank Verstraete. Quantum
+Metropolis Sampling. Nature, 471(87), 2011.
+[12] David Poulin and Pawel Wocjan. Sampling from the
+thermal quantum Gibbs state and evaluating partition
+functions with a quantum computer. Phys. Rev. Letters,
+103:220502, 2009.
+[13] Maris Ozols, Martin Roetteler, and J´ er´ emie Roland.
+Quantum rejection sampling. ACM Transactions on
+Computation Theory, 5(3):11, 2013.
+[14] Chen-Fu Chiang, Daniel Nagaj, and Pawel Wocjan. Eﬃ-
+cient circuits for quantum walks. Quantum Information
+and Computation, 10(5& 6):0420–0434, 2010.
+[15] Artur Scherer, Benoˆ ıt Valiron, Siun-Chuon Mau, Scott
+Alexander, Eric van den Berg, and Thomas E. Chapuran.
+Concrete resource analysis of the quantum linear-system
+algorithm used to compute the electromagnetic scatter-
+ing cross section of a 2D target. Quantum Information
+Processing, 16(3):60, Jan 2017.
+[16] Yasuhiro Takahashi, Seiichiro Tani, and Noboru Kuni-
+hiro. Quantum addition circuits and unbounded fan-out.
+arXiv preprint arXiv:0910.2530 , 2009.
+[17] Thomas G Draper. Addition on a quantum computer.
+arXiv preprint quant-ph/0008033 , 2000.
+[18] Steven A Cuccaro, Thomas G Draper, Samuel A Kutin,
+and David Petrie Moulton. A new quantum ripple-carry
+addition circuit. arXiv preprint quant-ph/0410184, 2004.
+[19] Thomas G. Draper, Samuel A. Kutin, Eric M. Rains, and
+Krysta M. Svore. A logarithmic-depth quantum carry-
+lookahead adder. Quantum Info. Comput., 6(4):351–369,
+July 2006.
+[20] Yudong Cao, Anargyros Papageorgiou, Iasonas Petras,
+Joseph Traub, and Sabre Kais. Quantum algorithm and
+circuit design solving the Poisson equation. New Journal
+of Physics, 15(1):013021, 2013.
+[21] Mihir K. Bhaskar, Stuart Hadﬁeld, Anargyros Papageor-
+giou, and Iasonas Petras. Quantum algorithms and cir-
+cuits for scientiﬁc computing. Quantum Info. Comput. ,
+16(3-4):197–236, March 2016.
+[22] Edgard Mu˜ noz-Coreas and Himanshu Thapliyal. T -
+count and qubit optimized quantum circuit design of
+the non-restoring square root algorithm. arXiv preprint
+arXiv:1712.08254, 2017.
+[23] SL Moshier. Cephes math library. See http://www.
+moshier. net, 2000.
+[24] Chris Lomont. Fast inverse square root. Tech-315 nical
+Report, page 32, 2003.
+[25] Donald E Knuth. Evaluation of polynomials by com-
+puter. Communications of the ACM , 5(12):595–599,
+1962.
+[26] Thomas H¨ aner, Martin Roetteler, and Krysta Svore. Fac-
+toring using 2 n + 2 qubits with Toﬀoli based modular
+multiplication. Quantum Information and Computation ,
+18(7&8):673–684, 2017.
+[27] Alex Parent, Martin Roetteler, and Krysta M Svore. Re-
+versible circuit compilation with space constraints. arXiv
+preprint arXiv:1510.00377, 2015.
+[28] Charles. H. Bennett. Time/space trade-oﬀs for reversible
+computation. SIAM Journal on Computing , 18:766–776,
+1989.
+[29] Emmanuel Knill. An analysis of Bennett’s pebble game.
+arXiv.org preprint quant-ph/9508218.
+[30] Alex Parent, Martin Roetteler, and Krysta M. Svore.
+Reversible circuit compilation with space constraints.
+arXiv.org preprint arXiv:1510.00377.
+[31] Siu Man Chan. Pebble games and complexity . PhD the-
+sis, Electrical Engineering and Computer Science, UC
+Berkeley, 2013. Tech report: EECS-2013-145.
+[32] Eugene Y Remez. Sur la d´ etermination des polynˆ omes
+dapproximation de degr´ e donn´ ee.Comm. Soc. Math.
+Kharkov, 10:41–63, 1934.
+[33] John F Wakerly. Digital design, volume 3. Prentice Hall,
+2000.
+[34] Adriano Barenco, Charles H Bennett, Richard Cleve,
+David P DiVincenzo, Norman Margolus, Peter Shor, Ty-
+cho Sleator, John A Smolin, and Harald Weinfurter. El-
+ementary gates for quantum computation. Physical Re-
+view A, 52(5):3457, 1995.
+Appendix A: Basic circuit building blocks for
+ﬁxed-point arithmetic
+In ﬁxed-point arithmetic, one represents numbersx us-
+ing n bits as
+x =xn−1··· xn−p| {z }
+p
+.x n−p−1··· x0| {z }
+n−p
+,
+where xi∈{ 0, 1} is the i-th bit of the binary represen-
+tation of x, and the point position p denotes the num-
+ber of binary digits to the left of the binary point. We
+choose both the total number of bits n and the point po-
+sitionp to be constant over the course of a computation.
+As a consequence, over- and underﬂow errors are intro-
+duced, while keeping the required bit-size from growing
+with each operation.
+Fixed-point addition. We use a ﬁxed-point addition
+implementation, which keeps the bit-size constant. This
+amounts to allowing over- and underﬂow, while keeping
+the registers from growing with each operation.
+Fixed-point multiplication. Multiplication can be
+performed by repeated-addition-and-shift, which can be
+seen from
+x·y =xn−12n−1y +··· +x020y ,
+where x =∑ixi2i with xi∈{ 0, 1} denotes the binary
+expansion of then-bit numberx. Thus, for i∈{ 0,...,n−
+1}, 2 i−(n−p)y is added to the result register (which is
+initially zero) if xi = 1. This can be implemented using
+n controlled additions on 1, 2,...,n bits if one allows for
+pre-truncation: Instead of computing the 2 n-bit result
+and copying out the ﬁrst n bits before uncomputing the
+multiplication again, the additions can be executed on a
+subset of the qubits, ignoring all bits beyond the scope of
+then-bit result. Thus, each addition introduces an error
+of at most εA = 12n−p . Since there are (at most) n such
+additions, the total error is
+ε = n2n−p ,
+
+=== PDF PAGE 7 ===
+7
+a factor n larger than using the costly approach men-
+tioned above.
+Negative multipliers are dealt with by substituting the
+controlled addition by a controlled subtraction when con-
+ditioning on the most signiﬁcant bit [33] because it has
+negative weight wM SB = −2n−1 in two’s-complement
+notation. The multiplicand is assumed to be positive
+throughout, which removes the need for conditional in-
+versions of input and output (for every multiplication),
+thus tremendously reducing the size of circuits that re-
+quire many multiplications such as, e.g., polynomial eval-
+uation.
+Fixed-point squaring. The square of a number can
+be calculated using the same approach as for multipli-
+cation. Yet, one can save (almost) an entire register by
+only copying out the bit being conditioned on prior to
+performing the controlled addition. Then, the bit can be
+reset using another CNOT gate, followed by copying out
+the next bit and performing the next controlled addition.
+The gate counts are identical to performing
+|x⟩| 0⟩| 0⟩↦→| x⟩|x⟩| 0⟩↦→| x⟩|x⟩
+⏐⏐x2⟩↦→|x⟩⏐⏐x2⟩|0⟩ ,
+while allowing to save n− 1 qubits.
+Appendix B: Resource estimates for polynomial
+evaluation
+The evaluation of a degreed polynomial requires an ini-
+tial multiplicationad·x, an addition of ad−1, followed by
+d− 1 multiply-accumulate instructions. The total num-
+ber of Toﬀoli gates is thus equal to the cost ofd multiply-
+accumulate instructions. Furthermore, d+1 registers are
+required for holding intermediate and ﬁnal result(s) if
+no in-place adder is used for the last iteration (and no
+non-trivial pebbling strategy is applied). Other strate-
+gies may be employed in order to reduce the number of
+ancilla registers, at the cost of a larger gate count, see
+Table I for examples.
+Note that all multiplications can be carried out assum-
+ingx> 0, i.e. x can be conditionally inverted prior to the
+polynomial evaluation (and the pseudo-sign bit is copied
+out). The sign is then absorbed into the coeﬃcients:
+Before adding ai into the|yi−1x⟩-register, it is inverted
+conditioned on the sign-bit ofx being set if the coeﬃcient
+corresponds to an odd power. This is done because it is
+cheaper to implement a ﬁxed-point multiplier which can
+only deal with yi−1 being negative (see Sec. A).
+The Toﬀoli gate count of multiplying two n-bit num-
+bers (using truncated additions as described in Sec. A)
+is
+Tmul(n,p ) =
+p−1∑
+i=0
+Tcadd(n−i) +
+n−p∑
+i=1
+Tcadd(n−i)
+=
+p−1∑
+i=0
+3(n−i) +
+n−p∑
+i=1
+3(n−i) + 3n
+= 32n2 + 3np + 32n− 3p2 + 3p
+if one uses the controlled addition circuit by Takahashi et
+al. [16], which requires 3n + 3 Toﬀoli gates to (condition-
+ally) add two n-bit numbers. The subsequent addition
+can be implemented using the addition circuit by Taka-
+hashi et al. [16], featuring 2n− 1 Toﬀoli gates. Thus, the
+total cost of a fused multiply-accumulate instruction is
+Tfma(n,p ) = 32n2 + 3np + 72n− 3p2 + 3p− 1.
+Therefore, the total Toﬀoli count for evaluating a degree
+d polynomial is
+Tpoly(n,d,p ) = 32n2d + 3npd + 72nd− 3p2d + 3pd−d.
+Evaluating M polynomials in parallel for piecewise
+polynomial approximation requires onlyn+⌈log2M⌉ ad-
+ditional qubits (since one n-qubit register is required to
+perform the addition in the last iteration, which is no
+longer just a constant) and 2M⌈log2M⌉-controlled NOT
+gates, which can be performed in parallel with the mul-
+tiplication. This increases the circuit size by
+Textra(M) = 2M(4⌈log2M⌉− 8)
+Toﬀoli gates per multiply-accumulate instruction, since a
+k-controlled NOT can be achieved using 4(k− 2) Toﬀoli
+gates andk−2 dirty ancilla qubits [34], which are readily
+available in this construction.
+The label register |l⟩ can be computed using 1 com-
+parator per subinterval
+Ii = [ai,a ii+1), a0 <a 1 <...<a M−1 .
+The comparator stores its output into one extra qubit,
+ﬂipping it to |1⟩ if x≤ ai+1. The label register is then
+incremented from i− 1 to i, conditioned on this output
+qubit still being|0⟩ (indicating that x>a i). Increment-
+ing|l⟩ can be achieved using CNOT gates applied to the
+qubits that correspond to ones in the bit-representation
+of (i−1)⊕i. Finally, the comparator output qubit is un-
+computed again. This procedure is carried out M times
+for i = 0,...,M − 1 and requires 1 additional qubit. The
+number of extra Toﬀoli gates for this label initialization
+is
+Tlabel(M,n ) =M· 2Tcmp(n)
+= 4Mn,
+
+=== PDF PAGE 8 ===
+8
+where, as a comparator, we use the CARRY-circuit
+from [26], which needs 2n Toﬀoli gates to compare a clas-
+sical value to a quantum register, and another 2 n to un-
+compute the output and intermediate changes to the n
+required dirty ancilla qubits.
+In total, the parallel polynomial evaluation circuit thus
+requires
+Tpp(n,d,p,M ) =Tpoly(n,d,p ) +d·Textra(M)
++Tlabel(M,n )
+= 32n2d + 3npd + 72nd− 3p2d + 3pd−d
++ 2Md(4⌈log2M⌉− 8) + 4Mn
+Toﬀoli gates and (d + 1)n +⌈log2M⌉ + 1 qubits.
+Appendix C: (Inverse) Square root
+The inverse square root, i.e.,
+f(x) = 1√x
+can be computed eﬃciently using Newton’s method. The
+iteration looks as follows:
+xn+1 =xn
+(
+1.5− ax2n
+2
+)
+,
+where a is the input and xn
+n→∞
+−→ 1√a if the initial guess
+is suﬃciently close to the true solution.
+1. Reversible implementation
+Initial guess and ﬁrst round. Finding a good initial
+guess x0≈ 1√a for Newton’s zero-ﬁnding routine is cru-
+cial for (fast) convergence. A crude approximation which
+turns out to be suﬃcient is the following:
+1√a =(2log2 a)− 12 = 2− log2 a2 ≈ 2⌊−⌊log2 a⌋2 ⌉ = ˜x0 ,
+where⌊log2a⌋ can be determined by ﬁnding the ﬁrst “1”
+when traversing the bit-representation of a from left to
+right (MSB to LSB). While the space requirement for ˜x0
+is inO(log2n), such a representation would be impracti-
+cal for the ﬁrst Newton round. Furthermore, noting that
+the ﬁrst iteration on ˜x0 = 2k leads to
+˜x1 = 2k
+(
+1.5− a22k
+2
+)
+=:x0 , (C1)
+one can directly choose this x0 as the initial guess. The
+preparation of x0 can be achieved using (n− 1) +n + 1
+ancilla qubits, which must be available due to the space
+requirements of the subsequent Newton steps. The one
+ancilla qubit is used as a ﬂag indicating whether the ﬁrst
+“1” from the left has already been encountered. For each
+iteration i ∈ {n− 1,..., 1, 0}, one determines whether
+the bit ai is 1 and stores this result ri in one of the n
+work qubits, conditioned on the ﬂag being unset. Then,
+conditioned on ri = 1, the ﬂag is ﬂipped, indicating that
+the ﬁrst “1” has been found. If ri = 1, the x0-register is
+initialized to the value in (C1) as follows: Using CNOTs,
+the x0-register can be initialized to the value 1 .5 shifted
+by k = p−2i2 , where p denotes the binary point position
+of the input, followed by subtracting the (3k− 1)-shifted
+input a from x0, which may require up to n− 1 ancilla
+qubits.
+In order to improve the quality of the ﬁrst guess for
+numbers close to 2 k for some k∈ Z, one can tune the
+constant 1.5 in (C1), i.e., turn it into a function C(k) of
+the exponent k. This increases the overall cost of calcu-
+latingx0 merely by a few CNOT gates but allows to save
+an entire Newton iteration even when only distinguishing
+three cases, namely
+C(k) :=
+
+
+
+1.613, k< 0
+1.5, k = 0
+1.62, k> 0
+. (C2)
+The Newton iteration. Computing xn+1 from xn by
+xn+1 =xn
+(
+1.5− ax2n
+2
+)
+,
+can be achieved as follows:
+1. Compute the square of xn into a new register.
+2. Multiply x2n by the shifted input to obtain ax2n/2.
+3. Initialize another register to 1.5 and subtract ax2n/2.
+4. Multiply the result by xn to arrive at xn+1.
+5. Uncompute the three intermediate results.
+The circuit of one such Newton iteration is depicted in
+Fig. 5.
+Therefore, form Newton iterations, this requiresm+3
+n-qubit registers if no pebbling is done on the Newton
+iterates, i.e., if all xi are kept in memory until the last
+Newton iteration has been completed.
+2. Resource estimates
+Computing the initial guess for the fast inverse square
+root requiresn controlled additions of twon-bit numbers
+plus 2n Toﬀoli gates for checking/setting the ﬂag (and
+uncomputing it again). Thus, the Toﬀoli count for the
+initial guess is
+Tinit(n) =nTcadd(n) + 2n = 3n2 + 5n.
+
+=== PDF PAGE 9 ===
+9
+|0⟩
+|xn⟩
+|0⟩
+|0⟩
+|0⟩
+|a⟩
+SQR
+MUL
+SET1.5
+SUB
+MUL
+ADD
+SET†1.5
+MUL†
+SQR†
+|xn+1⟩
+|xn⟩
+|0⟩
+|0⟩
+|0⟩
+|a⟩
+Figure 5. Circuit for the n-th Newton iteration of computing
+the inverse square root of a, given in a quantum superposition
+in|a⟩. SQR computes the square of the previous iterate xn
+into an empty result-register, which is then multiplied by the
+input a (MUL), followed by subtracting (SUB) this interme-
+diate result from the value 1 .5 (initialized using the SET 1.5-
+gate). Finally, the next iterate, i.e., xn+1 = xn(1.5− 12 ax2n)
+can be computed by multiplying this intermediate result by
+xn. All temporary results are then cleared by running the
+appropriate operations in reverse order.
+Each Newton iteration features squaring, a multiplica-
+tion, a subtraction, a ﬁnal multiplication (yielding the
+next iterate), and then an uncomputation of the three
+intermediate results. In total, one thus employs 5 mul-
+tiplications and 2 additions (of which 2 multiplications
+and 1 addition are run in reverse), which yields the Tof-
+foli count
+Titer(n,p ) = 5Tmul(n,p ) + 2Tadd(n)
+= 152 n2 + 15np + 232 n− 15p2 + 15p− 2.
+The number of Toﬀoli gates for the entire Newton proce-
+dure (without uncomputing the iterates) form iterations
+thus reads
+Tinvsqrt(n,m,p ) =Tinit(n) +mTiter(n,p )
+=n2(152 m + 3) + 15npm +n(232 m + 5)
+− 15p2m + 15pm− 2m.
+Since each Newton iteration requires 3 ancilla registers
+(which are cleaned up after each round) to produce the
+next iterate, the total number of qubits isn(m+4), where
+one register holds the initial guess x0.
+Note that this is an upperbound on the required num-
+ber of both qubits and Toﬀoli gates. Since Newton con-
+verges quadratically, there is no need to perform full ad-
+ditions and multiplications at each iteration. Rather, the
+number of bits n used for the ﬁxed point representation
+should be an (increasing) function of the Newton itera-
+tion.
+The square root can be calculated using
+√x =x· 1√x ,
+i.e., at a cost of an additional multiplication into a new
+register. Note that this new register would be required
+anyway when copying out the result and running the en-
+tire computation in reverse, in order to clear registers
+holding intermediate results. Thus, the total number of
+logical qubits remains unchanged.
+Appendix D: Arcsine
+While sin(x) and cos(x) are very easy to approximate
+using, e.g., polynomials, their inverses are not. The main
+diﬃculty arises near±1, where
+d arcsin(x)
+dx = 1√1−x2
+diverges. Therefore, it makes sense to use an alternative
+representation of arcsin(x) for larger values of x, e.g.,
+arcsin(x) = π2− arccos(x)
+= π2− arcsin(√1−x2) .
+Applying the double-argument identity to the last ex-
+pression yields
+arcsin(x) = π2− 2 arcsin
+(√
+1−x
+2
+)
+, (D1)
+a very useful identity which was already used in a clas-
+sical math library called Cephes [23]. We use the same
+partitioning of the interval, using a minimax polynomial
+to approximate arcsin(x) for x∈ [0, 0.5), and the trans-
+formation in (D1) for x∈ [0.5, 1]. We use our inverse
+square root implementation to compute √z for
+z = 1−x2 ,
+which satisﬁes z∈ [0, 0.25], for x∈ [0.5, 1]. Therefore,
+the ﬁxed point position has to be chosen large, as the
+inverse square root diverges for small x. Luckily, the
+multiplication by x after this computation takes care of
+the singularity and, since most bits of low-signiﬁcance of
+1√x will cause underﬂow for small x, we can get away
+with computing a shifted version of the inverse square
+root. This optimization reduces the number of extra bits
+required during the evaluation of the inverse square root.
+It is worth noting that in many applications, evaluating
+arcsin(x) only on the interval [0 , 0.5] may be suﬃcient.
+In such cases, the cost is much lower since this can be
+achieved using our parallel polynomial evaluation circuit.
+The Toﬀoli counts for this case can be found in Table II.
+1. Reversible implementation
+The Arcsine is implemented as a combination of poly-
+nomial evaluation and the inverse square root to extend
+
+=== PDF PAGE 10 ===
+10
+the polynomial approximation on [0 , 0.5] to the entire
+domain [0, 1] employing the double-argument identity
+above. First, the (pseudo) sign-bit of x is copied out and
+x is conditionally inverted (modulo two’s-complement)
+to ensure x≥ 0. Since there are plenty of registers avail-
+able, this can be achieved by conditionally initializing an
+extra register to |1⟩ and then using a normal adder to
+increment x by one, where x denotes the bit- or one’s-
+complement of x. Since x∈ [0, 1], one can determine
+whether x< 0.5 using just one Toﬀoli gate (and 4 NOT
+gates). The result of this comparison is stored in an an-
+cilla qubit denoted by|a⟩. z = (1−x)/2 can be computed
+using an adder (run in reverse) acting onx shifted by one
+and a new register, after having initialized it to 0.5 using
+a NOT gate. Then, conditioned on |a⟩ (i.e., on a being
+0), this result is copied into the polynomial input regis-
+ter|pin⟩ and, conditioned on |a⟩, x is squared into|pin⟩.
+After having applied our polynomial evaluation circuit
+(which uncomputes intermediate results) to this input,
+|pin⟩ can be uncomputed again, followed by computing
+the square root of z. Then, the result of the polynomial
+evaluation must be multiplied by either √z or x, which
+can be achieved using 2n controlled swaps and one mul-
+tiplier. The ﬁnal transformation of the result consists of
+an initialization to π/2 followed by a subtraction, both
+conditioned on |a⟩, and a copy conditioned on |a⟩. Fi-
+nally, the initial conditional inversion ofx can be undone
+after having (conditionally) inverted the output.
+2. Resource estimates
+Following this procedure, the Toﬀoli count for this arc-
+sine implementation on n-bit numbers using m Newton
+iterations for calculating √z and a degree-d polynomial
+to approximate arcsin(x) on [0, 0.5] can be written as
+Tarcsin = 3Tinv + (2Tpoly−Tfma)
++ 2Tcsquare +Tmul +Tcadd
++ (2Tinvsqrt +Tmul) + 5n + 2
++Tadd
+= 3Tadd + 2Tpoly + 3Tmul
++Tcadd + 2Tinvsqrt + 9n + 2
+=d(3n2 +n(6p + 7)− 6(p− 1)p− 2)
++m(n(15n + 30p + 23)− 30p(p− 1)− 4)
++ 9(n + 1)p + 92n(n + 1)
++ 6n2 + 28n− 9p2 + 2
+where Tinv(n) denotes the Toﬀoli count for com-
+puting the two’s-complement of an n-bit number and
+Tcsquare(n,p ) = Tmul(n,p ) + 2n is the number of Toﬀoli
+gates required to perform a conditional squaring opera-
+tion. Furthermore, 2n Toﬀoli gates are needed to achieve
+the conditionaln-bit swap operation (twice), and another
+3n are used for (conditional) copies.
+10−14
+10−12
+10−10
+10−8
+10−6
+10−4
+10−2
+100
+0 0 .5 1 1 .5 2 2 .5 3 3 .5 4 4 .5 5
+Absolute error
+x
+m = 2, n = 25
+m = 3, n = 35
+m = 4, n = 50
+Figure 6. Absolute error on [0 , 5] for N = 2000 equidistant
+points of our reversible implementation of the square root for
+m∈{ 2, 3, 4} Newton iterations and corresponding bit sizes
+n ∈ {25, 35, 50}. The ﬁxed-point position is chosen to be
+p = 5.
+Appendix E: Results of the Reversible Simulation
+All circuits were implemented at the gate level and
+tested using a reversible simulator extension to LIQUi|⟩.
+The results are presented in this section.
+1. Piecewise polynomial approximation
+A summary of the required resource for implementing
+tanh(x), exp(−x2), and sin(x) can be found in Tbl. II.
+For each function, one set of parameters was implemented
+reversibly at the level of Toﬀoli gates in order to verify
+the proposed circuits.
+2. (Inverse) Square root
+The convergence of our reversible fast inverse square
+root implementation with the number of Newton itera-
+tions can be found in Fig. 3(b), where the bit sizes and
+point positions have been chosen such that the roundoﬀ
+errors do not interfere signiﬁcantly with the convergence.
+For all practical purposes, choosing between 3 and 5 New-
+ton iterations should be suﬃcient. The eﬀect of tuning
+the constants in the initial guess (see Eqn. C2) can be
+seen when comparing Fig. 3(a) to Fig. 3(b): The initial
+guess is obtained from the location of the ﬁrst non-zero in
+the bit-representation of the input, which results in large
+rounding-eﬀects for inputs close to an integer power of
+two. Tuning the initial guess results in almost uniform
+convergence, which allows to save an entire Newton iter-
+ation for a given L∞-error.
+The square root converges better than the inverse
+
+=== PDF PAGE 11 ===
+11
+square root for small values, which can be expected, since
+√x =x· 1√x
+has a regularizing eﬀect for small x. The error after m
+Newton iterations when using n bits for the ﬁxed point
+representation is depicted in Fig. 6. Additionally, the
+initial guess could be improved by tuning the constants in
+Eqn. C1 such that the error is minimal after multiplying
+x· 1√x, instead of just optimizing for the inverse square
+root itself.
+3. Arcsine
+Our implementation of Arcsine uses both the polyno-
+mial evaluation and square root subroutines. The oscil-
+latory behavior which can be seen in Fig. 4 is typical for
+minimax approximations. For x >0.5, the resolution is
+lower due to the wider range of 1√x, which was accounted
+for by calculating a shifted version of the inverse square
+root. While this allows to save a few qubits (to the left
+of the binary point), the reduced number of qubits to the
+right of the binary point fail to resolve the numbers as
+well, which manifests itself by bit-noise for x > 0.5 in
+Fig. 4. The degrees of the minimax approximation were
+chosen to be 7, 13, and 17 for m = 3, 4, 5, respectively.
+Since arcsin(x) is an odd function, this amounts to eval-
+uating a degree 3, 6, and 8 polynomial in x2, followed by
+a multiplication by x.
+Function L∞ error Polynomialdegree Number ofsubintervals Number ofqubits Number ofToﬀoli gates
+tanh(x)
+10−5
+3 15 136 12428
+4 9 169 13768
+5 7 201 15492
+6 5 234 17544
+10−7
+3 50 166 27724
+4 23 205 23095
+5 14 244 23570
+6 10 284 26037
+10−9
+3 162 192 77992
+4 59 236 41646
+5 30 281 35460
+6 19 327 36578
+exp(−x2)
+10−5
+3 11 132 10884
+4 7 163 12141
+5 5 195 14038
+6 4 226 15863
+10−7
+3 32 161 20504
+4 15 199 19090
+5 10 238 21180
+6 7 276 23254
+10−9
+3 97 187 49032
+4 36 231 32305
+5 19 275 30234
+6 12 319 31595
+sin(x)
+10−5
+3 2 113 6188
+
+=== PDF PAGE 12 ===
+12
+4 2 141 7679
+5 2 169 9170
+6 2 197 10661
+10−7
+3 3 142 9444
+4 2 176 11480
+5 2 211 13720
+6 2 246 15960
+10−9
+3 7 167 13432
+4 3 207 15567
+5 2 247 18322
+6 2 288 21321
+exp(−x)
+10−5
+3 11 116 8106
+4 6 143 8625
+5 5 171 10055
+6 4 198 11245
+10−7
+3 31 149 17304
+4 15 184 15690
+5 9 220 16956
+6 7 255 18662
+10−9
+3 97 175 45012
+4 36 216 28302
+5 19 257 25721
+6 12 298 26452
+arcsin(x)
+10−5
+3 2 105 4872
+4 2 131 6038
+5 2 157 7204
+6 2 183 8370
+10−7
+3 3 134 7784
+4 2 166 9419
+5 2 199 11250
+6 2 232 13081
+10−9
+3 6 159 11264
+4 3 197 13138
+5 3 236 15672
+6 2 274 17938
+Table II: Costs associated with the evaluation of Gaussian, hyperbolic
+tangent, sin( x), exp(−x) for x≥ 0, and arcsin( x) on [−0.5, 0.5] using
+piecewise polynomial approximation in combination with our parallel
+evaluation scheme. All Toﬀoli counts are for compute only (i.e., there is
+an additional factor of 2 for uncompute). For even/odd functions, the
+given degree corresponds to the evaluation cost, i.e., the actual polyno-
+mial being implemented has degree 2 d or 2d + 1, respectively.

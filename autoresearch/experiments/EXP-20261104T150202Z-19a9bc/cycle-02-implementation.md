@@ -1,0 +1,17 @@
+# Implementation cycle 2
+
+Repaired the failed no-candidate scan without changing the experiment’s shared-quadratic hypothesis. The deterministic ANF scanner now examines every dependency-safe same-target CCX pair in each bounded phase-free window rather than only the immediately next pair, retains and propagates intervening same-target CCXs, and can place the certified merged CCX at either pair site when the affine difference is realizable there. Complete-window ANF equality and negative-control rejection remain mandatory. Added a regression self-test proving that an incompatible intervening same-target CCX cannot hide a later compatible pair, and updated the build/report documentation accordingly.
+
+## Changed files
+
+- `source/anf_merge.py`
+- `source/build.py`
+- `source/README_ANF_MERGE.md`
+
+## Build notes
+
+The orchestrator should run `python source/build.py` from the workspace root. The existing pinned `source/parent_invsqrt.kmb` snapshot remains the input, with its required SHA-256 asserted before scanning. A successful build deterministically writes `invsqrt.kmb` and `source/anf_merge_report.json`; if no focused certified pair exists, it writes a negative report and stops rather than copying the champion. I did not execute the build or any verifier.
+
+## Known limitations
+
+Whether the widened bounded scan finds an eligible champion site remains unconfirmed until the orchestrator runs the build. The search still enforces at most 120 operations and 26 active wires, hard-stops at every non-X/CX/CCX instruction, and stops a pair search at target dependencies other than retained same-target CCXs. Smoke correctness, full-domain correctness, and measured cost remain entirely for orchestrator verification.

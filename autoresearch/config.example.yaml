@@ -1,0 +1,70 @@
+version: 1
+
+agents:
+  director:
+    provider: anthropic          # anthropic, openai, or fake (tests only)
+    base_url: null               # e.g. https://your-provider.example
+    api_key_env: AUTORESEARCH_DIRECTOR_API_KEY
+    # For Bearer auth instead, remove api_key_env above and use:
+    # auth_token_env: AUTORESEARCH_DIRECTOR_API_KEY
+    # api_key: "replace-me"      # optional; api_key_env is preferred
+    model: claude-opus-5-5
+    effort: high
+    max_tokens: 16000
+    max_turns: 24
+    timeout_seconds: 600
+    max_retries: 2
+    max_tool_output_chars: 30000
+    stream: true
+    options: {}                  # extra provider request fields
+
+  implementer:
+    provider: openai
+    base_url: null               # e.g. https://your-provider.example/v1
+    api_key_env: AUTORESEARCH_IMPLEMENTER_API_KEY
+    # auth_token_env is the Anthropic Bearer-auth alternative to api_key_env.
+    model: your-model-name
+    effort: high
+    max_tokens: 16000
+    max_turns: 40
+    timeout_seconds: 900
+    max_retries: 2
+    max_tool_output_chars: 30000
+    options: {}
+
+  reviewer:
+    provider: anthropic
+    base_url: null
+    api_key_env: AUTORESEARCH_REVIEWER_API_KEY
+    # auth_token_env is the Anthropic Bearer-auth alternative to api_key_env.
+    model: claude-opus-5-5
+    effort: high
+    max_tokens: 12000
+    max_turns: 16
+    timeout_seconds: 600
+    max_retries: 2
+    max_tool_output_chars: 30000
+    stream: true
+    options: {}
+
+settings:
+  workers: 1                     # full DQI needs several GB per worker
+  smoke_timeout_seconds: 1800
+  full_timeout_seconds: 7200
+  max_repair_cycles: 2           # initial attempt plus at most two repairs
+  command_timeout_seconds: 300
+  command_output_chars: 30000
+
+tasks:
+  # Commands are argument arrays, never shell strings. {python} expands to the
+  # project interpreter and {workspace} to the isolated experiment directory.
+  # Agent-authored build code runs with your local user permissions.
+  invsqrt:
+    build: ["{python}", "source/build.py"]
+    tests: []
+  dqi:
+    build: ["{python}", "source/build.py"]
+    tests: []
+  dfthcsos:
+    build: ["{python}", "source/build.py"]
+    tests: []

@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/Users/spwang/Documents/Quant/kaggle_quantum/autoresearch/workspaces/EXP-20261104T150202Z-19a9bc/source/build.py", line 277, in <module>
+    main()
+  File "/Users/spwang/Documents/Quant/kaggle_quantum/autoresearch/workspaces/EXP-20261104T150202Z-19a9bc/source/build.py", line 110, in main
+    rewrite = find_rewrite(lines)
+              ^^^^^^^^^^^^^^^^^^^
+  File "/Users/spwang/Documents/Quant/kaggle_quantum/autoresearch/workspaces/EXP-20261104T150202Z-19a9bc/source/anf_merge.py", line 432, in find_rewrite
+    raise NoCertifiedRewrite(json.dumps(stats, sort_keys=True))
+anf_merge.NoCertifiedRewrite: {"anf_limited_first_sites": 0, "first_ccx_sites": 1183, "next_same_target_pairs": 43, "phase_free_runs": 1224, "proof_failures": 0, "shared_affine_matches": 0}

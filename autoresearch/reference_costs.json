@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "description": "Pinned local full-verifier reference costs, not hosted leaderboard results.",
+  "tasks": {
+    "invsqrt": {
+      "cost": 2076774.233715282,
+      "result": "runs/reference_full/invsqrt.json",
+      "artifact_sha256": "e2bf8eb64350a4460a271fc7f1d591ef125b1e276377e9a0f64b96ab3ca321e1"
+    },
+    "dqi": {
+      "cost": 24439473606856.586,
+      "result": "runs/linear_seed_tuned_full/dqi.json",
+      "artifact_sha256": "959471d05a26373b4f14ca0cae2d8639ea25f18170d9f6532139aa51ccc04995"
+    },
+    "dfthcsos": {
+      "cost": 3355599588.3155365,
+      "result": "runs/baseline/dfthcsos.json",
+      "submission_sha256": "276d464ff14da828b6b33e8487d99975494cbdf0c3cb2bd37dd3c3ddc4002695"
+    }
+  }
+}

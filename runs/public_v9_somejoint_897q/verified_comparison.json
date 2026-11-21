@@ -1,0 +1,36 @@
+{
+  "status": "PASS",
+  "basis": "Full official-default local verifier costs; geometric mean of reference/candidate cost ratios. Not a hosted Kaggle score.",
+  "reference_costs": {
+    "invsqrt": 2076774.233715282,
+    "dqi": 24439463583672.93,
+    "dfthcsos": 3355599588.3155365
+  },
+  "tasks": {
+    "invsqrt": {
+      "v8_cost": 102664.23041910287,
+      "new_cost": 102349.2360480486,
+      "cost_reduction_percent": 0.30681997982001663,
+      "cost_ratio_v8_over_new": 1.0030776426206678,
+      "new_evidence": "runs/20261029T032923204702Z/invsqrt.json"
+    },
+    "dqi": {
+      "v8_cost": 422346115188.9339,
+      "new_cost": 412943252615.63153,
+      "cost_reduction_percent": 2.226340490688794,
+      "cost_ratio_v8_over_new": 1.0227703504385737,
+      "new_evidence": "runs/20261029T033742262025Z/dqi.json"
+    },
+    "dfthcsos": {
+      "v8_cost": 349339717.3328993,
+      "new_cost": 341880855.4426008,
+      "cost_reduction_percent": 2.135131369328569,
+      "cost_ratio_v8_over_new": 1.021817138256081,
+      "new_evidence": "runs/20261029T032916049207Z/dfthcsos.json"
+    }
+  },
+  "v8_local_geometric_mean": 22.40294717461127,
+  "new_local_geometric_mean": 22.757983370388523,
+  "geometric_mean_improvement_percent": 1.5847745076130293,
+  "all_task_costs_improved": true
+}

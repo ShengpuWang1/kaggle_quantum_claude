@@ -1,0 +1,1171 @@
+=== PDF PAGE 1 ===
+Trading T gates for dirty qubits in state preparation
+and unitary synthesis
+Guang Hao Low 1,2, Vadym Kliuchnikov 1,2, and Luke Schaeffer 1,3,4
+1Quantum Architectures and Computation, Microsoft Research, Washington, Redmond, USA
+2Azure Quantum, Microsoft, Washington, Redmond, USA
+3Department of Electrical Engineering and Computer Science, Massachusetts Institute of Technology, Cambridge, Mas-
+sachusetts, USA
+4Joint Center for Quantum Information and Computer Science, University of Maryland, Maryland, College Park, USA
+2024-06-11
+Efficient synthesis of arbitrary quantum states and unitaries from a universal fault-
+tolerant gate-set e.g. Clifford+ T is a key subroutine in quantum computation. As large
+quantum algorithms feature many qubits that encode coherent quantum information
+but remain idle for parts of the computation, these should be used if it minimizes
+overall gate counts, especially that of the expensive T-gates. We present a quantum
+algorithm for preparing any dimension-N pure quantum state specified by a list of N
+classical numbers, that realizes a trade-off between space and T-gates. Our scheme
+usesO(log (N/ϵ)) clean qubits and a tunable number of ∼ (λ log (logNϵ )) dirty qubits,
+to reduce the T-gate cost to O(Nλ +λ log Nϵ log logNϵ ). This trade-off is optimal up
+to logarithmic factors, proven through an unconditional gate counting lower bound,
+and is, in the best case, a quadratic improvement in T-count over prior ancillary-free
+approaches. We prove similar statements for unitary synthesis by reduction to state
+preparation. Underlying our constructions is a T–efficient circuit implementation of a
+quantum oracle for arbitrary classical data.
+Contents
+1 Introduction 2
+2 Data-lookup oracle by a SelectSwap network 3
+3 Arbitrary quantum state preparation 5
+4 Unitary synthesis by state preparation 6
+5 Lower bound 6
+6 Conclusion 7
+7 Developments after 2018 release of preprint 8
+A Purified density matrix preparation 10
+B Data-lookup oracle implementation details 11
+C Indicator Function Construction 15
+D Pure-state preparation implementation details 16
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 1
+arXiv:1812.00954v2  [quant-ph]  11 Jun 2024
+
+=== PDF PAGE 2 ===
+Output Qubits T count T Depth Validλ
+|ψ⟩
+[12] logN N log Nϵ N log Nϵ –
+[15] logN +λ N log Nϵ NlogN+λ log Nϵ + logN log Nϵ O( NlogN log logN )∪ Ω(N)
+Here logN +λ λ log Nϵ +Nλ log 1ϵ′ Nλ log 1ϵ′ + logN log λϵ′ [log 1ϵ′,N log 1ϵ′ ]
+U
+[12] logN N2 log Nϵ N2 log Nϵ –
+[15] logN +λ N2 log Nϵ N 2logN+λ log Nϵ +N logN log Nϵ O( NlogN log logN )∪ Ω(N)
+Here logN +λ λK log Nϵ +KNλ log Kϵ′ KNλ log Kϵ′ +K logN log Kλϵ′ [log Kϵ′,N log Kϵ′ ]
+|ψgb⟩ [8] logN + log 1ϵ log Nϵ +N N + log 1ϵ –Here logN +λ log 1ϵ λ log Nϵ +Nλ Nλ + logλϵ [1,N ]
+Table 1: Big- O(·) cost of preparing to error ϵ a dimension N arbitrary quantum state |ψ⟩ Eq. (2), quantum
+state with garbage |ψgb⟩ Eq. (4), and an N×N unitaryU Eq. (3) where K≤N columns are fully specified.
+Above, ϵ′ = ϵlogN , and we have rescaled λb→λ where appropriate to facilitate comparison.
+1 Introduction
+Many quantum algorithms require coherent access to classical data, that is, data that can be
+queried in superposition through a unitary quantum operation. This property is crucial in obtaining
+quantum speedups for applications such as machine learning [1], simulation of physical systems [2, 3]
+and solving systems of linear equations [4, 5].
+The nature of quantum-encoded classical data is itself varied. For example, quantum data
+regression [6] queries a classical list of N data-points ax through a unitary data-lookup oracle [7]
+O|x⟩|0⟩ =|x⟩|ax⟩. (1)
+Other applications, particularly in quantum chemistry [8] instead access Hamiltonian coefficient
+data through a unitary A|0⟩ =|ψ⟩ that prepares these numbers as amplitudes in a normalized
+quantum state, or as probabilities in a purified density matrix. Even more generally, the central
+challenge is synthesizing some arbitrary unitary A∈ CN×N of which k≤ N columns are either
+partially or completely specified by a list of complex coefficients that is, say, provided on paper.
+Synthesis of these data-access unitaries is typically a dominant factor in the overall algorithm
+cost. In any scalable approach to quantum computation, all unitaries decompose into a universal
+fault-tolerant quantum gate set, such as Clifford gates {H, S, Cnot} and T gates [9]. Solovay and
+Kitaev [9] were the first to recognize that any single-qubit unitary could be ϵ-approximated using
+O(logc (1/ϵ)) fault-tolerant gates for c = 3.97, which was later improved to c = 1 [10, 11]. By
+bootstrapping these results, it is well-known that a roughly equal number of O(kN log (N/ϵ)) [12]
+Clifford and non-Clifford gates suffice for arbitrary dimensions. Notably, the total gate count
+scaling is optimal in all parameters, following gate-counting arguments [13].
+The possibility that T gates could be substantially fewer in number than the Clifford gates,
+however, is not excluded by known lower bounds. It is believed that fault-tolerant Clifford gates
+{H, S, Cnot} will be cheap in most practical implementations of fault-tolerant quantum compu-
+tation. In contrast, the equivalent cost of each fault-tolerant non-Clifford T gates, implemented
+at machine precision, is placed at a space-time volume ≈ (225 logical qubits)× (10 Clifford depth)
+for realistic estimates [14] based on |T⟩ magic-state distillation at a physical error rate of ≈ 10−3.
+We present an approach to arbitrary quantum state preparation and unitary synthesis that
+focuses on minimizing the T count. Unique to our approach is the exploitation of a variable number
+O(λ log (1/ϵ)) of ancillary qubits, in a manner not considered by prior gate-counting arguments or
+algorithms. We find aO(λ) improvement in theT count and circuit depth while keeping the Clifford
+count unchanged, excluding logarithmic factors. Most surprisingly, its benefit far exceeds the na ¨ ıve
+approach of applying these ancillary qubits to producing |T⟩ magic-states for any λ =O(
+√
+N), as
+seen in Table 1. In the best-case, the T count of ˜O(√N) is a square-root factor smaller than prior
+art, such as for for preparing arbitrary pure states
+|ψ⟩ =
+N−1∑
+x=0
+ax
+∥⃗ a∥2
+|x⟩, ∥⃗ a∥q =
+(N−1∑
+j=0
+|ax|q
+)1/q
+, (2)
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 2
+
+=== PDF PAGE 3 ===
+Operation Qubits T count≤· +O(log·) T DepthO(·)
+Select b + 2⌈log2N⌉ 4N N
+Swap bN +⌈log2N⌉ 8bN logN
+SelSwap bλ + 2⌈log2N⌉ 4⌈Nλ⌉ + 8bλ Nλ + logλ
+Fig. 1d b(λ + 1) + 2⌈log2N⌉ 8⌈Nλ⌉ + 32bλ Nλ + logλ
+Table 2: Upper bounds on cost of possible implementations of the data lookup oracle O of Eq. (5). See Appen-
+dices B.1, B.2 and C for other variations, such as a linear-depth phase-incorrect version of Swap using≤ 4bN
+T gates and no additional ancillary qubits. Our results allow for a space-depth trade-off determined by a choice
+of λ∈ [1,N ], with a minimized T gate complexity of O(
+√
+bN ) by choosing λ =O(
+√
+N/b). Note that bλ
+qubits of the Fig. 1d implementation may be dirty.
+Moreover, we prove this approach realizes an optimal ancillary qubit and T count trade-off up to
+log factors.
+In particular, our approach is always advantageous as all but a logarithmic numberO(log (N/ϵ))
+of qubits, independent ofλ, may be dirty, meaning that they start in, and are returned to the same
+undetermined initial state. At first glance, the full quadratic speedup is not always desirable as
+any clean ancillary qubit, initialized in the |0⟩ state, is a resource that may be better allocated to
+magic-state distillation. However, dirty qubits may not be used for magic-state distillation, and
+are a resource typically abundant in many algorithms, such as quantum simulation by a linear
+combination of unitaries [2]. Even in the most pessimistic scenario where no dirty qubits are
+available, a reduction in the overall execution time of the algorithm, including the effective cost of
+magic-state distillation, is possible.
+We also consider applications of our approach. For instance, a similar speedup to unitary
+synthesis
+U =
+( K∑
+k=0
+|uk⟩⟨k|
+)
++··· , (3)
+where K ≤ N columns are specified, follows by a well-known reduction based on Householder
+reflections. Improvements to state preparation with garbage
+|ψgb⟩ =
+N−1∑
+x=0
+√ ax
+∥⃗ a∥1
+|x⟩|garbagex⟩. (4)
+relevant to the most advanced quantum simulation techniques [16, 17, 8] are also presented in Ap-
+pendix A.
+Underlying our T gate scaling results is an improved implementation of a data-lookup oracle
+O|x⟩|0⟩|0⟩ =|x⟩|ax⟩|garbagex⟩. (5)
+Note the attached garbage state may always be uncomputed by applying O in reverse. We begin
+by describing our implementation of Eq. (5), which we call a ‘ SelectSwap’ network, with costs
+outlined in Table 2 Subsequently, we apply SelectSwap to the state preparation problem using
+the fact that there exists classical data such that preparing any |ψ⟩ requires onlyO(polylog(N))
+queries and additional primitive quantum gates [18]. The reduction of unitary synthesis to state
+preparation is then described. Finally, we prove optimality of our approach through matching
+lower bounds, and discuss the results.
+2 Data-lookup oracle by a SelectSwap network
+The unitary data-lookup oracle of Eq. (5) accepts an input number state |x⟩∈ CN where x∈
+{0, 1,··· ,N − 1} ≡[N], and returns an arbitrary b-bit number ax ∈ {0, 1}b. Our approach
+combines a multiplexer implementation of O [20], called Select and a unitary swap network
+Swap, with costs summarized in Table 2.
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 3
+
+=== PDF PAGE 4 ===
+a) b)
+|x⟩
+|0⟩
+|0⟩⊗b Select
+=
+X a0 X a1 X a2 X a3
+|x⟩
+|0⟩
+|ax⟩
+|x⟩
+|φ0⟩0
+|φ1⟩1
+|φ2⟩2
+|φ3⟩3
+Swap
+=
+|x⟩
+|φx⟩0
+c) d)
+|x⟩
+|0⟩
+|0⟩⊗bλ
+Xa0
+Xa1
+Xa2
+Xa3
+Xa4
+Xa5
+Xa6
+Xa7
+Xa8
+Xa9
+Xa10
+Xa11
+Xa12
+Xa13
+Xa14
+Xa15
+|x⟩
+|0⟩
+|ax⟩
+Select Swap
+|q⟩
+|r⟩
+|0⟩
+...|φ⟩
+b
+b
+b
+Select
+Swap
+Swap†
+Select†
+Swap
+Swap†
+|q⟩
+|r⟩
+|aqλ+r⟩
+... |φ⟩
+Figure 1: (a) Example Select operator
+∑N−1
+x=0|x⟩⟨x|⊗ Xax with N = 4. The symbol ⊘ indicates control by
+a number state. A naive decomposition of all multiply-controlled- Nots requiresO(N logN ) Clifford+T gates
+and only one dirty qubit [19]. Cancellation of adjacent gates can reduce this to only O(N ) [20, 8], but by
+using additional⌈log2N⌉ clean qubits. (b) Example Swap network withN = 4 usingO(bN ) Clifford+T. Any
+arbitrary state|ϕx⟩x in register index x is swapped to the x = 0 position. (c) The SelectSwap network with
+N = 16,λ = 4 that combines the above two approaches. (d) Modification of SelectSwap network that uses
+2⌈log2N⌉ +b clean qubits and bλ dirty qubits to implement the data-lookup oracle of Eq. (5) without garbage.
+We omit the Select ancillary qubits for clarity.
+The Select operator applies some arbitrary unitary Ux controlled by the index state|x⟩, that
+is
+Select =
+N−1∑
+x=0
+|x⟩⟨x|⊗ Ux. (6)
+Thus O is realized by choosing Ux = Xax≡⊗ b−1j=0Xax,j [8] to either be identity or the Pauli- X
+gate depending on the bit string ax. As described in Fig. 1a, the costs, excluding {Ux}, isO(N)
+Clifford+T gates. As controlled-X is Clifford too, an additional O(bN) Clifford gates are applied.
+These Cnots may be applied in logarithmic depth using an ancillary qubit free quantum fanout
+discussed in Appendix B.1.
+The unitary Swap network moves ab-qubit quantum register indexed byx to thex = 0 register,
+controlled by the state|x⟩. For any quantum states ⨂N−1x=0|ϕx⟩x,
+Swap
+[
+|x⟩
+N−1⨂
+x=0
+|ϕx⟩x
+]
+=|x⟩|ϕx⟩0⊗··· , (7)
+where the remaining quantum states (··· ) in registers x> 0 are unimportant.
+As illustrated in Fig. 1b, this decomposes into a network of controlled-swap operators. As
+each controlled-swap operator decomposes into two Cnots and one Toffoli, this network uses
+O(bN) Clifford+T gates. An ancillary qubit free logarithmic-depth version of Swap is discussed
+in Appendix B.2
+Our SelectSwap network illustrated in Fig. 1c is a simple hybrid of the above two schemes.
+Similar to the Swap approach, we duplicate the b-bit register λ times, where λ∈{ 1,··· ,N} is an
+integer. For λ that is not a power of 2, we compute|x⟩→| q⟩|r⟩, which is the quotient q =x/⌊λ⌋
+and remainder r = x mod λ. This contributes an additive cost of O(logN logλ) gates. Select
+is controlled by|q⟩ to write multiple values of ax simultaneously into these duplicated registers by
+choosingUx =⨂λ−1j=0 XaxN/λ+j , wherex∈ [⌊N/λ⌋]. Swap is then controlled|r⟩ to move the desired
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 4
+
+=== PDF PAGE 5 ===
+data entry|ax⟩ to the output register. As the T gate complexity ofO(λb + Nλ ) is determined only
+by the dimension of the Select and Swap control registers, this is minimized with valueO(
+√
+Nb)
+at λ =O(
+√
+N/b).
+Importantly, all but b +⌈log2N⌉ of the qubits may be made dirty using a simple modification
+shown in Fig. 1d. Then for any computational basis state |ϕ⟩ =⊗λ−1r=0|ϕr⟩r, and any input state
+|x⟩ =|q⟩|r⟩, let us evaluate|0⟩|ϕ⟩ at each dotted line:
+|0⟩|ϕ⟩→| 0⟩|ϕr⊕ax⟩0···→| ϕr⊕ax⟩|ϕr⊕ax⟩0···
+→|ϕr⊕ax⟩|ϕ⟩→| ϕr⊕ax⟩|ϕr⟩0···
+→|ax⟩|ϕr⟩0···→| ax⟩|ϕ⟩ (8)
+By linearity, this is true for all quantum states |ϕ⟩.
+As the T gate complexity begins to increase with sufficiently largeλ, one may simply elect to not
+use excess available dirty qubits. However, continued reduction of the T depth down toO(logN)
+might be a useful property. In Appendix C we discuss an alternate construction that achieves
+logarithmic T depth and preserves the quadratic T count improvement for larger λ = Ω(
+√
+N).
+3 Arbitrary quantum state preparation
+Preparation of an arbitrary dimensionN = 2n quantum state|ψ⟩ = 1∥⃗ a∥2∑x∈{0,1}nax|x⟩ using the
+data-lookup oracle O of Eq. (5) is well-known in prior art. The basic idea was introduced by [21],
+and an ancillary-free implementation was presented in [12]. We outline the inductive argument
+of [18], and evaluate its cost using our SelectSwap implementation of O.
+For any bit-stringy∈{ 0, 1}w of length w≤n, let the probability that the first w qubits of|ψ⟩
+are in state |y⟩ be py = 1∥⃗ a∥22∑prefixw(x)=y|ax|2. Thus a single-qubit rotation e−iYθ|0⟩ by angle
+θ = cos−1√p0 prepares the state|ψ1⟩ =√p0|0⟩ +√p1|1⟩, where p0 is the probability that the first
+qubit of|ψ⟩ is in state|0⟩. We then recursively apply single-qubit rotations on the (w + 1)th qubit
+conditioned on the first w qubits being in state |y⟩. The rotation angles θy = cos−1√py0/py are
+chosen so that the state produced |ψw+1⟩ reproduces the correct probabilities on the first w + 1
+qubits.
+These conditional rotations are implemented using a sequence of data-lookup oraclesO1,··· ,On−1,
+where Ow stores a b-bit approximation of all θy where y∈{ 0, 1}w. At the wth iteration,
+|ψw⟩ =
+∑
+y∈{0,1}w
+√py|y⟩↦→Ow ∑y∈{0,1}w√py|y⟩|θy⟩
+↦→
+∑
+y∈{0,1}w
+√py|y⟩(√py0py|0⟩ +√py1py|1⟩)|θy⟩
+↦→
+O†w
+∑
+y∈{0,1}w+1
+√py|y⟩ =|ψw+1⟩. (9)
+Note that we omit any garbage registers as they are always uncomputed. Also, the second line
+is implemented using b single-qubit rotations each controlled by a bit of θy. The complex phases
+of the target state |ψ⟩ are applied to |ψn⟩ by a final step with a data-lookup oracle storing ϕx =
+arg [ax/√px]. ThusO(b logN) single-qubit rotations are applied in total.
+We implement these oracles with the SelectSwap network of Fig. 1, using a fixed value of
+λ for all Ok. A straightforward sum over the T count of Fig. 1 is O(bλ log (N) + Nλ ), which is
+then added to the total T count ofO(b log (Nδ )) for synthesizing all single-qubit rotations each to
+errorδ using the phase gradient technique [22], outlined in Appendix D. The error of the resulting
+state|ψ′⟩ produced is determined by the number of bits b used to represent the rotation angles, in
+addition to rotation synthesis errors δ. Adding these errors leads to
+∥|ψ′⟩−| ψ⟩∥ = O(δ)/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+rotation synthesis
++O(2−b logN)/bracehtipupleft /bracehtipdownright/bracehtipdownleft /bracehtipupright
+bits of precision
+≤ϵ, (10)
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 5
+
+=== PDF PAGE 6 ===
+N=102
+N=104
+N=106
+N=108
+10 100 1000 104 105
+104
+106
+108
+1010
+Dirty qubits
+T gate count
+Figure 2: T gate count dependence on number of dirty qubits exploited for approximating an arbitrary quantum
+state of dimension N = 10{2,4,6,8} to error 10−3 using our algorithm (dots) in comparison with the standard
+ancillary-free approach (dashed) [12]. Note that at this error, b≥ 17 qubits are required to represent each
+coefficient in binary, but this may be halved by randomization techniques [23]. Moreover, one may always use
+fewer than the maximum number of available dirty qubits.
+which is bounded by ϵ with the choice b = Θ(log ( logNϵ )) and δ = Θ(ϵ). As a function of ϵ, the
+total T gate complexity is thenO
+(N
+λ +b(λn +b)
+)
+, where
+b(λn +b) =O
+(
+λ log
+(N
+ϵ
+)
+log
+(logN
+ϵ
+))
+(11)
+=O
+(
+λ log2
+(N
+ϵ
+))
+, (12)
+and is plotted in Fig. 2.
+4 Unitary synthesis by state preparation
+The ability to prepare arbitrary quantum states enables synthesis of arbitrary unitariesU∈ CN×N .
+Given the matrix elements {|uk⟩| k∈ [K]} for the first K columns of U , the isometry synthesis
+problem is to find a quantum circuit that implements a unitary V that approximatesU in the first
+K columns to error∥U−V∥2,K = maxx<K∥(U−V )|x⟩∥≤ ϵ.
+We use the Householder reflections decomposition [24] to find a V that is a product of K
+reflections I− 2|vk⟩⟨vk| and a diagonal gate diag(eiϕ′1,...,e iϕ′K, 1,..., 1), for some set of quantum
+states|vk⟩. Note that this representation is not unique. The diagonal gate can be eliminated
+by using one ancillary qubit as discussed in [25]. There, it suffices to implement the unitary
+W =|0⟩⟨1|⊗ U +|1⟩⟨0|⊗ U†, which is equal to the product of reflections I− 2|wk⟩⟨wk| where
+|wk⟩ = (|1⟩⊗| k⟩−| 0⟩⊗| uk⟩)/
+√
+2 for k∈ [K].
+Given a state preparation unitary Ak|0⟩ = |uk⟩, one can prepare state |wk⟩ starting from
+|0⟩⊗| e1⟩. Apply Hadamard to the first qubit, then a sequence of CNOT gates to prepare |1⟩⊗
+|k⟩ +|0⟩⊗| 0⟩, and finally apply controlled-Ak negatively controlled on the first qubit. Note that
+when this method is applied to the synthesis of sparse isometries, the states being synthesized
+are again sparse. Moreover, the cost of converting a state into a reflection doubles the number of
+non-Clifford gates. Thus the number of T gates used to synthesize an isometry is twice that for
+all the Controlled-Ak operations, and scales like O
+(
+K
+(
+N
+λ +λ log (Nϵ ) log (K logNϵ ))).
+5 Lower bound
+We prove the optimality of our construction through a circuit counting argument. The most general
+circuit on q qubits that uses Γ T-gates has the canonical form [26] C·∏Γj=1e−iπPj/8,where each
+Pj is one of 4q possible Pauli operators, and C is one of 2O(q2) possible Clifford operators. Thus
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 6
+
+=== PDF PAGE 7 ===
+the number of unique quantum circuits is at most
+Unique quantum circuits =O(4qΓ+O(q2)). (13)
+A lower bound on the qubit and T-gate complexity of the data-lookup oracle of Eq. (5) is
+obtained by counting the number of unique Boolean functions f : [N]→{ 0, 1}b. As there 2bN
+such functions, we compare with Eq. (13). This leads to a lower bound on the space-T gate product
+qΓ = Ω(bN−q2). (14)
+As the SelectSwap complexity in Fig. 1 is qΓ = O(λ2b2 +bN + log (N)(1/λ +λb)), this is
+optimal up to logarithmic factors so long as the number of T-gates dominates the qubit count like
+λ =o(
+√
+N/b), which is the case in most quantum circuits of interest.
+A similar lower bound on state preparation is obtained by counting the number of dimension-
+N quantum states that a distinguishable with error ϵ. Without loss of generality, we only count
+quantum states|ψ⟩∈ RN with real coefficients. These states live on the surface a unit-ball BN
+of dimension N , with area Area[BN] = 2πN/2(N/2−1)! . Let us now fix a state |ψ⟩. Then the states
+|χ⟩ that satisfy ∥|ψ⟩−| χ⟩∥ ≤ϵ live inside a ϵ-ball BN−1 with volume O(Vol[BN−1]ϵN−1) =
+O( πN/2(N/2)!ϵN−1) [27]. Thus there are at least Ω( Area[BN]Vol[BN−1]ϵN−1 ) = Ω(√Nϵ−N+1) quantum states.
+Once again by comparing with Eq. (13), we obtain a T -gate lower bound of
+qΓ = Ω(N log (1/ϵ)−q2). (15)
+This also matches the cost of our approach in Eq. (13) up to logarithmic factors, so long as
+λ = o(
+√
+N/ log (1/ϵ)). The total number of isometries within at least distance ϵ from each other
+can also be estimated using Lemma 4.3 on Page 14 in [28], and is roughly Ω((1/ϵ)KN ). An
+analogous argument can be made for state preparation with garbage by considering by considering
+the unit simplex instead of the unit ball.
+Let us now establish a lower bound on state preparation that holds when measurements and
+arbitrary number of ancillae are used. For the purpose of the lower bound we also allow the
+use of post-selected measurements of multiple-qubit Pauli observables. Every preparation of an
+n-qubit state by Clifford+T circuit with ancillae and post-selected Pauli measurements can be
+rewritten [29] as the following sequence of operations: 1) initialization of Γ qubits into T state
+|0⟩ +eiπ/4|1⟩; 2) post-selected measurement of Γ−n commuting Pauli observables; 3) application
+of a Clifford unitary on Γ qubits. After the three steps first Γ−n qubits are in a zero state and
+last n qubits are in the state being prepared. Let us count the number of distinct states that
+can be prepared by the steps described above. For the step two, there are at most 2· 4Γ ways of
+choosing first Pauli observable and at most 4Γ ways of choosing each of the remaining Γ−n− 1
+observables because each of them needs to commute with the first observable. Therefore, on step
+two we have at most2·4Γ(Γ−n) choices of Pauli observables. For the step three, two distinct Clifford
+unitaries can lead to preparing the same state and counting total number of Clifford unitaries on
+Γ qubits leads to an overestimate. The prepared |ψ⟩ state is completely described by 4n numbers
+αP = Tr(P|ψ⟩⟨ψ|) where P goes over all n-qubit Pauli matrices{I,X,Y,Z }⊗n. Let us count how
+many distinct 4n dimensional vectors of αP we can get on the step three by applying different
+Clifford unitaries C. Let ρ′ be a density matrix describing a state of all qubits after step two, then
+αP = Tr(Cρ′C†(IΓ−n⊗P )) which is equal to Tr(ρ′C†(IΓ−n⊗P )C). We see that the vector of αP
+is uniquely defined by action ofC on 2n Pauli operatorsZΓ−n+k,XΓ−n+k fork from 1 ton. There
+are at most 2· 42Γn ways of choosing the action of C on the listed Pauli operators. Therefore we
+can prepare at most 4· 4Γ(Γ+n) distinct states. This leads to the lower bound on the number of
+required T gates Ω
+(√
+N logN log(1/ϵ)
+)
+.
+6 Conclusion
+We have shown that arbitrary quantum states with N coefficients, or unitaries with KN values
+specified by classical data may be synthesized with a T gate complexity that is an optimal ˜O(√N)
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 7
+
+=== PDF PAGE 8 ===
+reduction over prior art. As these subroutines are ubiquitous in many quantum algorithms we
+expect this result to be widely applicable.
+We also expect our approach to be practical due to its almost exclusive usage of dirty qubits,
+which are typically abundant in larger quantum algorithms. Though our results are asymptoti-
+cally optimal, constant factor and logarithmic improvements in costs could still be possible through
+careful optimization [30, 31]. For instance, our approach can be modified to use only O(1) ad-
+ditional clean qubits, but this increases the T count by a logarithmic factor. As more limited
+trade-offs between T gates and ancillary qubits are observed in other quantum circuits, such as for
+addition [22] or And [19], a major open question highly relevant to implementation in nearer-term
+quantum computers, is whether such a property could be generic for many other quantum circuits
+and algorithms.
+6.1 Acknowledgements
+We thank Nicolas Delfosse, Jeongwan Haah, Robin Kothari, Jessica Lemieux, Martin Roetteler,
+and Matthias Troyer for insightful discussions.
+7 Developments after 2018 release of preprint
+There have been numerous improvements in trade–offs [15] between qubits, depth, and overall
+spacetime volume [32] of quantum circuits for state preparation and unitary synthesis [15], espe-
+cially in connection to the block-encoding framework [16, 33] for matrices represented by classical
+data [34]. A notable new direction is error-resilient table-lookup [35], which achieves logarithmic
+error scaling by using a large number of O(N) qubits. However, minimizing use of expensive
+non-Clifford gates is rarely a priority in these results, and almost all exhibit the same scaling for
+number of Clifford and non-Clifford gates. We have updated Table 1 with a comparison to recent
+work [15] that claims an optimal qubit–depth trade–off. To facilitate comparison, we rescale λ and
+we use the tighter bound Eq. (11) on the T gate cost that was originally Eq. (12).
+Our SelectSwap architecture of table lookup remains state-of-art. To date, all methods with
+an asymptotic advantage in non-Clifford gate cost for state preparation or unitary synthesis [34]
+do so by reduction to SelectSwap. The circuit implementation of SelectSwap has also seen
+some optimizations. By allowing intermediate circuit measurements, the multi-target Cnotn gates
+in Appendix B.1 can be implemented in constant, rather than logartihimic depth, though at the
+cost of using an additionalO(n) clean qubits. Intermediate measurements also enable uncomputing
+the garbage register Eq. (5) of SelectSwap using 4⌈Nλ⌉ + 4λ T gates and λ +⌈log (N/λ)⌉ clean
+qubits, which is independent of b [36].
+The T count reductions enabled by SelectSwap have been key to numerous state-of-art
+resource estimates for quantum computing applications, such as in chemistry [36, 37, 38, 39], and
+other classical-data-intense routines [40, 34].
+References
+[1] Seth Lloyd, Masoud Mohseni, and Patrick Rebentrost. “Quantum principal component anal-
+ysis”. Nature Physics 10, 631–633 (2014).
+[2] Dominic W. Berry, Andrew M. Childs, Richard Cleve, Robin Kothari, and Rolando D. Somma.
+“Simulating Hamiltonian dynamics with a truncated Taylor series”. Physical Review Letters
+114, 090502 (2015).
+[3] Guang Hao Low and Isaac L. Chuang. “Optimal Hamiltonian simulation by quantum signal
+processing”. Physical Review Letters 118, 010501 (2017).
+[4] Aram W. Harrow, Avinatan Hassidim, and Seth Lloyd. “Quantum algorithm for linear systems
+of equations”. Physical Review Letters 103, 150502 (2009).
+[5] Chunhao Wang and Leonard Wossnig. “A quantum algorithm for simulating non-sparse Hamil-
+tonians”. Quantum Information & Computation 20, 597–615 (2020).
+[6] Nathan Wiebe, Daniel Braun, and Seth Lloyd. “Quantum algorithm for data fitting”. Physical
+Review Letters 109, 050505 (2012).
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 8
+
+=== PDF PAGE 9 ===
+[7] Dorit Aharonov and Amnon Ta-Shma. “Adiabatic quantum state generation and statistical
+zero knowledge”. Proceedings of the thirty-fifth ACM symposium on Theory of computing-
+Page 20 (2003).
+[8] Ryan Babbush, Craig Gidney, Dominic W. Berry, Nathan Wiebe, Jarrod McClean, Alexandru
+Paler, Austin Fowler, and Hartmut Neven. “Encoding electronic spectra in quantum circuits
+with linear T complexity”. Physical Review X 8, 041015 (2018).
+[9] Michael A. Nielsen and Isaac L. Chuang. “Quantum computation and quantum information”.
+Cambridge University Press. (2010). 10th anniversary edition.
+[10] Vadym Kliuchnikov, Dmitri Maslov, and Michele Mosca. “Fast and efficient exact synthe-
+sis of single-qubit unitaries generated by Clifford and T gates”. Quantum Information &
+Computation 13, 607–630 (2013).
+[11] Neil J Ross and Peter Selinger. “Optimal ancilla-free Clifford+T approximation of Z-
+rotations”. Quantum Information & Computation 16, 901–953 (2016).
+[12] V. V. Shende, S. S. Bullock, and I. L. Markov. “Synthesis of quantum-logic circuits”.
+IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems 25, 1000–
+1010 (2006).
+[13] Aram W. Harrow, Benjamin Recht, and Isaac L. Chuang. “Efficient discrete approximations
+of quantum gates”. Journal of Mathematical Physics 43, 4445–4451 (2002).
+[14] Daniel Litinski. “A game of surface codes: large-scale quantum computing with lattice
+surgery”. Quantum 3, 128 (2019).
+[15] Xiaoming Sun, Guojing Tian, Shuai Yang, Pei Yuan, and Shengyu Zhang. “Asymptoti-
+cally optimal circuit depth for quantum state preparation and general unitary synthesis”.
+IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems 42, 3301–
+3314 (2023).
+[16] Guang Hao Low and Isaac L. Chuang. “Hamiltonian simulation by qubitization”. Quantum
+3, 163 (2019).
+[17] Guang Hao Low and Isaac L. Chuang. “Hamiltonian simulation by uniform spectral amplifi-
+cation” (2017). arXiv:1707.05391.
+[18] Scott Aaronson. “The complexity of quantum states and transformations: From quantum
+money to black holes” (2016). arXiv:1607.05256.
+[19] Adriano Barenco, Charles H. Bennett, Richard Cleve, David P. DiVincenzo, Norman Margo-
+lus, Peter Shor, Tycho Sleator, John A. Smolin, and Harald Weinfurter. “Elementary gates
+for quantum computation”. Physical Review A 52, 3457–3467 (1995).
+[20] Andrew M. Childs, Dmitri Maslov, Yunseong Nam, Neil J. Ross, and Yuan Su. “Toward the
+first quantum simulation with quantum speedup”. Proceedings of the National Academy of
+Sciences 115, 9456–9461 (2018).
+[21] Lov Grover and Terry Rudolph. “Creating superpositions that correspond to efficiently inte-
+grable probability distributions” (2002). arXiv:quant-ph/0208112.
+[22] Craig Gidney. “Halving the cost of quantum addition”. Quantum 2, 74 (2018).
+[23] Guang Hao Low. “Halving the cost of quantum multiplexed rotations” (2021).
+arXiv:2110.13439.
+[24] Alston S. Householder. “Unitary triangularization of a nonsymmetric matrix”. Journal of the
+ACM 5, 339–342 (1958).
+[25] Vadym Kliuchnikov. “Synthesis of unitaries with Clifford+T circuits” (2013). arXiv:1306.3200.
+[26] David Gosset, Vadym Kliuchnikov, Michele Mosca, and Vincent Russo. “An algorithm for
+the T-count”. Quantum Information & Computation 14, 1261–1276 (2014).
+[27] Caterina E. Mora and Hans J. Briegel. “Algorithmic complexity and entanglement of quantum
+states”. Physical Review Letters 95, 200503 (2005).
+[28] E. Knill. “Approximation by quantum circuits” (1995). arXiv:quant-ph/9508006.
+[29] Michael Beverland, Earl Campbell, Mark Howard, and Vadym Kliuchnikov. “Lower bounds
+on the non-clifford resources for quantum computations”. Quantum Science and Technology
+5, 035009 (2020).
+[30] Olivia Di Matteo, Vlad Gheorghiu, and Michele Mosca. “Fault-tolerant resource estimation
+of quantum random-access memories”. IEEE Transactions on Quantum Engineering 1, 1–
+13 (2020).
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 9
+
+=== PDF PAGE 10 ===
+[31] Thomas H¨ aner, Vadym Kliuchnikov, Martin Roetteler, and Mathias Soeken. “Space-time
+optimized table lookup” (2022). arXiv:2211.01133.
+[32] Kaiwen Gui, Alexander M. Dalzell, Alessandro Achille, Martin Suchara, and Frederic T.
+Chong. “Spacetime-efficient low-depth quantum state preparation with applications”. Quan-
+tum 8, 1257 (2024).
+[33] Shantanav Chakraborty, Andr´ as Gily´ en, and Stacey Jeffery. “The power of block-encoded
+matrix powers: Improved regression techniques via faster Hamiltonian simulation”. 46th
+International Colloquium on Automata, Languages, and Programming132, 33:1–33:14 (2019).
+[34] B. David Clader, Alexander M. Dalzell, Nikitas Stamatopoulos, Grant Salton, Mario Berta,
+and William J. Zeng. “Quantum resources required to block-encode a matrix of classical
+data”. IEEE Transactions on Quantum Engineering 3, 1–23 (2022).
+[35] Connor T. Hann, Gideon Lee, S.M. Girvin, and Liang Jiang. “Resilience of quantum random
+access memory to generic noise”. PRX Quantum 2, 020311 (2021).
+[36] Dominic W. Berry, Craig Gidney, Mario Motta, Jarrod R. McClean, and Ryan Babbush.
+“Qubitization of arbitrary basis quantum chemistry leveraging sparsity and low rank factor-
+ization”. Quantum 3, 208 (2019).
+[37] Vera von Burg, Guang Hao Low, Thomas H¨ aner, Damian S. Steiger, Markus Reiher, Martin
+Roetteler, and Matthias Troyer. “Quantum computing enhanced computational catalysis”.
+Physical Review Research 3, 033055 (2021).
+[38] Joonho Lee, Dominic W. Berry, Craig Gidney, William J. Huggins, Jarrod R. McClean,
+Nathan Wiebe, and Ryan Babbush. “Even more efficient quantum computations of chem-
+istry through tensor hypercontraction”. PRX Quantum 2, 030305 (2021).
+[39] Bela Bauer, Sergey Bravyi, Mario Motta, and Garnet Kin-Lic Chan. “Quantum algorithms
+for quantum chemistry and quantum materials science”. Chemical Reviews 120, 12685–
+12717 (2020).
+[40] Yuval R. Sanders, Dominic W. Berry, Pedro C.S. Costa, Louis W. Tessler, Nathan Wiebe,
+Craig Gidney, Hartmut Neven, and Ryan Babbush. “Compilation of fault-tolerant quantum
+heuristics for combinatorial optimization”. PRX Quantum 1, 020312 (2020).
+[41] Steven A Cuccaro, Thomas G Draper, Samuel A Kutin, and David Petrie Moulton. “A new
+quantum ripple-carry addition circuit” (2004). arXiv:quant-ph/0410184.
+[42] Thomas H¨ aner, Martin Roetteler, and Krysta M Svore. “Factoring using 2n + 2 qubits
+with Toffoli based modular multiplication”. Quantum Information & Computation 17, 673–
+684 (2017).
+[43] Vadym Kliuchnikov, Dmitri Maslov, and Michele Mosca. “Asymptotically optimal approxi-
+mation of single qubit unitaries by Clifford and T circuits using a constant number of ancillary
+qubits”. Physical Review Letters 110, 190502 (2013).
+A Purified density matrix preparation
+In some applications, particular in quantum simulation based on a linear combination of unitaries
+or qubitization [2, 16], it suffices to prepare the density matrix ρ =∑N−1x=0 |ax|∥⃗ a∥1|x⟩⟨x| through a
+quantum state|ψ⟩ =∑N−1x=0 √ ax∥⃗ a∥1|x⟩|garbagex⟩ of Eq. (4) where the number state|x⟩ is entangled
+with some garbage that depends only on x. By allowing garbage, it was shown by [8] that strictly
+linear T gate complexity in N is achievable, using a Select data-lookup oracle corresponding to
+the λ = 1 case of Table 2. We outline the original idea, then generalize the procedure using the
+SelectSwap network, which enables sublinear T gate complexity and better error scaling than
+the garbage-free approach. As density matrices have positive diagonals, we only consider the case
+of positive ax≥ 0.
+The original approach is based on a simple observation. By comparing a b-bit number state
+|a⟩ together with a uniform superposition state |u2b⟩ = 1√2b∑2b−1j=0 |j⟩ over 2b elements,|a⟩ may
+be mapped to
+|a⟩↦→| a⟩
+(√a
+2b|0⟩|ua⟩ +
+√
+2b−a
+2b |1⟩|u≥a⟩
+)
+, (16)
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 10
+
+=== PDF PAGE 11 ===
+where we denote a uniform superposition after the first a elements by|u≥a⟩ =∑2b−1j=a |j⟩√2b−a . This
+may be implemented using quantum addition [41], which costs O(b) Clifford+T gates with depth
+O(b).
+This observation is converted to state-preparation in four steps. First, the normalized co-
+efficients axN2b∥a∥1 ≈ a′x are rounded to nearest integer values such that ∥⃗ a′∥1 = N2b. Second,
+the data-lookup oracle that writes two numbers a′′x ∈ [2b] and f(x) ∈ [N] such that a′x =
+a′′x +∑y∈{f−1(x)}(2b−a′′y). Thus
+O|x⟩|0⟩|0⟩ =|x⟩|a′′x⟩|f(x)⟩, (17)
+where we have omitted the irrelevant garbage state. Third, the oracle O is applied to a uniform
+superposition over|x⟩, and the comparator trick of Eq. (16) is applied. This produces the state
+N−1∑
+x=0
+|x⟩√
+N
+|a′′x⟩|f(x)⟩
+(√
+a′′x
+2b|0⟩|ua′′x⟩ +···| 1⟩|u≥a′′x⟩
+)
+. (18)
+Finally,|f(x)⟩ is swapped with |x⟩, controlled on the |1⟩ state. This leads to a state |ψ⟩ =
+∑N−1
+x=0
+√
+a′x
+∥⃗ a′∥1|x⟩|garbagex⟩. After tracing out the garbage register, the resulting density matrix
+ρ′ approximates the desired state ρ with trace distance
+∥ρ′−ρ∥1 =O(2−b)≤ϵ. (19)
+The T gate complexity is then the cost of the data-lookup oracle of Eq. (17) plus O(b) for the
+comparator of Eq. (16), plus O(logN) for the controlled swap with |f(x)⟩. By implementing this
+data-lookup oracle with the SelectSwap network, one immediately obtains the stated T gate
+complexity ofO(λ(b + logN) + Nλ ) =O(λ log (N/ϵ) + Nλ ), where we choose b =O(log (1/ϵ)).
+B Data-lookup oracle implementation details
+In this section, we present additional details on the implementation of the data-lookup oracle. In
+particular, we discuss a multi-target Cnot implementation in logarithmic depth without ancillary
+qubits in Appendix B.1, and a swap network Swap with similar properties in Appendix B.2. Also
+evaluated is the T count and Clifford depth of these implementations up to constant factors. We
+define the Clifford depth, to be the number of layers of two-qubit Clifford gates that cannot be
+executed in parallel, assuming all-to-all qubit connectivity. We also assume that eachT magic-state
+injection circuit has a Clifford depth of 1.
+B.1 Quantum fanout in logarithmic depth without ancillary qubits
+In this section, we construct a controlled- NOT gate that targets n qubits, that is,
+Cnotn =|0⟩⟨0|⊗ I +|1⟩⟨1|⊗ X⊗n. (20)
+The most straightforward approach appliesn NOT gates in sequence, each controlled by the same
+qubit. A slight modification results in logarithmic depth as shown in Table 3.
+Given any number of n qubits in states |xj⟩ for j = 0, 1,··· ,n− 1, one may use a ladder of
+n− 1 controlled-NOT gates to realize the transformation
+|x0⟩|x1⟩|x2⟩···| xn−1⟩
+→|x0⟩|x0⊕x1⟩|x2⟩···| xn−1⟩
+→|x0⟩|x0⊕x1⟩|x0⊕x1⊕x2⟩···| xn−1⟩
+→|x0⟩|x0⊕x1⟩|x0⊕x1⊕x2⟩···|⊕ n−1j=0 xj⟩. (21)
+Let us call this unitary operation Laddern.
+We now introduce a control qubit |z⟩. One implementation of Cnotn is then obtained by
+applying Ladder†n, followed by a NOT on|x0⟩ controlled by|z⟩, and finally followed by Laddern.
+This has a Clifford depth of 2n− 1 as depicted below for the example n = 4.
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 11
+
+=== PDF PAGE 12 ===
+Approach Clifford Depth (d) Clifford Count
+Volume
+= (n + 1)d
+Linear n n (n + 1)d
+Logarithmic 2⌈log2 (n)⌉ + 1 2n− 1 (n + 1)d
+Eq. (22) ≤ 2⌈log2 (n/2 + 1)⌉ ≤ 2n− 1 (n + 1)d
+Table 3: Different implementations of a controlled- NOT gate Eq. (20) that targets n qubits.
+|z⟩
+|x0⟩
+|x1⟩
+|x2⟩
+|x3⟩
+=
+|z⟩
+|x0⊕ z⟩
+|x1⊕ z⟩
+|x2⊕ z⟩
+|x3⊕ z⟩
+Cnot4 Ladder†4 Ladder4
+By distributing the controls and targets above in a tree-structure as depicted below for the
+example n = 4, the Clifford depth of Cnotn may be reduced to 2⌈log2 (n)⌉ + 1.
+=
+As the control qubit |z⟩ is only used once in the above circuit, a further reduction in depth is
+possible by repeatedly using it to apply additional multi-target Cnot gates in each time-slice. Let
+us denote by g(d) = 2 (d−1)/2 the maximum number of qubits targeted by the above circuit in a
+depth of d. Then the total number of qubits n(d) targeted with this additional reduction satisfies
+the recurrence
+n(1) =g(1), (22)
+n(2) =n(1) +g(1), (23)
+... (24)
+n(d) =n(d− 1) +g(2⌈d/2⌉− 1) =
+{
+(3· 2(d−1)/2− 2), d odd,
+2(2d/2− 1), d even.≥ 2(2d/2− 1)
+Let us denote by D [Cnotn] the depth of this implementation of Cnotn, which satisfies
+D(Cnotn)≤
+⌈
+2 log2
+(n + 2
+2
+)⌉
+. (25)
+B.2 Implementations of a Swap network
+In this section, we detail various implementations of the unitary swap network Swap that moves
+an b-qubit quantum register indexed by x∈{ 0,··· ,N − 1} to the position of the x = 0 register,
+controlled by an index state|x⟩. More precisely, for any set of quantum states ⨂N−1x=0|ϕx⟩x in the
+b-qubit register indexed by x,
+Swap
+[
+|x⟩
+N−1⨂
+x=0
+|ϕx⟩x
+]
+=|x⟩|ϕx⟩0··· , (26)
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 12
+
+=== PDF PAGE 13 ===
+Approach Clifford Depth (dc) T count T depth (dt) Volume = (2n + 1)(dc +dt)
+Linear 4n + 4 7n 4 8n2 +O(n)
+Logarithmic 4D[Cnot⌈n/2⌉] + 2 14n 8 ≤ 8n(
+⌈
+2 log2
+(n+2
+2
+)⌉
++ 2.5) +O(logn)
+Phase incorrect D[Cnotn] + 4 4n 4 ≤ 2n(
+⌈
+2 log2
+(n+2
+2
+)⌉
++ 8) +O(logn)
+Table 4: Different implementations of a controlled-swap between two n-qubit registers. The depth D [Cnotn]≤⌈
+2 log2
+(n+2
+2
+)⌉
+is from Eq. (25).
+where the final quantum states in registers indexed by x > 0 are unimportant. Let us express
+the index x≡ x0x1··· in binary, where x0 is the smallest bit. Then it suffices to perform swaps
+between all pairs of registers indexed by {(i,i + 2j)|i∈ 2j+1N0}, controlled by the jth qubit|xj⟩
+of the index state |x⟩, in the order of j = 0, 1,··· ,⌈log2N⌉− 1.
+Each controlled pair-wise swap may be understood as a circuit CSwapn that swaps twon-qubit
+quantum registers in any state |ψ⟩,|ϕ⟩∈ C2n , controlled by a single qubit |z⟩∈ C2. That is,
+CSwapn|z⟩|ψ⟩|ϕ⟩ =
+{
+|z⟩|ψ⟩|ϕ⟩, z = 0,
+|z⟩|ϕ⟩|ψ⟩, z = 1. (27)
+The overall cost of Swap is then the sum of costs of CSwapn, over all j, where n =⌊N−12j+1 + 12⌋.
+We now consider different implementations considered realize trade-offs between Toffoli-gate
+count, circuit depth, and ancillary qubit usage, as summarized in Table 4.
+B.2.1 CSwapn in linear depth without ancillary qubits
+It is simple to construct CSwapn with depth O(n) without any ancillary qubits. As the circuit
+that swaps two qubits is constructed from three Cnot gates as follows,
+|ψ⟩
+|φ⟩
+= |φ⟩
+|ψ⟩
+a controlled-swap below is obtained by replacing the middle Cnot with a Toffoli gate.
+|z⟩
+=
+|z⟩
+A circuit that implements Eq. (27), a swap between n pairs of qubits, is then the above repeated
+n times in sequence, each controlled by the same qubit as follows.
+|z⟩
+|ψ⟩0
+|φ⟩0...
+|ψ⟩n−1
+|φ⟩n−1
+|z⟩
+...
+B.2.2 CSwapn in logarithmic depth without ancillary qubits
+Constructing CSwapn with depth O(logn) without any ancillary qubits requires a little more
+thought. Let us consider a more general problem. Suppose we have an arbitrary unitary operator
+V that is self-inverse, meaning V 2 = I – one may verify that the two-qubit swap satisfies this
+property. Our goal is to implement a multi-target controlled- V gate on n registers
+|0⟩⟨0|⊗ I +|1⟩⟨1|⊗ V⊗n. (28)
+To begin, consider the following circuit identity, which is motivated by the ‘toggling‘ trick in [42].
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 13
+
+=== PDF PAGE 14 ===
+|z⟩
+V = V V
+Observe the the bottom qubit may be dirty – its state does not affect the computation, and remains
+unchanged at the end of it.
+Thus a multi-target controlled- V on n registers may be constructed by applying n singly-
+controlledV gates in parallel before and after a single multiply-controlled not gate, using a total
+of n extra dirty qubits as follows.
+|z⟩
+...
+V
+V
+V
+=
+V
+V
+V
+V
+V
+V
+|z⟩
+...
+As the additional qubits may be dirty, this is easily modified to use no ancillary qubits at all. Let
+us apply the multi-target V on⌈n/2⌉ registers, using any⌊n/2⌋ qubits from the other registers as
+dirty qubits. When n is odd, the topmost V may be controlled directly by the |z⟩ qubit. We then
+apply the same circuit on the remaining registers by using qubits in the initial targets as control
+qubits. In total, this uses at most 2n controlled-V gates and two multiply-controlled not gates on
+⌈n/2⌉ qubits, each with cost given by Table 3.
+B.2.3 T-gate decomposition
+Each controlled-swap may be decomposed into Clifford+ T gates using standard techniques. For
+instance, the standard synthesis of each Toffoli uses 7 T -gates [12], as seen below.
+=
+H T † T T †
+T
+T H
+T †
+T
+Thus one might expect that CSwapn in logarithmic depth requires 14N T-gates. However, simple
+cancellations using the above decomposition reduces this to 10N T-gates.
+A further reduction to just 4N T-gates is possible if we allow the output state to be correct
+up to a phase factor. The decomposition by [19] below, using the gate G = S†·H·T·H·S,
+approximates the Toffoli gate up to a minus sign on one of the matrix elements.
+≈
+G† G† G G
+Thus a controlled-swap is obtained by a simple modification as follows.
+≈
+G† G† G G
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 14
+
+=== PDF PAGE 15 ===
+Using this approximate controlled-swap, a version of CSwapn that is correct up to a ±1 phase
+may be obtained by replacing the middle Cnot with Cnotn, which may be implemented with
+logarithmic depth. As this incorrect phase may be absorbed into the garbage state of the data-
+lookup oracle, we may apply this phase-incorrect swap operation without loss of generality.
+C Indicator Function Construction
+There is an alternative construction based on implementing an indicator function. That is, the
+function
+e(n) :{0, 1}n→{ 0, 1}N, (29)
+where N = 2n, which maps a string x∈{ 0, 1}n to an exponentially long encoding which is 1 at
+position x and zeros everywhere else.
+We observe that e(n) can be implemented with the following parameters.
+Theorem 1. Forn≥ 1, let Un be the unitary for the nth indicator function, e(n). That is, the
+circuit mapping
+|x⟩|y⟩↦→| x⟩|e(n)(x)⊕y⟩ (30)
+for all x∈{ 0, 1}n andy∈{ 0, 1}N . There is a circuit computing Un in depth O(log2N) withO(N)
+T gates without any ancillary qubits.
+Proof. When n = 1, 2 there are trivial circuits without ancillary qubits. For n> 2, let us suppose
+we have arbitrarily many clean ancillary qubits. We divide the input bits x into two halves, xhi
+and xlo, then recursively compute e(n/2)(xhi) and e(n/2)(xlo) in O(2n/2) =O(√N) clean ancillary
+qubits each.
+Each output of e(n)(x) is the AND of a bit in e(n/2)(xlo) and a bit in e(n/2)(xhi). Each bit
+is used O(
+√
+N) times, so we can finish XORing e(n)(x) into y with an array of Toffoli gates of
+O(
+√
+N). Alternatively, we can make O(
+√
+N) copies of each vector and do all the Toffoli gates
+simultaneously.
+Now suppose the ancillary qubits are dirty. Dirty qubits cannot store a qubit in the same way
+as clean qubits; since the initial state of the qubit is arbitrary, the information is encoded in the
+change in state rather than the actual state. To implement a Cnot controlled on a dirty qubit,
+for instance, we apply the Cnot first, flip or not flip the qubit, then apply another Cnot. If there
+was no change, the two gates cancel, otherwise exactly one fires.
+Recall that the Toffoli gate has an implementation up to a faulty sign (which we can tolerate)
+as three Cnot interleaved withG or G†. As described above, we can implement each Cnot with
+a pair of Cnots and, more importantly, a recursive call to the subroutine which populates that
+qubit, i.e., an indicator function. Actually, we use the previously described circuit for CnotO(√N)
+instead of many individual Cnot gates for each Toffoli involving that bit.
+The depth cost for CnotO(√N) is O(log(√N)) = O(n). Additionally, to compute Un we
+need 4 recursive calls to Un/2. The depth satisfies the recurrence D(n) = 4D(n/2) +O(n), so
+D(n) =O(n2) =O(log2N).
+Finally, suppose we apply the array of Toffoli gates intwo layers instead of just one simultaneous
+layer. Since we are only applying Toffolis to half of the |y⟩ register at any time, the other half can
+be used as dirty ancillary qubits. Asymptotically, this is much more than the O(
+√
+N) dirty qubits
+we need to compute Un/2. Hence, we can implement Un without any additional qubits.
+It is wasteful to compute all of e(n)(x) in ancillary qubits, but it can be used to compute an
+arbitrary function. Better is to divide the input into two pieces, similar to how we compute the
+indicator function.
+Theorem 2. Suppose f :{0, 1}n → {0, 1}b is an arbitrary function, and let U be the unitary
+mapping
+|x⟩|y⟩↦→| x⟩|y⊕f(x)⟩, (31)
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 15
+
+=== PDF PAGE 16 ===
+for all x∈{ 0, 1}n and y∈{ 0, 1}b.
+There is a circuit for U of depth O(log2N + logb), using O(bN) dirty ancillary qubits and
+O(
+√
+N) T gates. Alternatively, there is a circuit for U using O(
+√
+bN) T gates and only O(λ
+√
+bN)
+dirty ancillary qubits, but with depth O(
+√
+bN/λ + log2N), for any 1≤λ≤√bN .
+Proof. Divide the input into n−k and k bit pieces, where k is to be determined later. Let
+ˆf :{0, 1}n−k→{ 0, 1}b×2k be
+ˆf(xhi) =(f(xhixlo))xlo∈{0,1}k, (32)
+the function which outputs the function for all possible values of the low order bits, given the high
+order bits.
+Suppose, for the moment, that we have as many clean ancillary qubits as we want. We can
+na¨ ıvely computeˆf(xhi) by constructinge(n−k)(xhi), makingb·2k copies, and computing the parity
+of some subset of bits ofe(n−k)(xhi) for each output bit of ˆf(xhi). Constructing e(n−k)(xhi) requires
+O(2n−k) ancillary qubits,O(2n−k) T gates andO((n−k)2) depth. The rest is done with Cnotb·2k
+gates to make copies and CnotO(2n−k) gates conjugated by Hadamards to compute parities. This
+uses many ancillary qubits–O(2n−k) for the original vector times O(b2k) copies is O(bN) qubits.
+Since the layers of Cnot gates compute (in the output bits) a linear function of the inputs,
+it is not difficult to adapt for dirty ancillary qubits. Just apply the linear function, flip the dirty
+ancillary qubits that are set to 1, then apply the linear function again, appealing to the identity
+T (x⊕y)⊕T (y) =T (x) for a linear function. Thus, whatever state |y⟩ was in the dirty qubits, we
+still manage to compute T (x).
+We have shown how to compute ˆf(xhi) and XOR it into dirty ancillary qubits. We also know
+how to compute ek(xlo) and XOR b copies of it into dirty ancillary qubits. Think of ˆf(xhi) as a
+b× 2k matrix, then all that remains is to return the correct column of ˆf(xhi). If we also think
+of ek(xlo) as a length 2 k column vector, then we are computing a matrix/vector product. The
+simplest way to do this is to make b copies of ek(xlo) and execute b vector/vector products in
+parallel, at a cost of O(2k) Toffoli gates for each one.
+To compute the Toffoli gates on dirty ancillary qubits, we decompose them into Cnot gates
+and single qubit gates. The layers of Cnot gates are linear, so it is possible to compute each such
+layer with dirty ancillary qubits.
+Computing ˆf(xhi) uses O(bN) ancillary qubits, O(2n−k) T gates, and has depth O((n−k)2 +
+k + logb). The rest of the circuit has O(b2k) ancillas to store ˆf(xhi) and/or copies of ek(xlo), and
+usesO(b2k) T gates in depth O(k2 + logb). Since the T gate count isO(2n−k +b2k), we setk such
+that 2k≈√N/b, and it becomes O(√bN).
+It is possible to trade off depth and number of ancillary qubits. We only need O(2n−k) qubits
+to store e(n−k)(xhi) in the computation of ˆf(xhi), if we are willing to compute parities for each of
+theb2k output bits of ˆf(xhi) one at a time, in depth O(b2k). More generally, we can use O(λ2n−k)
+ancillary qubits for any integer λ∈ [1,b 2k] and use depth O(b2k/λ). For the optimal T count we
+use the same setting of k, giving O(
+√
+bN/λ + log2N) depth with O(λ√bN) ancillary qubits and
+O(
+√
+bN) T gates.
+D Pure-state preparation implementation details
+The approach by Shende, Bullock, and Markov [12] synthesizes a unitary A that prepares a pure
+stateA|0⟩ =∑Nx=0 ax∥⃗ a∥2|x⟩ =|ψ⟩ with arbitrary coefficients inN = 2n dimensions. The underlying
+circuit, illustrated below for the example of N = 8 for positive coefficients,
+|0⟩
+|0⟩
+|0⟩
+Ry
+Ry
+Ry
+|ψ⟩
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 16
+
+=== PDF PAGE 17 ===
+is built from j∈ [n] multiply-controlled arbitrary single qubit rotations, Uj where
+Uj =
+2j−1∑
+x=0
+|x⟩⟨x|⊗ ei2πθj,xZ, (33)
+for some set of rotation angles θj,x. Note that it suffices to consider Z-phase rotations as rotations
+about the X,Y Pauli operators are equivalent up to a single-qubit Clifford similarity transforma-
+tion. Each multiplexor is applied twice – once to create a pure state with the right probabilities
+|ax|2, and once to apply the correct phaseei arg [ax]. Below we describe howUj may be implemented
+using the data-lookup oracle of Eq. (5)
+O|x⟩|0⟩|0⟩ =|x⟩|ax⟩|garbagex⟩, (34)
+and evaluate the overall error and cost of state preparation.
+D.1 Multiply-controlled phase gate from data lookup oracles
+Consider a multiply-n-controlled arbitrary single qubit rotation
+U =
+2n−1∑
+x=0
+|x⟩⟨x|⊗ ei2πθxZ, (35)
+|x⟩
+|z⟩ Rz
+|x⟩
+ei2πθxZ |z⟩
+where each rotation angle θx∈ [0, 1). Given a number state|x⟩ and an arbitrary single-qubit state
+|z⟩, this unitary performs a controlled-rotation
+U|x⟩|z⟩ =|x⟩ei2πθxZ|z⟩. (36)
+Each rotation angle has a binary expansion
+θx =
+∞∑
+k=0
+ax,i
+2k+1. (37)
+By truncating to the above to b-bits of precision, we obtain an integer approximation ax of θx
+where
+ax = 2b
+b−1∑
+k=0
+ax,k
+2k+1,
+⏐⏐⏐ax
+2b−θx
+⏐⏐⏐< 12b. (38)
+Let us encode these values of ax into the data-lookup oracle, and express its T cost as the
+function f(n,b ). Its output is then
+O|x⟩|0⟩⊗b|0⟩ =|x⟩
+[b−1⨂
+k=0
+|ax,k⟩
+]
+|garbagex⟩, (39)
+where we explicitly represent the number state |ax⟩ in terms of its component qubits.
+D.1.1 Approach using arbitrary single-qubit synthesis
+One possible approximation, call it U′, of U in Eq. (35) applies the single-qubit rotation eiπZ/2k
+to the target state|z⟩, controlled by the state|ax,k⟩. The garbage register is then uncomputed by
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 17
+
+=== PDF PAGE 18 ===
+running O in reverse. Explicitly, this circuit realizes the transformation
+|x⟩|0⟩⊗b|0⟩|z⟩
+→|x⟩
+[b−1⨂
+k=0
+|ax,k⟩
+]
+|garbagex⟩|z⟩
+→|x⟩
+[b−1⨂
+k=0
+|ax,k⟩
+]
+|garbagex⟩eiπ
+∑b−1
+k=0ax,kZ/2k|z⟩
+=|x⟩|ax⟩|garbagex⟩ei2πax/2bZ|z⟩
+→|x⟩|0⟩⊗b|0⟩ei2πax/2bZ|z⟩. (40)
+Now, each controlled-arbitrary phase rotation decomposes into 2 arbitrary single-qubit rotations,
+and CNot gates – Note that a decomposition into 1 arbitrary single-qubit rotation is possible if we
+modify the above for the range θx∈ (−1/2, 1/2), but the explanation is slightly more complicated.
+As any arbitrary single-qubit rotation is approximated to error ϵ usingO(log (1/ϵ)) T gates [43],
+we may use a triangle inequality to bound the error to
+∥U−U′∥≤
+‖‖‖‖‖2n−1∑x=0|x⟩⟨x|⊗ (ei2πθxZ−ei2πax/2bZ)‖‖‖‖‖ + 2bϵ
+≤ max
+|y|<1/2b
+⏐⏐(ei2πy− 1)⏐⏐ + 2bϵ
+< 2π2b + 2bϵ. (41)
+Thus for any target error∥U−U′∥ =δ, we may solve for theb,ϵ parameters and bound the number
+of T gates required to
+f(n,b ) +O(log2 (1/δ)), b =O(log (1/δ)). (42)
+D.1.2 Approach using phase gradients
+A more efficient approach [22] uses a Fourier state as a resource
+F = 1√
+2b
+2b−1∑
+k=0
+e−2πik/2b|k⟩. (43)
+combined with a reversible adder
+Add|x⟩|y⟩ =|x⟩|y +x mod 2b⟩ (44)
+Observe that
+Add|x⟩|F⟩ =e2πix/2b|x⟩|F⟩. (45)
+Thus the controlled adder, known to cost O(b) T gates,
+Cadd = Add⊗| 0⟩⟨0| + Add†⊗| 1⟩⟨1| (46)
+realizes the controlled-phase rotation
+Cadd|x⟩|F⟩|z⟩ =|x⟩|F⟩e2πix/2bZ|z⟩. (47)
+Thus another possible approximation, call it U′′, uses this adder, controlled by the target state
+|z⟩, to the registers containing the desired phase rotation |ax⟩, and the Fourier state. This realizes
+the same transformation in Eq. (40), using the circuit depicted below.
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 18
+
+=== PDF PAGE 19 ===
+|x⟩
+|z⟩
+|φ⟩
+|0⟩
+|F ⟩ b
+b
+b
+Swap
+Swap†
+Select
+Swap
+Add
+Swap†
+Select†
+Swap
+Swap†
+|x⟩
+ei2πθxZ |z⟩
+|φ⟩
+|0⟩
+|F ⟩
+Assuming that the Fourier state is prepared perfectly, this approximates U with error
+∥U−U′′∥≤
+‖‖‖‖‖2n−1∑x=0|x⟩⟨x|⊗ (ei2πθxZ−ei2πax/2bZ)‖‖‖‖‖≤ max|y|<1/2b⏐⏐(ei2πy− 1)⏐⏐< 2π2b. (48)
+The state preparation unitary A′′ applies n such approximations U′′j to the multiply-controlled
+rotations Uj, leading to an overall error bounded by
+‖‖‖‖‖‖n−1∏j=0Uj−n−1∏j=0U′′j‖‖‖‖‖‖≤ n−1∑j=0∥Uj−U′′j∥< 2nπ2b . (49)
+Note that the cost of approximating the Fourier state to errorϵ has a T cost ofO(b log (1/ϵ)). This
+imperfect Fourier state|F′⟩ contributes a one-time error of ϵ, following the inequality
+∥W (|F′⟩⊗ I)− (W|F⟩⊗ I∥≤∥|F ′⟩−|F⟩∥≤ ϵ, (50)
+for any arbitrary unitary operator W . Thus A′′ prepares the state |ψ′′⟩ = A′′|0⟩|F′⟩, which
+approximates|ψ⟩ with error
+δ =∥|ψ′′⟩−| ψ⟩|F⟩∥≤ 2πn2b +ϵ. (51)
+The total error δ may be controlled by choosing b = Θ(log (nδ )) and ϵ = Θ(δ).
+The total T cost of arbitrary state preparation is then then the sum of costs of the data-lookup
+oracles f(j,b ) =O( 2jλ +bλ), adders, and the Fourier state:
+T cost =
+
+
+n−1∑
+j=0
+f(j,b ) +O(b)
+
+ +O(b log (1/ϵ))
+=O(2n/λ +nbλ +nb +b log (1/ϵ))
+=O
+(N
+λ +b(λn + log (1/δ))
+)
+=O
+(N
+λ + log
+(logN
+δ
+)
+(λ logN + log (1/δ))
+)
+=O
+(N
+λ +λ log
+(logN
+δ
+)
+log
+(N
+δ
+))
+=O
+(N
+λ +λ log2
+(N
+δ
+))
+. (52)
+Accepted in Quantum 2024-05-22, click title to verify. Published under CC-BY 4.0. 19

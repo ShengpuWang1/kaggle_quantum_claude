@@ -1,0 +1,22 @@
+.venv/
+.python/
+.cache/
+.pytest_cache/
+.ruff_cache/
+.secrets/
+__pycache__/
+.ipynb_checkpoints/
+data/
+vendor/
+submissions/*.zip
+*.pyc
+.DS_Store
+autoresearch/config.yaml
+autoresearch/.env
+autoresearch/workspaces/
+autoresearch/champions/.lock
+autoresearch/champions/*/generations/
+
+# Generated circuit binaries
+candidates/**/*.kmb
+runs/**/*.kmb

@@ -1,0 +1,20 @@
+{
+  "max_x": 3133452,
+  "worst_relative_error": 2.8086070136268404e-08,
+  "worst_x": 3116927,
+  "error_over_tolerance": 0.47120606526732445,
+  "precision": {
+    "delta_bits": 20,
+    "coef_bits": 28,
+    "result_bits": 28
+  },
+  "address_bits": 7,
+  "coefficient_widths": [
+    29,
+    21,
+    15
+  ],
+  "qubits": 163,
+  "toffolis": 3396,
+  "circuit_sha256": "2a9f6c962ca091f4af61ad7bfef98be60d79b3060d0402b618828017a8b1e840"
+}
